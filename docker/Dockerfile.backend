@@ -1,0 +1,67 @@
+# docker/Dockerfile.backend
+# -------------------------
+# Container image for the Orbit Flask API running under Gunicorn.
+# - Uses Python 3.11 slim
+# - Non-root user
+# - Caches dependencies with a separate layer
+# - Runs Gunicorn with our config at apps/backend/docker/gunicorn.conf.py
+
+FROM python:3.11-slim AS base
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1
+
+# System deps (psycopg2, build tools for wheels where needed)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      build-essential \
+      libpq-dev \
+      curl \
+      ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create a non-root user
+RUN useradd -m -u 10001 orbit
+
+WORKDIR /app
+
+# -----------------------------------------------------------------------------
+# Dependencies layer
+# -----------------------------------------------------------------------------
+# Copy only the requirements first to maximize cache hits
+COPY apps/backend/requirements.txt ./apps/backend/requirements.txt
+
+# Optional: create an in-container venv for isolation
+RUN python -m venv /venv && . /venv/bin/activate && \
+    pip install --upgrade pip && \
+    pip install -r apps/backend/requirements.txt
+
+ENV PATH="/venv/bin:$PATH"
+
+# -----------------------------------------------------------------------------
+# App layer
+# -----------------------------------------------------------------------------
+# Copy backend code
+COPY apps/backend ./apps/backend
+# (Optionally) include shared packages
+COPY packages ./packages
+
+# Set ownership to the non-root user
+RUN chown -R orbit:orbit /app
+USER orbit
+
+# Default runtime envs (overridden by Compose/.env)
+ENV APP_ENV=production \
+    FLASK_ENV=production
+
+EXPOSE 8000
+
+# Healthcheck: try hitting the docs or a simple endpoint if present
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD curl -fsS http://127.0.0.1:8000/api/ || curl -fsS http://127.0.0.1:8000/ || exit 1
+
+# Gunicorn entrypoint
+# Note: config path matches our repo structure
+CMD ["gunicorn", "-c", "apps/backend/docker/gunicorn.conf.py", "apps.backend.wsgi:application"]

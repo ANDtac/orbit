@@ -1,0 +1,27 @@
+# compose.dev.debug.yml
+# ---------------------
+# Overrides to enable a more debug-friendly dev experience.
+# - Backend: enable Gunicorn reload, fewer workers, verbose logging.
+# - Frontend: enable Node inspector (9229).
+
+version: "3.9"
+
+services:
+  backend:
+    environment:
+      - APP_ENV=development
+      - FLASK_ENV=development
+      - GUNICORN_RELOAD=true
+      - GUNICORN_WORKERS=1
+      - GUNICORN_THREADS=4
+      - GUNICORN_LOGLEVEL=debug
+    # Mount also the repo root (optional) if you want to tweak shared pkgs live
+    volumes:
+      - ./:/app:rw
+
+  frontend:
+    command: >
+      bash -lc "cd apps/frontend &&
+                node --inspect=0.0.0.0:9229 node_modules/vite/bin/vite.js --host 0.0.0.0"
+    ports:
+      - "9229:9229"   # Node inspector

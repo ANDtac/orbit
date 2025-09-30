@@ -1,0 +1,43 @@
+# docker/Dockerfile.frontend
+# --------------------------
+# Container image for the Orbit frontend (React + TypeScript with Vite).
+# - Node 20 alpine
+# - Non-root user
+# - Dev-oriented default CMD (Vite dev server)
+# - For production, build and serve via a separate nginx container in infra/
+
+FROM node:20-alpine AS base
+
+# Create non-root user
+RUN addgroup -S orbit && adduser -S orbit -G orbit
+USER orbit
+
+WORKDIR /web
+
+# Install deps with good cache behavior
+COPY apps/frontend/package.json apps/frontend/package-lock.json* ./apps/frontend/
+RUN cd apps/frontend && \
+    if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+
+# Copy the rest of the frontend source
+COPY --chown=orbit:orbit apps/frontend ./apps/frontend
+
+EXPOSE 5173
+
+# Development server (Vite) — override in Compose for prod builds
+# Example production build:
+#   docker build -f docker/Dockerfile.frontend --target prod -t orbit-frontend:prod .
+#   and use infra/nginx to serve /dist
+CMD ["bash", "-lc", "cd apps/frontend && npm run dev -- --host 0.0.0.0"]
+
+# -----------------------------------------------------------------------------
+# Optional production stage (uncomment for CI/CD use)
+# -----------------------------------------------------------------------------
+# FROM node:20-alpine AS build
+# WORKDIR /web
+# COPY apps/frontend/package.json apps/frontend/package-lock.json* ./apps/frontend/
+# RUN cd apps/frontend && npm ci --no-audit --no-fund
+# COPY apps/frontend ./apps/frontend
+# RUN cd apps/frontend && npm run build
+#
+# # Static files end up in apps/frontend/dist — copy these to an nginx image in infra/

@@ -1,0 +1,38 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Attach: Backend (Flask in Docker)",
+      "type": "python",
+      "request": "attach",
+      "connect": { "host": "localhost", "port": 5678 },
+      "pathMappings": [{ "localRoot": "${workspaceFolder}/apps/backend", "remoteRoot": "/app" }],
+      "justMyCode": true,
+      "preLaunchTask": "docker: up backend-debug",
+      "postDebugTask": "docker: down backend-debug"
+    },
+    {
+      "name": "Attach: Frontend (Node inspector)",
+      "type": "node",
+      "request": "attach",
+      "address": "localhost",
+      "port": 9229,
+      "restart": true,
+      "protocol": "inspector",
+      "cwd": "${workspaceFolder}/apps/frontend",
+      "localRoot": "${workspaceFolder}/apps/frontend",
+      "remoteRoot": "/usr/src/app"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Orbit: Dev (frontend + backend)",
+      "configurations": [
+        "Attach: Backend (Flask in Docker)",
+        "Attach: Frontend (Node inspector)"
+      ],
+      "preLaunchTask": "docker: up dev-debug",
+      "postDebugTask": "docker: down dev-debug"
+    }
+  ]
+}

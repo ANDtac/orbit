@@ -1,0 +1,49 @@
+# compose.yml
+# -----------
+# Default docker-compose for local development.
+# - Runs the backend (Flask + Gunicorn) and the frontend (Vite dev).
+# - Uses the dev .env example by default; copy and customize for your machine.
+# - Hot-reloads source via bind mounts.
+
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: orbit-backend
+    env_file:
+      - apps/backend/.env.dev.example
+    environment:
+      # Gunicorn bind (can override via .env)
+      - BIND=0.0.0.0:8000
+      # Disable reload in the base compose; enable it in compose.dev.debug.yml
+      - GUNICORN_RELOAD=false
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./apps/backend:/app/apps/backend:rw
+      - ./packages:/app/packages:rw
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/api/ || curl -fsS http://127.0.0.1:8000/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    container_name: orbit-frontend
+    environment:
+      - NODE_OPTIONS=--max-old-space-size=2048
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./apps/frontend:/web/apps/frontend:rw
+    restart: unless-stopped
+    depends_on:
+      - backend
