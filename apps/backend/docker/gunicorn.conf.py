@@ -37,6 +37,8 @@ import multiprocessing
 import os
 import sys
 from datetime import datetime
+from typing import Any
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -47,6 +49,7 @@ def _bool_env(name: str, default: bool) -> bool:
         return default
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
+
 def _int_env(name: str, default: int) -> int:
     raw = os.getenv(name)
     if raw is None:
@@ -56,10 +59,12 @@ def _int_env(name: str, default: int) -> int:
     except ValueError:
         return default
 
+
 def _now() -> str:
     return datetime.utcnow().isoformat(timespec="milliseconds") + "Z"
 
-def _jlog(event: str, **extra):
+
+def _jlog(event: str, **extra: Any) -> None:
     payload = {"ts": _now(), "event": event, **extra}
     print(json.dumps(payload, ensure_ascii=False), file=sys.stdout)
 
@@ -97,31 +102,49 @@ reload = _bool_env("GUNICORN_RELOAD", False)
 # ---------------------------------------------------------------------------
 # Server hooks (structured logs)
 # ---------------------------------------------------------------------------
-def on_starting(server):
-    _jlog("gunicorn_on_starting", bind=bind, workers=workers, threads=threads, preload_app=preload_app)
+def on_starting(server: Any) -> None:
+    _jlog(
+        "gunicorn_on_starting",
+        bind=bind,
+        workers=workers,
+        threads=threads,
+        preload_app=preload_app,
+    )
 
-def when_ready(server):
+
+def when_ready(server: Any) -> None:
     _jlog("gunicorn_when_ready", master_pid=os.getpid())
 
-def pre_fork(server, worker):
-    _jlog("gunicorn_pre_fork", worker_pid=worker.pid if worker else None)
 
-def post_fork(server, worker):
-    _jlog("gunicorn_post_fork", worker_pid=worker.pid)
+def pre_fork(server: Any, worker: Any) -> None:
+    _jlog("gunicorn_pre_fork", worker_pid=getattr(worker, "pid", None))
 
-def post_worker_init(worker):
-    _jlog("gunicorn_post_worker_init", worker_pid=worker.pid)
 
-def worker_int(worker):
-    _jlog("gunicorn_worker_int", worker_pid=worker.pid)
+def post_fork(server: Any, worker: Any) -> None:
+    _jlog("gunicorn_post_fork", worker_pid=getattr(worker, "pid", None))
 
-def worker_abort(worker):
-    _jlog("gunicorn_worker_abort", worker_pid=worker.pid)
 
-def worker_exit(server, worker):
+def post_worker_init(worker: Any) -> None:
+    _jlog("gunicorn_post_worker_init", worker_pid=getattr(worker, "pid", None))
+
+
+def worker_int(worker: Any) -> None:
+    _jlog("gunicorn_worker_int", worker_pid=getattr(worker, "pid", None))
+
+
+def worker_abort(worker: Any) -> None:
+    _jlog("gunicorn_worker_abort", worker_pid=getattr(worker, "pid", None))
+
+
+def worker_exit(server: Any, worker: Any) -> None:
     # This is emitted whenever a worker exits (graceful or crash). Container
     # restart policy should handle hard crashes; we log for observability.
-    _jlog("gunicorn_worker_exit", worker_pid=worker.pid, exitcode=getattr(worker, "exitcode", None))
+    _jlog(
+        "gunicorn_worker_exit",
+        worker_pid=getattr(worker, "pid", None),
+        exitcode=getattr(worker, "exitcode", None),
+    )
 
-def on_exit(server):
+
+def on_exit(server: Any) -> None:
     _jlog("gunicorn_on_exit", master_pid=os.getpid())

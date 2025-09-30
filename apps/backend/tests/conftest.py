@@ -164,7 +164,21 @@ def runner(app: Flask):
 # Model factories
 # -----------------------------------------------------------------------------
 @pytest.fixture(scope="function")
-def create_user(db) -> Callable[[str, str, bool], Users]:
+def auth_passwords(app: Flask):
+    """Configure in-memory accepted passwords for Netmiko-backed auth during tests."""
+
+    allowed: set[str] = set()
+
+    def tester(_: str, password: str) -> tuple[bool, str | None]:
+        return (True, None) if password in allowed else (False, "invalid credentials")
+
+    app.config["AUTH_CREDENTIAL_TESTER"] = tester
+    yield allowed
+    app.config.pop("AUTH_CREDENTIAL_TESTER", None)
+
+
+@pytest.fixture(scope="function")
+def create_user(db) -> Callable[[str, str | None, bool], Users]:
     """
     Factory: create and persist a `Users` row.
 
@@ -174,14 +188,12 @@ def create_user(db) -> Callable[[str, str, bool], Users]:
 
     Returns
     -------
-    Callable[[str, str, bool], Users]
-        Function that accepts (username, password, is_active=True).
+    Callable[[str, str | None, bool], Users]
+        Function that accepts (username, optional password placeholder, is_active=True).
     """
 
-    def _factory(username: str, password: str, is_active: bool = True) -> Users:
+    def _factory(username: str, password: str | None = None, is_active: bool = True) -> Users:
         u = Users(username=username, email=f"{username}@local", is_active=is_active)
-        if hasattr(u, "set_password"):
-            u.set_password(password)
         _db.session.add(u)
         _db.session.commit()
         return u

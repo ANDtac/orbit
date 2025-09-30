@@ -29,7 +29,7 @@ import re
 from flask import Flask, jsonify, g, request
 from flask_jwt_extended import get_jwt, verify_jwt_in_request, JWTDecodeError
 
-from .config import select_config
+from .config import BaseConfig, select_config
 from .extensions import db, migrate, jwt
 from .api import api_bp
 from .auth.routes import auth_bp
@@ -44,7 +44,7 @@ log = logging.getLogger(__name__)
 DEVICE_ID_PATH_RE = re.compile(r"/devices/(\d+)(?:/|$)")
 
 
-def create_app() -> Flask:
+def create_app(config_object: type[BaseConfig] | BaseConfig | None = None) -> Flask:
     """
     Application factory.
 
@@ -54,7 +54,10 @@ def create_app() -> Flask:
         A configured Flask application instance.
     """
     app = Flask(__name__)
-    app.config.from_object(select_config())
+    if config_object is not None:
+        app.config.from_object(config_object)
+    else:
+        app.config.from_object(select_config())
 
     # ---------------------------------------------------------------------
     # Logging setup

@@ -1,0 +1,62 @@
+Frontend Development Guidelines (React, Tailwind CSS & Vite)
+===========================================================
+
+Tech Stack Overview
+-------------------
+React: We will build the front end using React, a popular JavaScript library for building user interfaces. React’s component-based architecture allows us to create reusable UI components and manage state efficiently. It’s declarative and makes it straightforward to build interactive UIs by updating and rendering components as data changes.
+
+Tailwind CSS: For styling, we will use Tailwind CSS, a utility-first CSS framework. Instead of writing custom CSS for each element, Tailwind provides pre-built utility classes that can be applied directly in JSX/HTML. This keeps styles consistent and avoids large stylesheets. Tailwind’s theme configuration lets us customize colors, fonts, and spacing.
+
+Node.js & Vite: Node.js powers the development environment. Vite provides a dev server and bundler with extremely fast Hot Module Replacement (HMR) and optimized builds using Rollup. Vite is chosen for its speed and simplicity in modern front-end development.
+
+Project Setup and Structure
+---------------------------
+1. Initialize the project with Vite (`npm create vite@latest`) using a React template.
+2. Add Tailwind CSS following the official setup guide for Vite.
+3. Organize components and pages logically. Place reusable UI elements (buttons, modals, forms) in a components directory.
+4. Build reusable components with props and accessibility in mind. For example, a single Modal component should be used app-wide.
+5. Use Node scripts to run the development server (`npm run dev`) and build for production (`npm run build`).
+
+Theming and Design Consistency
+------------------------------
+We will maintain a uniform design system through predefined colors, typography, and spacing.
+
+Light Mode Colors:
+- Text: #002A57
+- Background: #E5F1FF
+- Primary: #0071B8
+- Secondary: #C2995B
+- Accent: #3796CD
+
+Dark Mode Colors:
+- Text: #A8D2FF
+- Background: #000C1A
+- Primary: #47B9FF
+- Secondary: #A47B3D
+- Accent: #3291C8
+
+Fonts:
+- Sansation for headings
+- Inter for body
+
+We will use a 1.333 type scale for consistent typography across headings and body text.
+
+Light/Dark Mode Toggle Implementation
+-------------------------------------
+Each page will have a toggle in the top corner to switch between light and dark modes. It will use a sun icon in light mode and a moon icon in dark mode (e.g., from Heroicons). The button must clearly indicate it is clickable via hover effects (e.g., background highlight). User preferences for theme should be stored (localStorage or cookies) so the choice persists across visits.
+
+Managing User Preferences with Cookies/Storage
+----------------------------------------------
+We will store simple preferences like theme mode and "remember username" for login. Cookies can be used (`document.cookie`) or localStorage for a simpler API. localStorage is recommended for front-end only settings. For example, store `savedUsername` in localStorage and check it when loading the login page.
+
+Additional Best Practices and Resources
+---------------------------------------
+- Use Tailwind’s responsive utilities for mobile-first design.
+- Ensure accessibility (semantic HTML, ARIA attributes, contrast).
+- Keep code DRY: reuse components rather than duplicating.
+- Recommended resources:
+  • React docs (Quick Start, Thinking in React)
+  • Tailwind CSS docs (Dark Mode, Customization)
+  • Vite guide
+  • Heroicons and Headless UI (accessible UI components)
+  • MDN docs on cookies and localStorage

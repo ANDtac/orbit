@@ -20,7 +20,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import CITEXT, INET, JSONB
-from werkzeug.security import check_password_hash, generate_password_hash
 
 db = SQLAlchemy()
 
@@ -42,21 +41,19 @@ class Users(db.Model):
         Unique username (CITEXT).
     email : str | None
         Optional unique email (CITEXT).
-    password : str
-        Hashed password (Werkzeug).
     jwt_auth_active : bool
         Whether JWT auth is active for this user.
+    is_active : bool
+        Application-level active flag for soft disabling accounts.
     date_joined : datetime
         UTC timestamp when the user registered.
+    last_login_at : datetime | None
+        Timestamp of the most recent successful authentication.
 
     Methods
     -------
     save() -> None
         Persist this row.
-    set_password(password: str) -> None
-        Hash and set the password.
-    check_password(password: str) -> bool
-        Verify a password against the stored hash.
     update_email(new_email: str | None) -> None
         Set the email.
     update_username(new_username: str) -> None
@@ -65,6 +62,8 @@ class Users(db.Model):
         Return current JWT auth status.
     set_jwt_auth_active(set_status: bool) -> None
         Toggle JWT auth status.
+    mark_login(timestamp: datetime | None = None) -> None
+        Update the last successful login time.
     get_by_id(id: int) -> Users | None
         Fetch by id.
     get_by_email(email: str) -> Users | None
@@ -81,8 +80,9 @@ class Users(db.Model):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     username: Mapped[str] = mapped_column(CITEXT, nullable=False, unique=True, index=True)
     email: Mapped[str | None] = mapped_column(CITEXT, unique=True, index=True)
-    password: Mapped[str] = mapped_column(String, nullable=False)
     jwt_auth_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     date_joined: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
@@ -102,34 +102,6 @@ class Users(db.Model):
         """
         db.session.add(self)
         db.session.commit()
-
-    def set_password(self, password: str) -> None:
-        """
-        Set a new password.
-
-        Parameters
-        ----------
-        password : str
-
-        Returns
-        -------
-        None
-        """
-        self.password = generate_password_hash(password)
-
-    def check_password(self, password: str) -> bool:
-        """
-        Check a password.
-
-        Parameters
-        ----------
-        password : str
-
-        Returns
-        -------
-        bool
-        """
-        return check_password_hash(self.password, password)
 
     def update_email(self, new_email: str | None) -> None:
         """
@@ -182,6 +154,18 @@ class Users(db.Model):
         None
         """
         self.jwt_auth_active = set_status
+
+    def mark_login(self, timestamp: datetime | None = None) -> None:
+        """
+        Update the last successful authentication timestamp.
+
+        Parameters
+        ----------
+        timestamp : datetime | None
+            Explicit timestamp to record. Defaults to now (UTC).
+        """
+
+        self.last_login_at = timestamp or datetime.now(timezone.utc)
 
     @classmethod
     def get_by_id(cls, id: int) -> "Users | None":
@@ -236,7 +220,14 @@ class Users(db.Model):
         -------
         dict[str, Any]
         """
-        return {"_id": self.id, "username": self.username, "email": self.email}
+    return {
+        "_id": self.id,
+        "username": self.username,
+        "email": self.email,
+        "is_active": self.is_active,
+        "jwt_auth_active": self.jwt_auth_active,
+        "last_login_at": self.last_login_at.isoformat() if self.last_login_at else None,
+    }
 
     def toJSON(self) -> dict[str, Any]:
         """
@@ -261,8 +252,12 @@ class JWTTokenBlocklist(db.Model):
         Primary key.
     jwt_token : str
         Token string (consider storing a hash instead).
+    user_id : int | None
+        Optional reference to the user the token belonged to.
     created_at : datetime
         When it was added.
+    reason : str | None
+        Why the token was revoked (logout, rotation, etc.).
 
     Methods
     -------
@@ -273,7 +268,11 @@ class JWTTokenBlocklist(db.Model):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     jwt_token: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    reason: Mapped[str | None] = mapped_column(String(64))
 
     def __repr__(self) -> str:
         return f"<Expired Token: {self.jwt_token}>"
@@ -289,6 +288,51 @@ class JWTTokenBlocklist(db.Model):
         db.session.add(self)
         db.session.commit()
 
+
+class LoginAttempts(db.Model):
+    """
+    LoginAttempts
+    --------------
+    Audit table tracking authentication attempts for rate limiting and forensics.
+
+    Attributes
+    ----------
+    id : int
+        Primary key.
+    username : str
+        Username that attempted authentication.
+    ip_address : str | None
+        Source IP captured from the request.
+    user_agent : str | None
+        User agent string from the request.
+    success : bool
+        Whether the attempt succeeded.
+    failure_reason : str | None
+        Optional reason on failure.
+    created_at : datetime
+        Timestamp of the attempt (UTC).
+    """
+
+    __tablename__ = "login_attempts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    username: Mapped[str] = mapped_column(CITEXT, nullable=False, index=True)
+    ip_address: Mapped[str | None] = mapped_column(INET)
+    user_agent: Mapped[str | None] = mapped_column(Text)
+    success: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    failure_reason: Mapped[str | None] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+    __table_args__ = (
+        Index("ix_login_attempts_username_created", "username", "created_at"),
+        Index("ix_login_attempts_ip_created", "ip_address", "created_at"),
+    )
+
+    def __repr__(self) -> str:
+        status = "ok" if self.success else "fail"
+        return f"<LoginAttempt {self.username}:{status} at {self.created_at.isoformat()}>"
 
 # =============================================================================
 # Basic lookups (Manufacturers / DeviceTypes / ProductModels)

@@ -12,7 +12,7 @@ python-dotenv>=1.0,<2.0
 gunicorn>=21.2,<22.0
 Jinja2>=3.1,<4.0
 click>=8.1,<9.0
-passlib[bcrypt]>=1.7,<2.0
+netmiko>=4.3,<5.0
 
 # Network automation (enable Nornir/NAPALM paths)
 nornir>=3.3,<4.0

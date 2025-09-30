@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" role="img" aria-labelledby="title desc">
+  <title id="title">Orbit logo placeholder (dark animated full)</title>
+  <desc id="desc">Placeholder version of the Orbit wordmark for dark themes with animated orbit.</desc>
+  <defs>
+    <style>
+      .orbit-ring { stroke: #47B9FF; stroke-width: 4; fill: none; }
+      .orbit-text { font-family: 'Sansation', 'Inter', sans-serif; font-size: 46px; font-weight: 600; fill: #A8D2FF; }
+      .orbit-accent { fill: #3291C8; }
+    </style>
+  </defs>
+  <g transform="translate(20 16)">
+    <circle cx="24" cy="24" r="22" class="orbit-ring" />
+    <circle cx="24" cy="24" r="22" stroke="#A47B3D" stroke-width="1" fill="none" opacity="0.4" />
+    <circle cx="24" cy="24" r="22" stroke="#3291C8" stroke-width="1" fill="none" opacity="0.2" />
+    <circle cx="24" cy="4" r="6" class="orbit-accent">
+      <animateTransform attributeName="transform" type="rotate" from="0 24 24" to="360 24 24" dur="4s" repeatCount="indefinite" />
+    </circle>
+    <text x="54" y="38" class="orbit-text">Orbit</text>
+  </g>
+</svg>
