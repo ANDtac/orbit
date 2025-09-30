@@ -2,5 +2,17 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 
-const root = createRoot(document.getElementById("root")!);
-root.render(<App />);
+import "./styles/theme.css";
+import "./styles/index.css";
+
+const rootElement = document.getElementById("root");
+
+if (!rootElement) {
+  throw new Error("Root element #root not found");
+}
+
+createRoot(rootElement).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+);

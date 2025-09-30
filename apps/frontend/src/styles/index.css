@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+body {
+  min-height: 100vh;
+  font-family: var(--font-body);
+  background-color: rgb(var(--color-background));
+  color: rgb(var(--color-text));
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+[data-status="online"] {
+  background-color: rgba(55, 160, 72, 0.15);
+  color: #248f3d;
+}
+
+[data-status="offline"] {
+  background-color: rgba(217, 83, 79, 0.15);
+  color: #c0392b;
+}
+
+[data-status="maintenance"] {
+  background-color: rgba(194, 153, 91, 0.2);
+  color: #a47b3d;
+}

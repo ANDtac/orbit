@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" role="img" aria-labelledby="title desc">
+  <title id="title">Orbit icon placeholder (dark still)</title>
+  <desc id="desc">Dark theme placeholder icon.</desc>
+  <defs>
+    <style>
+      .ring { stroke: #47B9FF; stroke-width: 4; fill: none; }
+      .accent { fill: #3291C8; }
+    </style>
+  </defs>
+  <g transform="translate(40 40)">
+    <circle r="28" class="ring" />
+    <circle r="6" class="accent" transform="translate(0,-28)" />
+  </g>
+</svg>

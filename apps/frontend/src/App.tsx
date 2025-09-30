@@ -1,3 +1,12 @@
-export default function App() {
-  return <div style={{ padding: 24 }}>Orbit frontend placeholder</div>;
+import { AppProviders } from "./app/AppProviders";
+import { AppRoutes } from "./app/routes";
+
+function App(): JSX.Element {
+  return (
+    <AppProviders>
+      <AppRoutes />
+    </AppProviders>
+  );
 }
+
+export default App;

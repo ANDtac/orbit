@@ -35,6 +35,7 @@ Notes
 from __future__ import annotations
 
 import os
+from typing import Any
 from datetime import timedelta
 from typing import Type
 
@@ -86,6 +87,21 @@ def _int_env(name: str, default: int) -> int:
         return default
 
 
+def _json_env(name: str) -> dict[str, Any] | None:
+    """Attempt to parse a JSON object from an environment variable."""
+
+    raw = os.getenv(name)
+    if not raw:
+        return None
+    try:
+        import json
+
+        parsed = json.loads(raw)
+        return parsed if isinstance(parsed, dict) else None
+    except Exception:
+        return None
+
+
 class BaseConfig:
     """
     BaseConfig
@@ -111,6 +127,22 @@ class BaseConfig:
         Access token lifetime.
     JWT_REFRESH_TOKEN_EXPIRES : timedelta
         Refresh token lifetime.
+    AUTH_NETMIKO_HOST : str | None
+        SSH host used to validate credentials.
+    AUTH_NETMIKO_DEVICE_TYPE : str | None
+        Netmiko device type string.
+    AUTH_NETMIKO_PORT : int
+        SSH port for credential validation.
+    AUTH_NETMIKO_TIMEOUT : int
+        Seconds to wait for Netmiko connections.
+    AUTH_NETMIKO_EXTRA : dict[str, Any] | None
+        Optional JSON-encoded kwargs for Netmiko.
+    AUTH_LOGIN_MAX_ATTEMPTS : int
+        Max failed attempts before lockout.
+    AUTH_LOGIN_WINDOW_SECONDS : int
+        Rolling window for counting attempts.
+    AUTH_LOGIN_LOCKOUT_SECONDS : int
+        Lockout duration when threshold exceeded.
     """
 
     # SQLAlchemy
@@ -130,6 +162,16 @@ class BaseConfig:
     JWT_REFRESH_TOKEN_EXPIRES: timedelta = timedelta(
         seconds=_int_env("JWT_REFRESH_TOKEN_EXPIRES", 14 * 24 * 60 * 60)
     )
+
+    # Device-backed authentication
+    AUTH_NETMIKO_HOST: str | None = os.getenv("AUTH_NETMIKO_HOST")
+    AUTH_NETMIKO_DEVICE_TYPE: str | None = os.getenv("AUTH_NETMIKO_DEVICE_TYPE")
+    AUTH_NETMIKO_PORT: int = _int_env("AUTH_NETMIKO_PORT", 22)
+    AUTH_NETMIKO_TIMEOUT: int = _int_env("AUTH_NETMIKO_TIMEOUT", 10)
+    AUTH_NETMIKO_EXTRA: dict[str, Any] | None = _json_env("AUTH_NETMIKO_EXTRA")
+    AUTH_LOGIN_MAX_ATTEMPTS: int = _int_env("AUTH_LOGIN_MAX_ATTEMPTS", 5)
+    AUTH_LOGIN_WINDOW_SECONDS: int = _int_env("AUTH_LOGIN_WINDOW_SECONDS", 15 * 60)
+    AUTH_LOGIN_LOCKOUT_SECONDS: int = _int_env("AUTH_LOGIN_LOCKOUT_SECONDS", 15 * 60)
 
 
 class DevConfig(BaseConfig):

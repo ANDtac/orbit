@@ -1,79 +1,158 @@
+# Orbit Repository Structure
+
+```
 orbit/
 ├─ apps/
-│  ├─ backend/                         # Flask API (complete)
+│  ├─ backend/
 │  │  ├─ app/
-│  │  │  ├─ __init__.py                # app factory + logging, hooks, error handling
-│  │  │  ├─ config.py                  # Dev/Stage/Prod config selection
-│  │  │  ├─ extensions.py              # db, migrate, jwt singletons
-│  │  │  ├─ logging.py                 # JSON logging setup
-│  │  │  ├─ models.py                  # ALL models (devices, platforms, eox, logs, ...)
+│  │  │  ├─ __init__.py
+│  │  │  ├─ config.py
+│  │  │  ├─ extensions.py
+│  │  │  ├─ logging.py
+│  │  │  ├─ models.py
 │  │  │  ├─ auth/
-│  │  │  │  └─ routes.py               # /auth login/refresh/logout
+│  │  │  │  └─ routes.py
 │  │  │  ├─ api/
-│  │  │  │  ├─ __init__.py             # RESTX Api + namespace registration
-│  │  │  │  ├─ utils.py                # pagination, helpers
+│  │  │  │  ├─ __init__.py
+│  │  │  │  ├─ utils.py
 │  │  │  │  └─ resources/
-│  │  │  │     ├─ devices.py
-│  │  │  │     ├─ platforms.py
-│  │  │  │     ├─ credential_profiles.py
-│  │  │  │     ├─ inventory_groups.py
-│  │  │  │     ├─ interfaces.py
-│  │  │  │     ├─ ip_addresses.py
-│  │  │  │     ├─ snapshots.py
-│  │  │  │     ├─ platform_operation_templates.py
 │  │  │  │     ├─ compliance.py
-│  │  │  │     ├─ operations.py
-│  │  │  │     ├─ logs.py              # search requests/errors (optional, included)
+│  │  │  │     ├─ credential_profiles.py
+│  │  │  │     ├─ devices.py
 │  │  │  │     ├─ eox_hardware.py
+│  │  │  │     ├─ eox_queries.py
 │  │  │  │     ├─ eox_software.py
-│  │  │  │     └─ eox_queries.py
+│  │  │  │     ├─ interfaces.py
+│  │  │  │     ├─ inventory_groups.py
+│  │  │  │     ├─ ip_addresses.py
+│  │  │  │     ├─ logs.py
+│  │  │  │     ├─ operations.py
+│  │  │  │     ├─ platform_operation_templates.py
+│  │  │  │     └─ snapshots.py
 │  │  │  ├─ services/
-│  │  │  │  └─ operations.py           # Nornir/NAPALM glue (stubs ready)
+│  │  │  │  └─ operations.py
 │  │  │  └─ utils/
-│  │  │     └─ mailer.py               # critical-alert SMTP helper
+│  │  │     └─ mailer.py
 │  │  ├─ docker/
 │  │  │  └─ gunicorn.conf.py
 │  │  ├─ tests/
-│  │  │  ├─ conftest.py                # app/DB fixtures, JWT helper
-│  │  │  ├─ test_auth.py               # login/refresh/logout
-│  │  │  ├─ test_devices.py            # CRUD smoke tests
-│  │  │  └─ test_eox.py                # lifecycle query tests
+│  │  │  ├─ conftest.py
+│  │  │  ├─ test_auth.py
+│  │  │  ├─ test_devices.py
+│  │  │  └─ test_eox.py
 │  │  ├─ requirements.txt
 │  │  ├─ wsgi.py
 │  │  ├─ manage.py
 │  │  ├─ .env.dev.example
 │  │  ├─ .env.stage.example
 │  │  └─ .env.prod.example
-│  └─ frontend/                        # React + TS (Vite) scaffold
-│     ├─ src/
-│     │  ├─ App.tsx
-│     │  └─ main.tsx
-│     ├─ public/
-│     │  └─ favicon.svg
+│  └─ frontend/
 │     ├─ index.html
+│     ├─ package.json
 │     ├─ tsconfig.json
 │     ├─ tsconfig.node.json
 │     ├─ vite.config.ts
-│     └─ package.json
+│     ├─ tailwind.config.ts
+│     ├─ postcss.config.cjs
+│     ├─ .eslintrc.cjs
+│     ├─ .prettierrc
+│     ├─ public/
+│     │  └─ favicon.svg
+│     └─ src/
+│        ├─ main.tsx
+│        ├─ App.tsx
+│        ├─ app/
+│        │  ├─ AppProviders.tsx
+│        │  ├─ routes.tsx
+│        │  └─ store/
+│        │     └─ index.ts
+│        ├─ components/
+│        │  ├─ ui/
+│        │  │  ├─ Button.tsx
+│        │  │  ├─ Icon.tsx
+│        │  │  ├─ Input.tsx
+│        │  │  ├─ LoadingOverlay.tsx
+│        │  │  ├─ Modal.tsx
+│        │  │  └─ Toggle.tsx
+│        │  └─ layout/
+│        │     ├─ Header.tsx
+│        │     ├─ Page.tsx
+│        │     └─ ThemeToggle.tsx
+│        ├─ features/
+│        │  ├─ auth/
+│        │  │  ├─ api/
+│        │  │  │  └─ auth.api.ts
+│        │  │  ├─ components/
+│        │  │  │  ├─ LoginForm.tsx
+│        │  │  │  └─ ProtectedRoute.tsx
+│        │  │  └─ pages/
+│        │  │     └─ LoginPage.tsx
+│        │  └─ devices/
+│        │     ├─ api/
+│        │     │  └─ devices.api.ts
+│        │     ├─ components/
+│        │     │  └─ DeviceTable.tsx
+│        │     └─ pages/
+│        │        └─ DevicesListPage.tsx
+│        ├─ pages/
+│        │  ├─ Home.tsx
+│        │  └─ NotFound.tsx
+│        ├─ hooks/
+│        │  ├─ useAuth.ts
+│        │  ├─ useCookies.ts
+│        │  ├─ useLocalStorage.ts
+│        │  └─ useTheme.ts
+│        ├─ contexts/
+│        │  └─ ThemeContext.tsx
+│        ├─ lib/
+│        │  ├─ apiClient.ts
+│        │  ├─ constants.ts
+│        │  ├─ cookies.ts
+│        │  └─ types/
+│        │     └─ index.ts
+│        ├─ styles/
+│        │  ├─ index.css
+│        │  └─ theme.css
+│        ├─ assets/
+│        │  ├─ icons/
+│        │  │  ├─ moon.svg
+│        │  │  └─ sun.svg
+│        │  └─ logos/
+│        │     ├─ orbit_dark_animated_full.svg
+│        │     ├─ orbit_dark_animated_icon.svg
+│        │     ├─ orbit_dark_still_full.svg
+│        │     ├─ orbit_dark_still_icon.svg
+│        │     ├─ orbit_light_animated_full.svg
+│        │     ├─ orbit_light_animated_icon.svg
+│        │     ├─ orbit_light_still_full.svg
+│        │     └─ orbit_light_still_icon.svg
+│        ├─ tests/
+│        │  └─ setup.ts
+│        └─ vite-env.d.ts
 ├─ packages/
 │  └─ shared/
-│     ├─ python/                       # optional: shared constants for backend
-│     └─ ts/                           # optional: shared DTOs/types for frontend
+│     ├─ python/
+│     │  └─ .gitkeep
+│     └─ ts/
+│        └─ .gitkeep
 ├─ docker/
-│  ├─ Dockerfile.backend               # Python 3.11 slim, gunicorn
-│  └─ Dockerfile.frontend              # Node 20 alpine, vite dev
+│  ├─ Dockerfile.backend
+│  └─ Dockerfile.frontend
 ├─ infra/
-│  └─ nginx/                           # (future) prod reverse proxy
+│  └─ nginx/
+│     └─ .gitkeep
 ├─ references/
-│  ├─ FILE_TREE.md                     # snapshot of the structure
+│  ├─ FILE_TREE.md
+│  ├─ frontend_guidelines.txt
 │  └─ .gitkeep
 ├─ .vscode/
-│  ├─ launch.json                      # attach configs; compound dev (both)
-│  ├─ tasks.json                       # compose up/down debug stacks
-│  ├─ settings.json                    # points to backend .venv for editor tools
-│  └─ extensions.json                  # recommended extensions
-├─ compose.yml                         # runs backend + frontend
-├─ compose.dev.debug.yml               # debug overrides (debugpy & node inspector)
+│  ├─ extensions.json
+│  ├─ launch.json
+│  ├─ settings.json
+│  └─ tasks.json
+├─ compose.yml
+├─ compose.dev.debug.yml
 ├─ .gitignore
 ├─ README.md
-└─ Makefile                            # handy targets (dev, stage, prod, test)
+└─ Makefile
+```
