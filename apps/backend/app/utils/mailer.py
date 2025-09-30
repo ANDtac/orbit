@@ -14,14 +14,15 @@ Environment Variables
 ---------------------
 SMTP_HOST : str
     Mail server hostname. Example: "smtp.yourorg.local".
-SMTP_PORT : int
-    Port number. Common: 465 (implicit TLS / SMTPS) or 587 (STARTTLS).
-SMTP_USERNAME : str
-SMTP_PASSWORD : str
+SMTP_PORT : int, optional
+    Port number override. If unset, the standard library default is used
+    (25 for SMTP, 465 for SMTP over SSL).
+SMTP_USERNAME : str, optional
+SMTP_PASSWORD : str, optional
 SMTP_USE_TLS : bool
     If "true", connect using implicit TLS (SMTPS). Default: "false".
 SMTP_STARTTLS : bool
-    If "true", connect in plaintext then upgrade with STARTTLS. Default: "true".
+    If "true", connect in plaintext then upgrade with STARTTLS. Default: "false".
 MAIL_FROM : str
     Default sender address. Example: "orbit@yourorg.local".
 MAIL_TO_CRITICAL : str
@@ -82,6 +83,21 @@ def _bool_env(name: str, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _int_env(name: str) -> int | None:
+    """Parse an optional integer environment variable."""
+    raw = os.getenv(name)
+    if raw is None:
+        return None
+    raw = raw.strip()
+    if not raw:
+        return None
+    try:
+        return int(raw)
+    except ValueError:
+        log.warning("Invalid integer for %s: %s", name, raw)
+        return None
+
+
 def _get_smtp_config() -> dict:
     """
     Build an SMTP configuration dictionary from environment variables.
@@ -91,7 +107,7 @@ def _get_smtp_config() -> dict:
     dict
         {
           "host": str,
-          "port": int,
+          "port": int | None,
           "username": str | None,
           "password": str | None,
           "use_tls": bool,       # implicit TLS (SMTPS)
@@ -101,11 +117,11 @@ def _get_smtp_config() -> dict:
         }
     """
     host = os.getenv("SMTP_HOST", "")
-    port = int(os.getenv("SMTP_PORT", "587"))
+    port = _int_env("SMTP_PORT")
     username = os.getenv("SMTP_USERNAME")
     password = os.getenv("SMTP_PASSWORD")
     use_tls = _bool_env("SMTP_USE_TLS", False)        # implicit TLS (465)
-    starttls = _bool_env("SMTP_STARTTLS", True)       # STARTTLS (587)
+    starttls = _bool_env("SMTP_STARTTLS", False)      # STARTTLS (587)
     mail_from = os.getenv("MAIL_FROM", "orbit@yourorg.local")
     critical_to = os.getenv("MAIL_TO_CRITICAL", CRITICAL_ALERT_EMAIL)
 
@@ -156,11 +172,19 @@ def _connect_smtp(cfg: dict, timeout: float) -> smtplib.SMTP:
     if not cfg["host"]:
         raise RuntimeError("SMTP_HOST not configured")
 
+    port = cfg.get("port")
+
     if cfg["use_tls"]:
         # Implicit TLS (SMTPS), typically port 465
-        client = smtplib.SMTP_SSL(cfg["host"], cfg["port"], timeout=timeout)
+        if port is None:
+            client = smtplib.SMTP_SSL(cfg["host"], timeout=timeout)
+        else:
+            client = smtplib.SMTP_SSL(cfg["host"], port, timeout=timeout)
     else:
-        client = smtplib.SMTP(cfg["host"], cfg["port"], timeout=timeout)
+        if port is None:
+            client = smtplib.SMTP(cfg["host"], timeout=timeout)
+        else:
+            client = smtplib.SMTP(cfg["host"], port, timeout=timeout)
         if cfg["starttls"]:
             client.ehlo()
             client.starttls()
