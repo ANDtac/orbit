@@ -41,6 +41,7 @@ from __future__ import annotations
 
 from flask import request
 from flask_restx import Namespace, Resource, fields
+from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required
 
 from ...extensions import db
@@ -99,11 +100,11 @@ class SoftwareList(Resource):
         if op:
             q = q.filter(SoftwareLifecycle.match_operator.ilike(op))
 
-        return q.order_by(SoftwareLifecycle.os_name).all(), 200
+        return q.order_by(SoftwareLifecycle.os_name).all(), HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(SoftwareIn, validate=True)
-    @ns.marshal_with(SoftwareOut, code=201)
+    @ns.marshal_with(SoftwareOut, code=HTTPStatus.CREATED)
     def post(self):
         """Create a software lifecycle row."""
         payload = request.get_json(force=True)
@@ -113,7 +114,7 @@ class SoftwareList(Resource):
         row = SoftwareLifecycle(**payload)
         db.session.add(row)
         db.session.commit()
-        return row, 201
+        return row, HTTPStatus.CREATED
 
 
 @ns.route("/<int:id>")
@@ -128,7 +129,7 @@ class SoftwareItem(Resource):
     @ns.marshal_with(SoftwareOut)
     def get(self, id: int):
         """Retrieve a lifecycle row by ID."""
-        return SoftwareLifecycle.query.get_or_404(id), 200
+        return SoftwareLifecycle.query.get_or_404(id), HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(SoftwareIn, validate=False)
@@ -139,7 +140,7 @@ class SoftwareItem(Resource):
         for k, v in (request.get_json(force=True) or {}).items():
             setattr(row, k, v)
         db.session.commit()
-        return row, 200
+        return row, HTTPStatus.OK
 
     @jwt_required()
     def delete(self, id: int):
@@ -147,4 +148,4 @@ class SoftwareItem(Resource):
         row = SoftwareLifecycle.query.get_or_404(id)
         db.session.delete(row)
         db.session.commit()
-        return {"message": "deleted"}, 200
+        return {"message": "deleted"}, HTTPStatus.OK

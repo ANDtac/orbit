@@ -45,6 +45,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from flask import request
 from flask_restx import Namespace, Resource, fields
+from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required
 
 from ...extensions import db
@@ -118,13 +119,13 @@ class HardwareList(Resource):
                         if dt and as_of <= dt <= soon:
                             out.append(r)
                             break
-            return out, 200
+            return out, HTTPStatus.OK
 
-        return rows, 200
+        return rows, HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(HardwareIn, validate=True)
-    @ns.marshal_with(HardwareOut, code=201)
+    @ns.marshal_with(HardwareOut, code=HTTPStatus.CREATED)
     def post(self):
         """
         Create a hardware lifecycle row.
@@ -138,7 +139,7 @@ class HardwareList(Resource):
         row = HardwareLifecycle(**payload)
         db.session.add(row)
         db.session.commit()
-        return row, 201
+        return row, HTTPStatus.CREATED
 
 
 @ns.route("/<int:id>")
@@ -153,7 +154,7 @@ class HardwareItem(Resource):
     @ns.marshal_with(HardwareOut)
     def get(self, id: int):
         """Retrieve a lifecycle row by ID."""
-        return HardwareLifecycle.query.get_or_404(id), 200
+        return HardwareLifecycle.query.get_or_404(id), HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(HardwareIn, validate=False)
@@ -164,7 +165,7 @@ class HardwareItem(Resource):
         for k, v in (request.get_json(force=True) or {}).items():
             setattr(row, k, v)
         db.session.commit()
-        return row, 200
+        return row, HTTPStatus.OK
 
     @jwt_required()
     def delete(self, id: int):
@@ -172,4 +173,4 @@ class HardwareItem(Resource):
         row = HardwareLifecycle.query.get_or_404(id)
         db.session.delete(row)
         db.session.commit()
-        return {"message": "deleted"}, 200
+        return {"message": "deleted"}, HTTPStatus.OK

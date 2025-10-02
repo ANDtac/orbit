@@ -34,6 +34,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from flask import request
 from flask_restx import Namespace, Resource, fields
+from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required
 
 from ...models import Devices, HardwareLifecycle, SoftwareLifecycle
@@ -151,4 +152,4 @@ class DevicesEox(Resource):
                 "hardware": hw_status or None,
                 "software": sw_status or None,
             })
-        return out, 200
+        return out, HTTPStatus.OK

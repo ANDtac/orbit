@@ -59,6 +59,7 @@ from __future__ import annotations
 
 from flask import request
 from flask_restx import Namespace, Resource, fields
+from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required
 
 from ...extensions import db
@@ -169,7 +170,7 @@ class GroupList(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_list_with(GroupOut, code=200)
+    @ns.marshal_list_with(GroupOut, code=HTTPStatus.OK)
     def get(self):
         """
         List inventory groups.
@@ -195,12 +196,12 @@ class GroupList(Resource):
             default="-id",
             allowed={"id", "name", "is_active", "created_at", "updated_at"},
         )
-        rows = q.paginate(page=page, per_page=per_page, error_out=False).items
-        return rows, 200
+        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        return rows, HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(GroupCreate, validate=True)
-    @ns.marshal_with(GroupOut, code=201)
+    @ns.marshal_with(GroupOut, code=HTTPStatus.CREATED)
     def post(self):
         """
         Create an inventory group.
@@ -217,7 +218,7 @@ class GroupList(Resource):
         row = InventoryGroups(**payload)
         db.session.add(row)
         db.session.commit()
-        return row, 201
+        return row, HTTPStatus.CREATED
 
 
 @ns.route("/<int:id>")
@@ -229,7 +230,7 @@ class GroupItem(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_with(GroupOut, code=200)
+    @ns.marshal_with(GroupOut, code=HTTPStatus.OK)
     def get(self, id: int):
         """
         Retrieve a group by ID.
@@ -242,11 +243,11 @@ class GroupItem(Resource):
         -------
         InventoryGroupOut
         """
-        return InventoryGroups.query.get_or_404(id), 200
+        return InventoryGroups.query.get_or_404(id), HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(GroupUpdate, validate=False)
-    @ns.marshal_with(GroupOut, code=200)
+    @ns.marshal_with(GroupOut, code=HTTPStatus.OK)
     def patch(self, id: int):
         """
         Update a group (partial).
@@ -270,7 +271,7 @@ class GroupItem(Resource):
                 continue
             setattr(row, k, v)
         db.session.commit()
-        return row, 200
+        return row, HTTPStatus.OK
 
     @jwt_required()
     def delete(self, id: int):
@@ -289,7 +290,7 @@ class GroupItem(Resource):
         row = InventoryGroups.query.get_or_404(id)
         db.session.delete(row)
         db.session.commit()
-        return {"message": "deleted"}, 200
+        return {"message": "deleted"}, HTTPStatus.OK
 
 
 @ns.route("/<int:id>/assign")
@@ -302,7 +303,7 @@ class GroupAssign(Resource):
 
     @jwt_required()
     @ns.expect(AssignIn, validate=True)
-    @ns.marshal_with(AssignOut, code=200)
+    @ns.marshal_with(AssignOut, code=HTTPStatus.OK)
     def post(self, id: int):
         """
         Assign multiple devices to the given group.
@@ -334,7 +335,7 @@ class GroupAssign(Resource):
             d.inventory_group_id = group.id
 
         db.session.commit()
-        return {"group_id": group.id, "assigned": sorted(list(found_ids)), "not_found": not_found}, 200
+        return {"group_id": group.id, "assigned": sorted(list(found_ids)), "not_found": not_found}, HTTPStatus.OK
 
 
 @ns.route("/<int:id>/devices")
@@ -346,7 +347,7 @@ class GroupDevices(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_list_with(DeviceLight, code=200)
+    @ns.marshal_list_with(DeviceLight, code=HTTPStatus.OK)
     def get(self, id: int):
         """
         List devices that belong to this group.
@@ -364,4 +365,4 @@ class GroupDevices(Resource):
         rows = Devices.query.with_entities(Devices.id, Devices.name, Devices.inventory_group_id)\
                             .filter(Devices.inventory_group_id == id).all()
         # .with_entities returns lightweight rows; Marshaling expects dict-like
-        return [{"id": r.id, "name": r.name, "inventory_group_id": r.inventory_group_id} for r in rows], 200
+        return [{"id": r.id, "name": r.name, "inventory_group_id": r.inventory_group_id} for r in rows], HTTPStatus.OK

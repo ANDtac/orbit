@@ -37,6 +37,7 @@ from __future__ import annotations
 
 from flask import request
 from flask_restx import Namespace, Resource, fields
+from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required
 
 from ...extensions import db
@@ -144,7 +145,7 @@ class PlatformList(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_list_with(PlatformOut, code=200)
+    @ns.marshal_list_with(PlatformOut, code=HTTPStatus.OK)
     def get(self):
         """
         List platforms.
@@ -172,12 +173,12 @@ class PlatformList(Resource):
             default="-id",
             allowed={"id", "slug", "display_name", "napalm_driver", "is_active", "created_at", "updated_at"},
         )
-        rows = q.paginate(page=page, per_page=per_page, error_out=False).items
-        return rows, 200
+        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        return rows, HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(PlatformCreate, validate=True)
-    @ns.marshal_with(PlatformOut, code=201)
+    @ns.marshal_with(PlatformOut, code=HTTPStatus.CREATED)
     def post(self):
         """
         Create a platform.
@@ -194,7 +195,7 @@ class PlatformList(Resource):
         row = Platforms(**payload)
         db.session.add(row)
         db.session.commit()
-        return row, 201
+        return row, HTTPStatus.CREATED
 
 
 @ns.route("/<int:id>")
@@ -206,7 +207,7 @@ class PlatformItem(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_with(PlatformOut, code=200)
+    @ns.marshal_with(PlatformOut, code=HTTPStatus.OK)
     def get(self, id: int):
         """
         Retrieve a platform by ID.
@@ -220,11 +221,11 @@ class PlatformItem(Resource):
         -------
         PlatformOut
         """
-        return Platforms.query.get_or_404(id), 200
+        return Platforms.query.get_or_404(id), HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(PlatformUpdate, validate=False)
-    @ns.marshal_with(PlatformOut, code=200)
+    @ns.marshal_with(PlatformOut, code=HTTPStatus.OK)
     def patch(self, id: int):
         """
         Partially update a platform.
@@ -249,7 +250,7 @@ class PlatformItem(Resource):
                 continue
             setattr(row, k, v)
         db.session.commit()
-        return row, 200
+        return row, HTTPStatus.OK
 
     @jwt_required()
     def delete(self, id: int):
@@ -269,4 +270,4 @@ class PlatformItem(Resource):
         row = Platforms.query.get_or_404(id)
         db.session.delete(row)
         db.session.commit()
-        return {"message": "deleted"}, 200
+        return {"message": "deleted"}, HTTPStatus.OK

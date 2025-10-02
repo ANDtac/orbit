@@ -71,6 +71,7 @@ from __future__ import annotations
 from datetime import datetime
 from flask import request
 from flask_restx import Namespace, Resource, fields
+from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required
 
 from ...extensions import db
@@ -177,7 +178,7 @@ class RequestLogList(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_list_with(RequestLogOut, code=200)
+    @ns.marshal_list_with(RequestLogOut, code=HTTPStatus.OK)
     def get(self):
         """
         List request logs.
@@ -247,8 +248,8 @@ class RequestLogList(Resource):
                 "user_id",
             },
         )
-        rows = q.paginate(page=page, per_page=per_page, error_out=False).items
-        return rows, 200
+        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        return rows, HTTPStatus.OK
 
 
 @ns.route("/requests/<int:id>")
@@ -260,7 +261,7 @@ class RequestLogItem(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_with(RequestLogOut, code=200)
+    @ns.marshal_with(RequestLogOut, code=HTTPStatus.OK)
     def get(self, id: int):
         """
         Retrieve a request log.
@@ -273,7 +274,7 @@ class RequestLogItem(Resource):
         -------
         RequestLogOut
         """
-        return RequestLogs.query.get_or_404(id), 200
+        return RequestLogs.query.get_or_404(id), HTTPStatus.OK
 
 
 # ---------------------------------------------------------------------------
@@ -288,7 +289,7 @@ class ErrorLogList(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_list_with(ErrorLogOut, code=200)
+    @ns.marshal_list_with(ErrorLogOut, code=HTTPStatus.OK)
     def get(self):
         """
         List error logs.
@@ -336,7 +337,7 @@ class ErrorLogList(Resource):
             allowed={"id", "created_at", "level"},
         )
         rows = qy.paginate(page=page, per_page=per_page, error_out=False).items
-        return rows, 200
+        return rows, HTTPStatus.OK
 
 
 @ns.route("/errors/<int:id>")
@@ -348,7 +349,7 @@ class ErrorLogItem(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_with(ErrorLogOut, code=200)
+    @ns.marshal_with(ErrorLogOut, code=HTTPStatus.OK)
     def get(self, id: int):
         """
         Retrieve an error log.
@@ -361,7 +362,7 @@ class ErrorLogItem(Resource):
         -------
         ErrorLogOut
         """
-        return ErrorLogs.query.get_or_404(id), 200
+        return ErrorLogs.query.get_or_404(id), HTTPStatus.OK
 
 
 # ---------------------------------------------------------------------------
@@ -376,7 +377,7 @@ class EventList(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_list_with(EventOut, code=200)
+    @ns.marshal_list_with(EventOut, code=HTTPStatus.OK)
     def get(self):
         """
         List app events.
@@ -415,5 +416,5 @@ class EventList(Resource):
             default="-created_at",
             allowed={"id", "created_at", "level", "event"},
         )
-        rows = q.paginate(page=page, per_page=per_page, error_out=False).items
-        return rows, 200
+        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        return rows, HTTPStatus.OK

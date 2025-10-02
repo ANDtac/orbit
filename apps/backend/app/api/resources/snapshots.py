@@ -61,6 +61,7 @@ from __future__ import annotations
 from datetime import datetime
 from flask import request
 from flask_restx import Namespace, Resource, fields
+from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required
 
 from ...extensions import db
@@ -186,7 +187,7 @@ class SnapshotList(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_list_with(SnapshotOut, code=200)
+    @ns.marshal_list_with(SnapshotOut, code=HTTPStatus.OK)
     def get(self):
         """
         List device configuration snapshots.
@@ -215,12 +216,12 @@ class SnapshotList(Resource):
             default="-captured_at",
             allowed={"id", "device_id", "captured_at", "config_hash", "created_at", "updated_at"},
         )
-        rows = q.paginate(page=page, per_page=per_page, error_out=False).items
-        return rows, 200
+        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        return rows, HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(SnapshotCreate, validate=True)
-    @ns.marshal_with(SnapshotOut, code=201)
+    @ns.marshal_with(SnapshotOut, code=HTTPStatus.CREATED)
     def post(self):
         """
         Create a configuration snapshot.
@@ -239,7 +240,7 @@ class SnapshotList(Resource):
         row = DeviceConfigSnapshots(**payload)
         db.session.add(row)
         db.session.commit()
-        return row, 201
+        return row, HTTPStatus.CREATED
 
 
 @ns.route("/<int:id>")
@@ -251,7 +252,7 @@ class SnapshotItem(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_with(SnapshotOut, code=200)
+    @ns.marshal_with(SnapshotOut, code=HTTPStatus.OK)
     def get(self, id: int):
         """
         Retrieve a snapshot by ID.
@@ -264,11 +265,11 @@ class SnapshotItem(Resource):
         -------
         SnapshotOut
         """
-        return DeviceConfigSnapshots.query.get_or_404(id), 200
+        return DeviceConfigSnapshots.query.get_or_404(id), HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(SnapshotUpdate, validate=False)
-    @ns.marshal_with(SnapshotOut, code=200)
+    @ns.marshal_with(SnapshotOut, code=HTTPStatus.OK)
     def patch(self, id: int):
         """
         Update a snapshot (partial).
@@ -292,7 +293,7 @@ class SnapshotItem(Resource):
                 continue
             setattr(row, k, v)
         db.session.commit()
-        return row, 200
+        return row, HTTPStatus.OK
 
     @jwt_required()
     def delete(self, id: int):
@@ -311,4 +312,4 @@ class SnapshotItem(Resource):
         row = DeviceConfigSnapshots.query.get_or_404(id)
         db.session.delete(row)
         db.session.commit()
-        return {"message": "deleted"}, 200
+        return {"message": "deleted"}, HTTPStatus.OK
