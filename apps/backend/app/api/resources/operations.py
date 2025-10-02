@@ -33,6 +33,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from flask import request
 from flask_restx import Namespace, Resource, fields
+from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from ...models import Devices
@@ -174,8 +175,8 @@ class OperationExecute(Resource):
 
     @jwt_required()
     @ns.expect(ExecIn, validate=False)
-    @ns.response(202, "Queued", QueuedOut)
-    @ns.response(200, "Completed", SyncResultOut)
+    @ns.response(HTTPStatus.ACCEPTED, "Queued", QueuedOut)
+    @ns.response(HTTPStatus.OK, "Completed", SyncResultOut)
     def post(self):
         """
         Execute or queue an operation for multiple devices.
@@ -198,7 +199,7 @@ class OperationExecute(Resource):
         missing = [d for d in device_ids if d not in existing_ids]
         if missing:
             # Fail early to avoid silent drops
-            return {"error": "not_found", "missing_device_ids": missing}, 404
+            return {"error": "not_found", "missing_device_ids": missing}, HTTPStatus.NOT_FOUND
 
         if params["run_async"]:
             # Stub: hand off to future queue and return job token
@@ -212,7 +213,7 @@ class OperationExecute(Resource):
                 "status": "queued",
                 "enqueued_at": datetime.utcnow().isoformat() + "Z",
                 "job": job,
-            }, 202
+            }, HTTPStatus.ACCEPTED
 
         # Synchronous execution path
         started = datetime.utcnow()
@@ -234,7 +235,7 @@ class OperationExecute(Resource):
             "completed_at": completed.isoformat() + "Z",
             "summary": summary,
             "results": per_host,
-        }, 200
+        }, HTTPStatus.OK
 
 
 # ---------------------------------------------------------------------------
@@ -250,8 +251,8 @@ class OperationDevice(Resource):
 
     @jwt_required()
     @ns.expect(ExecIn, validate=False)
-    @ns.response(202, "Queued", QueuedOut)
-    @ns.response(200, "Completed", SyncResultOut)
+    @ns.response(HTTPStatus.ACCEPTED, "Queued", QueuedOut)
+    @ns.response(HTTPStatus.OK, "Completed", SyncResultOut)
     def post(self, device_id: int):
         """
         Execute or queue an operation for a single device.
@@ -276,7 +277,7 @@ class OperationDevice(Resource):
         device_ids, params = _validate_exec_payload(payload)
 
         if Devices.query.get(device_id) is None:
-            return {"error": "not_found", "missing_device_ids": [device_id]}, 404
+            return {"error": "not_found", "missing_device_ids": [device_id]}, HTTPStatus.NOT_FOUND
 
         if params["run_async"]:
             job = {
@@ -289,7 +290,7 @@ class OperationDevice(Resource):
                 "status": "queued",
                 "enqueued_at": datetime.utcnow().isoformat() + "Z",
                 "job": job,
-            }, 202
+            }, HTTPStatus.ACCEPTED
 
         started = datetime.utcnow()
         summary, per_host = ops_service.execute_operation_sync(
@@ -310,4 +311,4 @@ class OperationDevice(Resource):
             "completed_at": completed.isoformat() + "Z",
             "summary": summary,
             "results": per_host,
-        }, 200
+        }, HTTPStatus.OK

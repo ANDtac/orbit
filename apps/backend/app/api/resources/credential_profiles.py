@@ -56,6 +56,7 @@ from __future__ import annotations
 
 from flask import request
 from flask_restx import Namespace, Resource, fields
+from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required
 
 from ...extensions import db
@@ -154,7 +155,7 @@ class CredentialProfileList(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_list_with(CredProfileOut, code=200)
+    @ns.marshal_list_with(CredProfileOut, code=HTTPStatus.OK)
     def get(self):
         """
         List credential profiles.
@@ -181,12 +182,12 @@ class CredentialProfileList(Resource):
             default="-id",
             allowed={"id", "name", "auth_type", "is_active", "created_at", "updated_at"},
         )
-        rows = q.paginate(page=page, per_page=per_page, error_out=False).items
-        return rows, 200
+        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        return rows, HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(CredProfileCreate, validate=True)
-    @ns.marshal_with(CredProfileOut, code=201)
+    @ns.marshal_with(CredProfileOut, code=HTTPStatus.CREATED)
     def post(self):
         """
         Create a credential profile.
@@ -203,7 +204,7 @@ class CredentialProfileList(Resource):
         row = CredentialProfiles(**payload)
         db.session.add(row)
         db.session.commit()
-        return row, 201
+        return row, HTTPStatus.CREATED
 
 
 @ns.route("/<int:id>")
@@ -215,7 +216,7 @@ class CredentialProfileItem(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_with(CredProfileOut, code=200)
+    @ns.marshal_with(CredProfileOut, code=HTTPStatus.OK)
     def get(self, id: int):
         """
         Retrieve a credential profile by ID.
@@ -228,11 +229,11 @@ class CredentialProfileItem(Resource):
         -------
         CredentialProfileOut
         """
-        return CredentialProfiles.query.get_or_404(id), 200
+        return CredentialProfiles.query.get_or_404(id), HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(CredProfileUpdate, validate=False)
-    @ns.marshal_with(CredProfileOut, code=200)
+    @ns.marshal_with(CredProfileOut, code=HTTPStatus.OK)
     def patch(self, id: int):
         """
         Update a credential profile (partial).
@@ -256,7 +257,7 @@ class CredentialProfileItem(Resource):
                 continue
             setattr(row, k, v)
         db.session.commit()
-        return row, 200
+        return row, HTTPStatus.OK
 
     @jwt_required()
     def delete(self, id: int):
@@ -275,4 +276,4 @@ class CredentialProfileItem(Resource):
         row = CredentialProfiles.query.get_or_404(id)
         db.session.delete(row)
         db.session.commit()
-        return {"message": "deleted"}, 200
+        return {"message": "deleted"}, HTTPStatus.OK

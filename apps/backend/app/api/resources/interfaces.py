@@ -59,6 +59,7 @@ from __future__ import annotations
 
 from flask import request
 from flask_restx import Namespace, Resource, fields
+from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required
 
 from ...extensions import db
@@ -170,7 +171,7 @@ class InterfaceList(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_list_with(IfaceOut, code=200)
+    @ns.marshal_list_with(IfaceOut, code=HTTPStatus.OK)
     def get(self):
         """
         List interfaces.
@@ -199,12 +200,12 @@ class InterfaceList(Resource):
             default="-id",
             allowed={"id", "device_id", "name", "is_up", "is_enabled", "speed_mbps", "mtu", "created_at", "updated_at"},
         )
-        rows = q.paginate(page=page, per_page=per_page, error_out=False).items
-        return rows, 200
+        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        return rows, HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(IfaceCreate, validate=True)
-    @ns.marshal_with(IfaceOut, code=201)
+    @ns.marshal_with(IfaceOut, code=HTTPStatus.CREATED)
     def post(self):
         """
         Create an interface.
@@ -221,7 +222,7 @@ class InterfaceList(Resource):
         row = Interfaces(**payload)
         db.session.add(row)
         db.session.commit()
-        return row, 201
+        return row, HTTPStatus.CREATED
 
 
 @ns.route("/<int:id>")
@@ -233,7 +234,7 @@ class InterfaceItem(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_with(IfaceOut, code=200)
+    @ns.marshal_with(IfaceOut, code=HTTPStatus.OK)
     def get(self, id: int):
         """
         Retrieve an interface by ID.
@@ -246,11 +247,11 @@ class InterfaceItem(Resource):
         -------
         InterfaceOut
         """
-        return Interfaces.query.get_or_404(id), 200
+        return Interfaces.query.get_or_404(id), HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(IfaceUpdate, validate=False)
-    @ns.marshal_with(IfaceOut, code=200)
+    @ns.marshal_with(IfaceOut, code=HTTPStatus.OK)
     def patch(self, id: int):
         """
         Update an interface (partial).
@@ -274,7 +275,7 @@ class InterfaceItem(Resource):
                 continue
             setattr(row, k, v)
         db.session.commit()
-        return row, 200
+        return row, HTTPStatus.OK
 
     @jwt_required()
     def delete(self, id: int):
@@ -293,4 +294,4 @@ class InterfaceItem(Resource):
         row = Interfaces.query.get_or_404(id)
         db.session.delete(row)
         db.session.commit()
-        return {"message": "deleted"}, 200
+        return {"message": "deleted"}, HTTPStatus.OK

@@ -56,6 +56,7 @@ from __future__ import annotations
 
 from flask import request
 from flask_restx import Namespace, Resource, fields
+from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required
 
 from ...extensions import db
@@ -148,7 +149,7 @@ class TemplateList(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_list_with(TemplateOut, code=200)
+    @ns.marshal_list_with(TemplateOut, code=HTTPStatus.OK)
     def get(self):
         """
         List operation templates.
@@ -175,12 +176,12 @@ class TemplateList(Resource):
             default="-id",
             allowed={"id", "platform_id", "name", "op_type", "created_at", "updated_at"},
         )
-        rows = q.paginate(page=page, per_page=per_page, error_out=False).items
-        return rows, 200
+        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        return rows, HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(TemplateCreate, validate=True)
-    @ns.marshal_with(TemplateOut, code=201)
+    @ns.marshal_with(TemplateOut, code=HTTPStatus.CREATED)
     def post(self):
         """
         Create an operation template.
@@ -197,7 +198,7 @@ class TemplateList(Resource):
         row = PlatformOperationTemplates(**payload)
         db.session.add(row)
         db.session.commit()
-        return row, 201
+        return row, HTTPStatus.CREATED
 
 
 @ns.route("/<int:id>")
@@ -209,7 +210,7 @@ class TemplateItem(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_with(TemplateOut, code=200)
+    @ns.marshal_with(TemplateOut, code=HTTPStatus.OK)
     def get(self, id: int):
         """
         Retrieve an operation template by ID.
@@ -222,11 +223,11 @@ class TemplateItem(Resource):
         -------
         PlatformOperationTemplateOut
         """
-        return PlatformOperationTemplates.query.get_or_404(id), 200
+        return PlatformOperationTemplates.query.get_or_404(id), HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(TemplateUpdate, validate=False)
-    @ns.marshal_with(TemplateOut, code=200)
+    @ns.marshal_with(TemplateOut, code=HTTPStatus.OK)
     def patch(self, id: int):
         """
         Update an operation template (partial).
@@ -250,7 +251,7 @@ class TemplateItem(Resource):
                 continue
             setattr(row, k, v)
         db.session.commit()
-        return row, 200
+        return row, HTTPStatus.OK
 
     @jwt_required()
     def delete(self, id: int):
@@ -269,4 +270,4 @@ class TemplateItem(Resource):
         row = PlatformOperationTemplates.query.get_or_404(id)
         db.session.delete(row)
         db.session.commit()
-        return {"message": "deleted"}, 200
+        return {"message": "deleted"}, HTTPStatus.OK

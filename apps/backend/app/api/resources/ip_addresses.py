@@ -57,6 +57,7 @@ from __future__ import annotations
 
 from flask import request
 from flask_restx import Namespace, Resource, fields
+from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required
 
 from ...extensions import db
@@ -169,7 +170,7 @@ class IPList(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_list_with(IPOut, code=200)
+    @ns.marshal_list_with(IPOut, code=HTTPStatus.OK)
     def get(self):
         """
         List IP addresses.
@@ -199,12 +200,12 @@ class IPList(Resource):
             default="-id",
             allowed={"id", "address", "prefix_length", "device_id", "interface_id", "is_primary", "created_at", "updated_at"},
         )
-        rows = q.paginate(page=page, per_page=per_page, error_out=False).items
-        return rows, 200
+        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        return rows, HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(IPCreate, validate=True)
-    @ns.marshal_with(IPOut, code=201)
+    @ns.marshal_with(IPOut, code=HTTPStatus.CREATED)
     def post(self):
         """
         Create an IP address record.
@@ -221,7 +222,7 @@ class IPList(Resource):
         row = IPAddresses(**payload)
         db.session.add(row)
         db.session.commit()
-        return row, 201
+        return row, HTTPStatus.CREATED
 
 
 @ns.route("/<int:id>")
@@ -233,7 +234,7 @@ class IPItem(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_with(IPOut, code=200)
+    @ns.marshal_with(IPOut, code=HTTPStatus.OK)
     def get(self, id: int):
         """
         Retrieve an IP address record by ID.
@@ -246,11 +247,11 @@ class IPItem(Resource):
         -------
         IPAddressOut
         """
-        return IPAddresses.query.get_or_404(id), 200
+        return IPAddresses.query.get_or_404(id), HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(IPUpdate, validate=False)
-    @ns.marshal_with(IPOut, code=200)
+    @ns.marshal_with(IPOut, code=HTTPStatus.OK)
     def patch(self, id: int):
         """
         Update an IP address record (partial).
@@ -274,7 +275,7 @@ class IPItem(Resource):
                 continue
             setattr(row, k, v)
         db.session.commit()
-        return row, 200
+        return row, HTTPStatus.OK
 
     @jwt_required()
     def delete(self, id: int):
@@ -293,4 +294,4 @@ class IPItem(Resource):
         row = IPAddresses.query.get_or_404(id)
         db.session.delete(row)
         db.session.commit()
-        return {"message": "deleted"}, 200
+        return {"message": "deleted"}, HTTPStatus.OK

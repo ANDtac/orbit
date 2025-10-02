@@ -79,6 +79,7 @@ from typing import Any
 
 from flask import request
 from flask_restx import Namespace, Resource, fields
+from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required
 
 from ...extensions import db
@@ -223,7 +224,7 @@ class PolicyList(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_list_with(PolicyOut, code=200)
+    @ns.marshal_list_with(PolicyOut, code=HTTPStatus.OK)
     def get(self):
         """
         List policies with pagination and sorting.
@@ -261,12 +262,12 @@ class PolicyList(Resource):
             default="-id",
             allowed={"id", "name", "is_active", "created_at", "updated_at"},
         )
-        rows = q.paginate(page=page, per_page=per_page, error_out=False).items
-        return rows, 200
+        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        return rows, HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(PolicyCreate, validate=True)
-    @ns.marshal_with(PolicyOut, code=201)
+    @ns.marshal_with(PolicyOut, code=HTTPStatus.CREATED)
     def post(self):
         """
         Create a compliance policy.
@@ -283,7 +284,7 @@ class PolicyList(Resource):
         row = CompliancePolicies(**payload)
         db.session.add(row)
         db.session.commit()
-        return row, 201
+        return row, HTTPStatus.CREATED
 
 
 @ns.route("/policies/<int:id>")
@@ -295,7 +296,7 @@ class PolicyItem(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_with(PolicyOut, code=200)
+    @ns.marshal_with(PolicyOut, code=HTTPStatus.OK)
     def get(self, id: int):
         """
         Retrieve a policy by ID.
@@ -308,11 +309,11 @@ class PolicyItem(Resource):
         -------
         CompliancePolicyOut
         """
-        return CompliancePolicies.query.get_or_404(id), 200
+        return CompliancePolicies.query.get_or_404(id), HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(PolicyUpdate, validate=False)
-    @ns.marshal_with(PolicyOut, code=200)
+    @ns.marshal_with(PolicyOut, code=HTTPStatus.OK)
     def patch(self, id: int):
         """
         Update a policy (partial).
@@ -335,7 +336,7 @@ class PolicyItem(Resource):
             if hasattr(row, k):
                 setattr(row, k, v)
         db.session.commit()
-        return row, 200
+        return row, HTTPStatus.OK
 
     @jwt_required()
     def delete(self, id: int):
@@ -354,7 +355,7 @@ class PolicyItem(Resource):
         row = CompliancePolicies.query.get_or_404(id)
         db.session.delete(row)
         db.session.commit()
-        return {"message": "deleted"}, 200
+        return {"message": "deleted"}, HTTPStatus.OK
 
 
 # ---------------------------------------------------------------------------
@@ -369,7 +370,7 @@ class RuleList(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_list_with(RuleOut, code=200)
+    @ns.marshal_list_with(RuleOut, code=HTTPStatus.OK)
     def get(self):
         """
         List rules with pagination and sorting.
@@ -413,12 +414,12 @@ class RuleList(Resource):
             default="-id",
             allowed={"id", "policy_id", "name", "severity", "created_at", "updated_at"},
         )
-        rows = q.paginate(page=page, per_page=per_page, error_out=False).items
-        return rows, 200
+        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        return rows, HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(RuleCreate, validate=True)
-    @ns.marshal_with(RuleOut, code=201)
+    @ns.marshal_with(RuleOut, code=HTTPStatus.CREATED)
     def post(self):
         """
         Create a rule.
@@ -435,7 +436,7 @@ class RuleList(Resource):
         row = ComplianceRules(**payload)
         db.session.add(row)
         db.session.commit()
-        return row, 201
+        return row, HTTPStatus.CREATED
 
 
 @ns.route("/rules/<int:id>")
@@ -447,7 +448,7 @@ class RuleItem(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_with(RuleOut, code=200)
+    @ns.marshal_with(RuleOut, code=HTTPStatus.OK)
     def get(self, id: int):
         """
         Retrieve a rule by ID.
@@ -460,11 +461,11 @@ class RuleItem(Resource):
         -------
         ComplianceRuleOut
         """
-        return ComplianceRules.query.get_or_404(id), 200
+        return ComplianceRules.query.get_or_404(id), HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(RuleUpdate, validate=False)
-    @ns.marshal_with(RuleOut, code=200)
+    @ns.marshal_with(RuleOut, code=HTTPStatus.OK)
     def patch(self, id: int):
         """
         Update a rule (partial).
@@ -487,7 +488,7 @@ class RuleItem(Resource):
             if hasattr(row, k):
                 setattr(row, k, v)
         db.session.commit()
-        return row, 200
+        return row, HTTPStatus.OK
 
     @jwt_required()
     def delete(self, id: int):
@@ -506,7 +507,7 @@ class RuleItem(Resource):
         row = ComplianceRules.query.get_or_404(id)
         db.session.delete(row)
         db.session.commit()
-        return {"message": "deleted"}, 200
+        return {"message": "deleted"}, HTTPStatus.OK
 
 
 # ---------------------------------------------------------------------------
@@ -521,7 +522,7 @@ class ResultList(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_list_with(ResultOut, code=200)
+    @ns.marshal_list_with(ResultOut, code=HTTPStatus.OK)
     def get(self):
         """
         List results with filters, pagination, and sorting.
@@ -575,8 +576,8 @@ class ResultList(Resource):
             default="-evaluated_at",
             allowed={"id", "device_id", "policy_id", "rule_id", "status", "evaluated_at"},
         )
-        rows = q.paginate(page=page, per_page=per_page, error_out=False).items
-        return rows, 200
+        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        return rows, HTTPStatus.OK
 
 
 # ---------------------------------------------------------------------------
@@ -602,7 +603,7 @@ class Evaluate(Resource):
 
     @jwt_required()
     @ns.expect(EvaluateIn, validate=False)
-    @ns.marshal_with(QueuedOut, code=202)
+    @ns.marshal_with(QueuedOut, code=HTTPStatus.ACCEPTED)
     def post(self):
         """
         Queue an evaluation of devices against policies.
@@ -634,4 +635,4 @@ class Evaluate(Resource):
                 "policy_ids": policy_ids,
                 "mode": "async" if run_async else "sync",
             },
-        }, 202
+        }, HTTPStatus.ACCEPTED

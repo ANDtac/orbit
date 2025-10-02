@@ -40,16 +40,23 @@ from __future__ import annotations
 
 from flask import request
 from flask_restx import Namespace, Resource, fields
+from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required
 
 from ...extensions import db
-from ...models import Devices
+from ...models import Devices, DeviceInventoryGroups
 from ..utils import get_pagination, apply_sorting
 
 # ---------------------------------------------------------------------------
 # Namespace
 # ---------------------------------------------------------------------------
 ns = Namespace("devices", description="Devices inventory")
+
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+DEVICE_COLUMN_KEYS = {column.key for column in Devices.__table__.columns}
 
 
 # ---------------------------------------------------------------------------
@@ -149,17 +156,56 @@ def _apply_device_filters(q):
 
     inventory_group_id = request.args.get("inventory_group_id", type=int)
     if inventory_group_id is not None:
-        q = q.filter(Devices.inventory_group_id == inventory_group_id)
+        if hasattr(Devices, "inventory_group_id"):
+            q = q.filter(getattr(Devices, "inventory_group_id") == inventory_group_id)
+        else:
+            q = q.join(
+                DeviceInventoryGroups,
+                DeviceInventoryGroups.device_id == Devices.id,
+            ).filter(DeviceInventoryGroups.group_id == inventory_group_id)
 
     is_active = request.args.get("is_active")
     if is_active is not None:
         v = is_active.strip().lower()
+        active_col = getattr(Devices, "is_active", getattr(Devices, "active", None))
+        if active_col is None:
+            return q
         if v in {"1", "true", "yes", "on"}:
-            q = q.filter(Devices.is_active.is_(True))
+            q = q.filter(active_col.is_(True))
         elif v in {"0", "false", "no", "off"}:
-            q = q.filter(Devices.is_active.is_(False))
+            q = q.filter(active_col.is_(False))
 
     return q
+
+
+# ---------------------------------------------------------------------------
+# Payload helpers
+# ---------------------------------------------------------------------------
+def _prepare_device_payload(force: bool = True) -> tuple[dict, int | None]:
+    """Normalize incoming JSON payload for device mutations."""
+
+    raw = request.get_json(force=force) or {}
+    inventory_group_id = raw.pop("inventory_group_id", None)
+    payload: dict[str, object] = {}
+
+    for key, value in raw.items():
+        if key == "is_active":
+            payload["active"] = value
+            continue
+        if key in DEVICE_COLUMN_KEYS:
+            payload[key] = value
+
+    return payload, inventory_group_id
+
+
+def _set_device_inventory_group(device_id: int, group_id: int | None) -> None:
+    """Persist a single inventory group association for a device."""
+
+    db.session.query(DeviceInventoryGroups).filter_by(device_id=device_id).delete()
+    if group_id is not None:
+        link = DeviceInventoryGroups(device_id=device_id, group_id=group_id)
+        db.session.add(link)
+    db.session.commit()
 
 
 # ---------------------------------------------------------------------------
@@ -174,7 +220,7 @@ class DeviceList(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_list_with(DeviceOut, code=200)
+    @ns.marshal_list_with(DeviceOut, code=HTTPStatus.OK)
     def get(self):
         """
         List devices.
@@ -214,12 +260,12 @@ class DeviceList(Resource):
                 "updated_at",
             },
         )
-        rows = q.paginate(page=page, per_page=per_page, error_out=False).items
-        return rows, 200
+        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        return rows, HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(DeviceCreate, validate=True)
-    @ns.marshal_with(DeviceOut, code=201)
+    @ns.marshal_with(DeviceOut, code=HTTPStatus.CREATED)
     def post(self):
         """
         Create a device.
@@ -232,11 +278,15 @@ class DeviceList(Resource):
         -------
         DeviceOut
         """
-        payload = request.get_json(force=True) or {}
+        payload, inventory_group_id = _prepare_device_payload(force=True)
         dev = Devices(**payload)
         db.session.add(dev)
         db.session.commit()
-        return dev, 201
+
+        if inventory_group_id is not None and dev.id is not None:
+            _set_device_inventory_group(dev.id, inventory_group_id)
+
+        return dev, HTTPStatus.CREATED
 
 
 @ns.route("/<int:id>")
@@ -248,7 +298,7 @@ class DeviceItem(Resource):
     """
 
     @jwt_required()
-    @ns.marshal_with(DeviceOut, code=200)
+    @ns.marshal_with(DeviceOut, code=HTTPStatus.OK)
     def get(self, id: int):
         """
         Retrieve a device by ID.
@@ -262,11 +312,11 @@ class DeviceItem(Resource):
         -------
         DeviceOut
         """
-        return Devices.query.get_or_404(id), 200
+        return Devices.query.get_or_404(id), HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(DeviceUpdate, validate=False)
-    @ns.marshal_with(DeviceOut, code=200)
+    @ns.marshal_with(DeviceOut, code=HTTPStatus.OK)
     def patch(self, id: int):
         """
         Partially update a device.
@@ -285,13 +335,16 @@ class DeviceItem(Resource):
         DeviceOut
         """
         dev = Devices.query.get_or_404(id)
-        data = request.get_json(force=True) or {}
-        for k, v in data.items():
-            if not hasattr(dev, k):
-                continue
-            setattr(dev, k, v)
+        payload, inventory_group_id = _prepare_device_payload(force=True)
+        for key, value in payload.items():
+            if hasattr(dev, key):
+                setattr(dev, key, value)
         db.session.commit()
-        return dev, 200
+
+        if inventory_group_id is not None:
+            _set_device_inventory_group(dev.id, inventory_group_id)
+
+        return dev, HTTPStatus.OK
 
     @jwt_required()
     def delete(self, id: int):
@@ -311,4 +364,4 @@ class DeviceItem(Resource):
         dev = Devices.query.get_or_404(id)
         db.session.delete(dev)
         db.session.commit()
-        return {"message": "deleted"}, 200
+        return {"message": "deleted"}, HTTPStatus.OK

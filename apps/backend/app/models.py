@@ -11,7 +11,12 @@ import gzip
 import hashlib
 from importlib import import_module
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+try:  # Python 3.11+
+    from typing import dataclass_transform
+except ImportError:  # pragma: no cover - fallback for older runtimes
+    from typing_extensions import dataclass_transform
 
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import (
@@ -23,11 +28,25 @@ from sqlalchemy.dialects.postgresql import CITEXT, INET, JSONB
 
 db = SQLAlchemy()
 
+
+@dataclass_transform(field_specifiers=(mapped_column,))
+class _TypeCheckedModel:
+    """Provide type-checker-friendly ``__init__`` for declarative models."""
+
+    if TYPE_CHECKING:
+        def __init__(self, **kwargs: Any) -> None: ...
+
+
+class BaseModel(db.Model, _TypeCheckedModel):
+    """Base class that equips SQLAlchemy models with typed ``__init__``."""
+
+    __abstract__ = True
+
 # =============================================================================
 # Users & Auth
 # =============================================================================
 
-class Users(db.Model):
+class Users(BaseModel):
     """
     Users
     -----
@@ -220,14 +239,14 @@ class Users(db.Model):
         -------
         dict[str, Any]
         """
-    return {
-        "_id": self.id,
-        "username": self.username,
-        "email": self.email,
-        "is_active": self.is_active,
-        "jwt_auth_active": self.jwt_auth_active,
-        "last_login_at": self.last_login_at.isoformat() if self.last_login_at else None,
-    }
+        return {
+            "_id": self.id,
+            "username": self.username,
+            "email": self.email,
+            "is_active": self.is_active,
+            "jwt_auth_active": self.jwt_auth_active,
+            "last_login_at": self.last_login_at.isoformat() if self.last_login_at else None,
+        }
 
     def toJSON(self) -> dict[str, Any]:
         """
@@ -240,7 +259,7 @@ class Users(db.Model):
         return self.toDICT()
 
 
-class JWTTokenBlocklist(db.Model):
+class JWTTokenBlocklist(BaseModel):
     """
     JWTTokenBlocklist
     -----------------
@@ -289,7 +308,7 @@ class JWTTokenBlocklist(db.Model):
         db.session.commit()
 
 
-class LoginAttempts(db.Model):
+class LoginAttempts(BaseModel):
     """
     LoginAttempts
     --------------
@@ -338,7 +357,7 @@ class LoginAttempts(db.Model):
 # Basic lookups (Manufacturers / DeviceTypes / ProductModels)
 # =============================================================================
 
-class Manufacturers(db.Model):
+class Manufacturers(BaseModel):
     """
     Manufacturers
     -------------
@@ -385,7 +404,7 @@ class Manufacturers(db.Model):
         return inst
 
 
-class DeviceTypes(db.Model):
+class DeviceTypes(BaseModel):
     """
     DeviceTypes
     -----------
@@ -407,7 +426,7 @@ class DeviceTypes(db.Model):
         return f"<DeviceType {self.name}>"
 
 
-class ProductModels(db.Model):
+class ProductModels(BaseModel):
     """
     ProductModels
     -------------
@@ -473,7 +492,7 @@ class ProductModels(db.Model):
 # Automation-facing platform + inventory
 # =============================================================================
 
-class Platforms(db.Model):
+class Platforms(BaseModel):
     """
     Platforms
     ---------
@@ -609,7 +628,7 @@ class Platforms(db.Model):
         return cls(platform=self)
 
 
-class CredentialProfiles(db.Model):
+class CredentialProfiles(BaseModel):
     """
     CredentialProfiles
     ------------------
@@ -675,7 +694,7 @@ class CredentialProfiles(db.Model):
         return inst
 
 
-class InventoryGroups(db.Model):
+class InventoryGroups(BaseModel):
     """
     InventoryGroups
     ---------------
@@ -709,7 +728,7 @@ class InventoryGroups(db.Model):
         return f"<InventoryGroup {self.slug}>"
 
 
-class DeviceInventoryGroups(db.Model):
+class DeviceInventoryGroups(BaseModel):
     """
     DeviceInventoryGroups
     ---------------------
@@ -725,12 +744,11 @@ class DeviceInventoryGroups(db.Model):
     device_id: Mapped[int] = mapped_column(ForeignKey("devices.id", ondelete="CASCADE"), primary_key=True)
     group_id: Mapped[int] = mapped_column(ForeignKey("inventory_groups.id", ondelete="CASCADE"), primary_key=True)
 
-
 # =============================================================================
 # Core device + networking (IPv4-only)
 # =============================================================================
 
-class Devices(db.Model):
+class Devices(BaseModel):
     """
     Devices
     -------
@@ -861,6 +879,39 @@ class Devices(db.Model):
 
     # ---- Methods ------------------------------------------------------------
 
+    @property
+    def is_active(self) -> bool:
+        """Alias the `active` column to `is_active` for API compatibility."""
+
+        return bool(self.active)
+
+    @is_active.setter
+    def is_active(self, value: bool) -> None:
+        self.active = bool(value)
+
+    @property
+    def inventory_group_id(self) -> int | None:
+        """Return the first associated inventory group id if present."""
+
+        if self.id is None:
+            return None
+        link = (
+            db.session.query(DeviceInventoryGroups)
+            .filter_by(device_id=self.id)
+            .order_by(DeviceInventoryGroups.group_id)
+            .first()
+        )
+        return link.group_id if link else None
+
+    @inventory_group_id.setter
+    def inventory_group_id(self, group_id: int | None) -> None:
+        if self.id is None:
+            # Device must be flushed/committed before managing association
+            raise ValueError("Device must be persisted before assigning inventory groups")
+        db.session.query(DeviceInventoryGroups).filter_by(device_id=self.id).delete()
+        if group_id is not None:
+            db.session.add(DeviceInventoryGroups(device_id=self.id, group_id=group_id))
+
     def save(self) -> None:
         """
         Save this device.
@@ -949,7 +1000,7 @@ class Devices(db.Model):
         return cls.query.filter(cls.mgmt_ipv4 == ipv4).first()
 
 
-class PhysicalDeviceInfos(db.Model):
+class PhysicalDeviceInfos(BaseModel):
     """
     PhysicalDeviceInfos
     -------------------
@@ -973,7 +1024,7 @@ class PhysicalDeviceInfos(db.Model):
     device = db.relationship("Devices", back_populates="physical_info")
 
 
-class VirtualInstanceInfos(db.Model):
+class VirtualInstanceInfos(BaseModel):
     """
     VirtualInstanceInfos
     --------------------
@@ -1001,7 +1052,7 @@ class VirtualInstanceInfos(db.Model):
 # Interfaces + IPv4 addressing
 # =============================================================================
 
-class Interfaces(db.Model):
+class Interfaces(BaseModel):
     """
     Interfaces
     ----------
@@ -1062,7 +1113,7 @@ class Interfaces(db.Model):
         return cls.query.filter_by(device_id=device_id, name=name).first()
 
 
-class IPAddresses(db.Model):
+class IPAddresses(BaseModel):
     """
     IPAddresses (IPv4 only)
     -----------------------
@@ -1113,7 +1164,7 @@ class IPAddresses(db.Model):
         return inst
 
 
-class InterfaceIPAddresses(db.Model):
+class InterfaceIPAddresses(BaseModel):
     """
     InterfaceIPAddresses
     --------------------
@@ -1144,7 +1195,7 @@ class InterfaceIPAddresses(db.Model):
 # Config snapshots & diffs (vendor-agnostic)
 # =============================================================================
 
-class DeviceConfigSnapshots(db.Model):
+class DeviceConfigSnapshots(BaseModel):
     """
     DeviceConfigSnapshots
     ---------------------
@@ -1292,7 +1343,7 @@ class DeviceConfigSnapshots(db.Model):
         return snap
 
 
-class DeviceConfigDiffs(db.Model):
+class DeviceConfigDiffs(BaseModel):
     """
     DeviceConfigDiffs
     -----------------
@@ -1328,7 +1379,7 @@ class DeviceConfigDiffs(db.Model):
 # Data-driven operation templates (fallback when drivers don't exist)
 # =============================================================================
 
-class PlatformOperationTemplates(db.Model):
+class PlatformOperationTemplates(BaseModel):
     """
     PlatformOperationTemplates
     --------------------------
@@ -1397,7 +1448,7 @@ class PlatformOperationTemplates(db.Model):
 # Compliance (optional)
 # =============================================================================
 
-class CompliancePolicies(db.Model):
+class CompliancePolicies(BaseModel):
     """
     CompliancePolicies
     ------------------
@@ -1407,19 +1458,75 @@ class CompliancePolicies(db.Model):
     ----------
     id : int
     name : str
+    description : str | None
+    is_active : bool
+    scope : dict
     rules : dict
+    created_at : datetime
+    updated_at : datetime
     """
     __tablename__ = "compliance_policies"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    scope: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     rules: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
     def __repr__(self) -> str:
         return f"<CompliancePolicy {self.name}>"
 
 
-class ComplianceResults(db.Model):
+class ComplianceRules(BaseModel):
+    """
+    ComplianceRules
+    ---------------
+    Individual rule definitions that belong to a policy.
+
+    Attributes
+    ----------
+    id : int
+    policy_id : int
+    name : str
+    description : str | None
+    severity : str
+    rule_type : str
+    expression : str
+    params : dict
+    created_at : datetime
+    updated_at : datetime
+    """
+
+    __tablename__ = "compliance_rules"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    policy_id: Mapped[int] = mapped_column(
+        ForeignKey("compliance_policies.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    severity: Mapped[str] = mapped_column(String(50), nullable=False, default="unknown")
+    rule_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    expression: Mapped[str] = mapped_column(Text, nullable=False)
+    params: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
+    policy = db.relationship("CompliancePolicies", backref="rules", lazy="joined")
+    results = db.relationship("ComplianceResults", back_populates="rule")
+
+    def __repr__(self) -> str:
+        return f"<ComplianceRule {self.name} p={self.policy_id}>"
+
+
+class ComplianceResults(BaseModel):
     """
     ComplianceResults
     -----------------
@@ -1430,32 +1537,48 @@ class ComplianceResults(db.Model):
     id : int
     device_id : int
     policy_id : int
-    checked_at : datetime
-    is_compliant : bool
+    rule_id : int | None
+    evaluated_at : datetime
+    status : str
     summary : str | None
     details : dict
+    snapshot_id : int | None
     """
     __tablename__ = "compliance_results"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     device_id: Mapped[int] = mapped_column(ForeignKey("devices.id", ondelete="CASCADE"), index=True)
     policy_id: Mapped[int] = mapped_column(ForeignKey("compliance_policies.id", ondelete="CASCADE"))
-    checked_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True, nullable=False)
+    rule_id: Mapped[int | None] = mapped_column(
+        ForeignKey("compliance_rules.id", ondelete="SET NULL"), index=True
+    )
+    evaluated_at: Mapped[datetime] = mapped_column(
+        "checked_at", DateTime, default=datetime.utcnow, index=True, nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="unknown")
     is_compliant: Mapped[bool] = mapped_column(Boolean, nullable=False)
     summary: Mapped[str | None] = mapped_column(Text)
     details: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    snapshot_id: Mapped[int | None] = mapped_column(
+        ForeignKey("device_config_snapshots.id", ondelete="SET NULL"), index=True
+    )
 
     device = db.relationship("Devices")
     policy = db.relationship("CompliancePolicies")
+    rule = db.relationship("ComplianceRules", back_populates="results")
+    snapshot = db.relationship("DeviceConfigSnapshots")
 
     __table_args__ = (Index("ix_compliance_device_time", "device_id", "checked_at"),)
 
     def __repr__(self) -> str:
-        return f"<ComplianceResult d={self.device_id} ok={self.is_compliant}>"
+        return (
+            f"<ComplianceResult d={self.device_id} p={self.policy_id} "
+            f"status={self.status or ('pass' if self.is_compliant else 'fail')}>"
+        )
 
 # --- Logging & Events ---------------------------------------------------------
 
-class RequestLogs(db.Model):
+class RequestLogs(BaseModel):
     """
     RequestLogs
     -----------
@@ -1526,7 +1649,7 @@ class RequestLogs(db.Model):
     )
 
 
-class ErrorLogs(db.Model):
+class ErrorLogs(BaseModel):
     """
     ErrorLogs
     ---------
@@ -1559,7 +1682,7 @@ class ErrorLogs(db.Model):
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
 
 
-class AppEvents(db.Model):
+class AppEvents(BaseModel):
     """
     AppEvents
     ---------
@@ -1587,7 +1710,7 @@ class AppEvents(db.Model):
 # Lifecycle (EoX) tracking
 # =============================================================================
 
-class HardwareLifecycle(db.Model):
+class HardwareLifecycle(BaseModel):
     """
     HardwareLifecycle
     -----------------
@@ -1667,7 +1790,7 @@ class HardwareLifecycle(db.Model):
         return bool(dt and dt < as_of)
 
 
-class SoftwareLifecycle(db.Model):
+class SoftwareLifecycle(BaseModel):
     """
     SoftwareLifecycle
     -----------------
