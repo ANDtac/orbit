@@ -66,7 +66,7 @@ from flask_jwt_extended import jwt_required
 
 from ...extensions import db
 from ...models import DeviceConfigSnapshots
-from ..utils import get_pagination, apply_sorting
+from ..utils import get_pagination, apply_sorting, paginate_query
 
 # ---------------------------------------------------------------------------
 # Namespace
@@ -216,7 +216,7 @@ class SnapshotList(Resource):
             default="-captured_at",
             allowed={"id", "device_id", "captured_at", "config_hash", "created_at", "updated_at"},
         )
-        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        rows = paginate_query(q, page=page, per_page=per_page).items
         return rows, HTTPStatus.OK
 
     @jwt_required()
