@@ -11,17 +11,22 @@ services:
     environment:
       - APP_ENV=development
       - FLASK_ENV=development
-      - GUNICORN_RELOAD=true
-      - GUNICORN_WORKERS=1
-      - GUNICORN_THREADS=4
-      - GUNICORN_LOGLEVEL=debug
+      - FLASK_DEBUG=0
+      - FLASK_APP=app:create_app
+    working_dir: /app/apps/backend
+    command: >
+      python -m debugpy --listen 0.0.0.0:5678 --wait-for-client \
+        -m flask run --no-debugger --no-reload --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+      - "5678:5678"   # debugpy
     # Mount also the repo root (optional) if you want to tweak shared pkgs live
     volumes:
       - ./:/app:rw
 
   frontend:
+    working_dir: /web/apps/frontend
     command: >
-      bash -lc "cd apps/frontend &&
-                node --inspect=0.0.0.0:9229 node_modules/vite/bin/vite.js --host 0.0.0.0"
+      node --inspect=0.0.0.0:9229 node_modules/vite/bin/vite.js --host 0.0.0.0
     ports:
       - "9229:9229"   # Node inspector

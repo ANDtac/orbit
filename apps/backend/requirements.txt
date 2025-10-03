@@ -13,6 +13,7 @@ gunicorn>=21.2,<22.0
 Jinja2>=3.1,<4.0
 click>=8.1,<9.0
 netmiko>=4.3,<5.0
+debugpy>=1.8,<2.0
 
 # Network automation (enable Nornir/NAPALM paths)
 nornir>=3.3,<4.0

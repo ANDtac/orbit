@@ -2,9 +2,17 @@
   "version": "2.0.0",
   "tasks": [
     { "label": "docker: up backend-debug", "type": "shell", "command": "docker compose -f compose.yml -f compose.dev.debug.yml up -d --build backend" },
-    { "label": "docker: down backend-debug", "type": "shell", "command": "docker compose -f compose.yml -f compose.dev.debug.yml down -v" },
+    {
+      "label": "docker: down backend-debug",
+      "type": "shell",
+      "command": "docker compose -f compose.yml -f compose.dev.debug.yml down --remove-orphans"
+    },
 
     { "label": "docker: up dev-debug", "type": "shell", "command": "docker compose -f compose.yml -f compose.dev.debug.yml up -d --build" },
-    { "label": "docker: down dev-debug", "type": "shell", "command": "docker compose -f compose.yml -f compose.dev.debug.yml down -v" }
+    {
+      "label": "docker: down dev-debug",
+      "type": "shell",
+      "command": "docker compose -f compose.yml -f compose.dev.debug.yml down --remove-orphans"
+    }
   ]
 }
