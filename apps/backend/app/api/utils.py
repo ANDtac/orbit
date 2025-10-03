@@ -29,16 +29,21 @@ Within a Resource method, do:
     page, per_page = get_pagination()
     q = Model.query
     q = apply_sorting(q, Model, default="-id", allowed={"id","name","created_at"})
-    rows = q.paginate(page=page, per_page=per_page, error_out=False).items
+    rows = paginate_query(q, page=page, per_page=per_page).items
 """
 
 from __future__ import annotations
 
-from typing import Iterable, Tuple, Set, Optional
+from typing import Iterable, Tuple, Set, Optional, TypeVar, Any, cast
 
 from flask import request
 from sqlalchemy.orm import Query
 from sqlalchemy import desc
+
+from ..extensions import db
+from sqlalchemy.sql import Select
+
+T = TypeVar("T")
 
 
 def get_pagination(
@@ -170,3 +175,41 @@ def apply_sorting(
         order_clauses.append(direction(col) if direction else col.asc())
 
     return query.order_by(*order_clauses) if order_clauses else query
+
+
+def paginate_query(
+    query: Query[T],
+    *,
+    page: int,
+    per_page: int,
+    error_out: bool = False,
+):
+    """Paginate a SQLAlchemy ``Query`` using ``db.paginate``.
+
+    Flask-SQLAlchemy 3 expects a ``Select`` statement when calling
+    :func:`db.paginate`. The legacy ORM ``Query`` exposes the generated
+    ``Select`` via the ``statement`` attribute, but SQLAlchemy's typing hints
+    describe it as a broader ``Executable`` union (``Select`` | ``Update`` |
+    ``Delete``). Runtime usage here is guaranteed to produce a ``Select``
+    because ``Query`` represents a read operation, so we cast accordingly to
+    satisfy the type checker.
+
+    Parameters
+    ----------
+    query : sqlalchemy.orm.Query
+        ORM query to paginate.
+    page : int
+        1-based page number.
+    per_page : int
+        Number of items per page.
+    error_out : bool
+        Propagated to :func:`db.paginate` to match previous behaviour.
+
+    Returns
+    -------
+    flask_sqlalchemy.pagination.Pagination
+        Pagination object from ``db.paginate``.
+    """
+
+    statement = cast(Select[Any], query.statement)
+    return db.paginate(statement, page=page, per_page=per_page, error_out=error_out)

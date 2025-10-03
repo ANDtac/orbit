@@ -64,7 +64,7 @@ from flask_jwt_extended import jwt_required
 
 from ...extensions import db
 from ...models import Interfaces
-from ..utils import get_pagination, apply_sorting
+from ..utils import get_pagination, apply_sorting, paginate_query
 
 # ---------------------------------------------------------------------------
 # Namespace
@@ -200,7 +200,7 @@ class InterfaceList(Resource):
             default="-id",
             allowed={"id", "device_id", "name", "is_up", "is_enabled", "speed_mbps", "mtu", "created_at", "updated_at"},
         )
-        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        rows = paginate_query(q, page=page, per_page=per_page).items
         return rows, HTTPStatus.OK
 
     @jwt_required()

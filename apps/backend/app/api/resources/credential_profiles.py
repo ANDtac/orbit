@@ -61,7 +61,7 @@ from flask_jwt_extended import jwt_required
 
 from ...extensions import db
 from ...models import CredentialProfiles
-from ..utils import get_pagination, apply_sorting
+from ..utils import get_pagination, apply_sorting, paginate_query
 
 # ---------------------------------------------------------------------------
 # Namespace
@@ -182,7 +182,7 @@ class CredentialProfileList(Resource):
             default="-id",
             allowed={"id", "name", "auth_type", "is_active", "created_at", "updated_at"},
         )
-        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        rows = paginate_query(q, page=page, per_page=per_page).items
         return rows, HTTPStatus.OK
 
     @jwt_required()

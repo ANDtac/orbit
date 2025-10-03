@@ -76,7 +76,7 @@ from flask_jwt_extended import jwt_required
 
 from ...extensions import db
 from ...models import RequestLogs, ErrorLogs, AppEvents
-from ..utils import get_pagination, apply_sorting
+from ..utils import get_pagination, apply_sorting, paginate_query
 
 # ---------------------------------------------------------------------------
 # Namespace
@@ -248,7 +248,7 @@ class RequestLogList(Resource):
                 "user_id",
             },
         )
-        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        rows = paginate_query(q, page=page, per_page=per_page).items
         return rows, HTTPStatus.OK
 
 
@@ -336,7 +336,7 @@ class ErrorLogList(Resource):
             default="-created_at",
             allowed={"id", "created_at", "level"},
         )
-        rows = qy.paginate(page=page, per_page=per_page, error_out=False).items
+        rows = paginate_query(qy, page=page, per_page=per_page).items
         return rows, HTTPStatus.OK
 
 
@@ -416,5 +416,5 @@ class EventList(Resource):
             default="-created_at",
             allowed={"id", "created_at", "level", "event"},
         )
-        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        rows = paginate_query(q, page=page, per_page=per_page).items
         return rows, HTTPStatus.OK
