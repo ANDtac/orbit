@@ -559,6 +559,10 @@ class Platforms(BaseModel):
     ansible_network_os: Mapped[str | None] = mapped_column(CITEXT)
     ansible_connection: Mapped[str | None] = mapped_column(CITEXT)
     ansible_vars: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     def __repr__(self) -> str:
         return f"<Platform {self.slug}>"
@@ -631,41 +635,50 @@ class CredentialProfiles(BaseModel):
     """
     CredentialProfiles
     ------------------
-    Metadata for retrieving device credentials from an external secrets
-    backend (no secrets stored here).
+    Metadata describing *where* and *how* to retrieve credentials for a device.
 
     Attributes
     ----------
     id : int
     name : str
         Unique profile name.
-    provider : str
-        'vault', 'aws_secrets_manager', 'gcp_secret_manager', 'env', etc.
-    secret_path : str
-        Path/identifier in the provider (e.g., 'secret/data/net/dev1').
-    username_key : str | None
-        Key/name to fetch username.
-    password_key : str | None
-        Key/name to fetch password.
-    extras : dict
-        Provider-specific fields (role, region, mount, kv_version, etc).
+    description : str | None
+    auth_type : str
+        High level auth style ("username_password", "ssh_key", "api_token", etc.).
+    username : str | None
+        Optional username hint (no secrets stored in Orbit).
+    secret_ref : str | None
+        Reference/path in an external secrets backend.
+    secret_metadata : dict
+        Non-sensitive metadata for the external secret (version, mount, etc.).
+    params : dict
+        Provider/driver specific extras (region, kv_version, etc.).
+    is_active : bool
+        Soft toggle to disable a profile without deleting it.
+    created_at : datetime
+    updated_at : datetime
 
     Methods
     -------
     get_or_create(name: str, **kwargs) -> CredentialProfiles
     """
+
     __tablename__ = "credential_profiles"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False, index=True)
-    provider: Mapped[str] = mapped_column(CITEXT, nullable=False, default="vault")
-    secret_path: Mapped[str] = mapped_column(String, nullable=False)
-    username_key: Mapped[str | None] = mapped_column(String)
-    password_key: Mapped[str | None] = mapped_column(String)
-    extras: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    auth_type: Mapped[str] = mapped_column(CITEXT, nullable=False, default="username_password")
+    username: Mapped[str | None] = mapped_column(CITEXT)
+    secret_ref: Mapped[str | None] = mapped_column(String)
+    secret_metadata: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    params: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     def __repr__(self) -> str:
-        return f"<CredProfile {self.name}:{self.provider}>"
+        return f"<CredProfile {self.name}:{self.auth_type}>"
 
     @classmethod
     def get_or_create(cls, name: str, **kwargs: Any) -> "CredentialProfiles":
@@ -702,29 +715,37 @@ class InventoryGroups(BaseModel):
     Attributes
     ----------
     id : int
-    slug : str
-        Unique key (CITEXT).
-    title : str | None
+    name : str
+        Unique name for the group.
+    description : str | None
     nornir_data : dict
         Group-level Nornir host vars (non-secret).
     ansible_vars : dict
         Group-level Ansible vars (optional).
+    is_active : bool
+        Soft enable/disable flag.
+    created_at : datetime
+    updated_at : datetime
 
     Relationships
     -------------
     devices : list[Devices]
         Many-to-many via DeviceInventoryGroups.
     """
+
     __tablename__ = "inventory_groups"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    slug: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False, index=True)
-    title: Mapped[str | None] = mapped_column(CITEXT)
+    name: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False, index=True)
+    description: Mapped[str | None] = mapped_column(Text)
     nornir_data: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     ansible_vars: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     def __repr__(self) -> str:
-        return f"<InventoryGroup {self.slug}>"
+        return f"<InventoryGroup {self.name}>"
 
 
 class DeviceInventoryGroups(BaseModel):
@@ -1083,9 +1104,14 @@ class Interfaces(BaseModel):
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str | None] = mapped_column(String)
     mac_address: Mapped[str | None] = mapped_column(String, index=True)
-    type: Mapped[str | None] = mapped_column(CITEXT)           # physical, svi, loopback, port-channel, mgmt
+    type: Mapped[str | None] = mapped_column(CITEXT)  # physical, svi, loopback, port-channel, mgmt
     speed_mbps: Mapped[int | None] = mapped_column(Integer)
     is_up: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    mtu: Mapped[int | None] = mapped_column(Integer)
+    facts: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     device = db.relationship("Devices", back_populates="interfaces")
     ip_assignments = db.relationship("InterfaceIPAddresses", back_populates="interface", cascade="all, delete-orphan")
@@ -1116,29 +1142,53 @@ class IPAddresses(BaseModel):
     """
     IPAddresses (IPv4 only)
     -----------------------
-    Unique IPv4 addresses; enforced via CHECK.
+    Canonical IPv4 addresses with optional direct device/interface assignment.
 
     Attributes
     ----------
     id : int
+    device_id : int | None
+    interface_id : int | None
     address : str
-        INET IPv4.
+        Stored as INET (IPv4).
+    prefix_length : int
+    is_primary : bool
+    role : str | None
+    vrf : str | None
+    notes : str | None
+    meta : dict
+    created_at : datetime
+    updated_at : datetime
 
     Methods
     -------
     get_or_create(ipv4: str) -> IPAddresses
     """
+
     __tablename__ = "ip_addresses"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    device_id: Mapped[int | None] = mapped_column(ForeignKey("devices.id", ondelete="SET NULL"), index=True)
+    interface_id: Mapped[int | None] = mapped_column(ForeignKey("interfaces.id", ondelete="SET NULL"), index=True)
     address: Mapped[str] = mapped_column(INET, unique=True, nullable=False)
+    prefix_length: Mapped[int] = mapped_column(Integer, nullable=False, default=32)
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    role: Mapped[str | None] = mapped_column(CITEXT)
+    vrf: Mapped[str | None] = mapped_column(CITEXT)
+    notes: Mapped[str | None] = mapped_column(Text)
+    meta: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    device = db.relationship("Devices")
+    interface = db.relationship("Interfaces")
 
     __table_args__ = (
         CheckConstraint("family(address) = 4", name="chk_ip_addresses_ipv4_only"),
     )
 
     def __repr__(self) -> str:
-        return f"<IP {self.address}>"
+        return f"<IP {self.address}/{self.prefix_length}>"
 
     @classmethod
     def get_or_create(cls, ipv4: str) -> "IPAddresses":
@@ -1229,9 +1279,10 @@ class DeviceConfigSnapshots(BaseModel):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     device_id: Mapped[int] = mapped_column(ForeignKey("devices.id", ondelete="CASCADE"), index=True)
     captured_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True, nullable=False)
+    source: Mapped[str | None] = mapped_column(CITEXT)
 
     content_sha256: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
-    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     storage_inline: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     content_inline_text: Mapped[str | None] = mapped_column(Text)
@@ -1244,6 +1295,9 @@ class DeviceConfigSnapshots(BaseModel):
     config_role: Mapped[str | None] = mapped_column(CITEXT)
 
     parsed_facts: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     device = db.relationship("Devices", back_populates="config_snapshots")
 
@@ -1254,6 +1308,52 @@ class DeviceConfigSnapshots(BaseModel):
 
     def __repr__(self) -> str:
         return f"<ConfigSnapshot d={self.device_id} at={self.captured_at.isoformat()}>"
+
+    @property
+    def config_text(self) -> str | None:
+        return self.content_inline_text
+
+    @config_text.setter
+    def config_text(self, value: str | None) -> None:
+        if value is None:
+            self.content_inline_text = None
+            self.content_inline_bytes = None
+            self.storage_inline = True
+            self.size_bytes = 0
+            self.content_sha256 = hashlib.sha256(b"").hexdigest()
+            return
+        self.content_inline_text = value
+        encoded = value.encode("utf-8")
+        self.content_inline_bytes = None
+        self.storage_inline = True
+        self.size_bytes = len(encoded)
+        self.content_sha256 = hashlib.sha256(encoded).hexdigest()
+
+    @property
+    def config_hash(self) -> str:
+        return self.content_sha256
+
+    @config_hash.setter
+    def config_hash(self, value: str) -> None:
+        if value:
+            self.content_sha256 = value
+
+    @property
+    def config_format(self) -> str:
+        return self.content_mime
+
+    @config_format.setter
+    def config_format(self, value: str) -> None:
+        if value:
+            self.content_mime = value
+
+    @property
+    def metadata(self) -> dict:
+        return self.parsed_facts
+
+    @metadata.setter
+    def metadata(self, value: dict | None) -> None:
+        self.parsed_facts = value or {}
 
     @classmethod
     def latest_for_device(cls, device_id: int) -> "DeviceConfigSnapshots | None":
@@ -1382,65 +1482,65 @@ class PlatformOperationTemplates(BaseModel):
     """
     PlatformOperationTemplates
     --------------------------
-    Data-driven CLI/REST templates per platform+operation.
-    Useful when a NAPALM driver doesn't cover a task yet.
+    Data-driven templates for per-platform operations.
 
     Attributes
     ----------
     id : int
     platform_id : int
-    operation : str
-        e.g., 'password_change', 'save_config'.
-    channel : str
-        'cli' | 'rest' | 'netconf'
+    name : str
+    description : str | None
+    op_type : str
+        High level operation category (e.g., 'backup', 'password_change').
     template : str
-        Command script or HTTP payload/template (Jinja or str.format friendly).
-    success_patterns : list
-        Regex strings checked against output.
-    extras : dict
-        Extra driver/transport hints.
+    variables : dict
+        Expected variables schema/hints.
+    notes : str | None
     created_at : datetime
+    updated_at : datetime
 
     Methods
     -------
-    get(platform_id: int, operation: str) -> PlatformOperationTemplates | None
+    get(platform_id: int, op_type: str) -> PlatformOperationTemplates | None
     """
     __tablename__ = "platform_operation_templates"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     platform_id: Mapped[int] = mapped_column(ForeignKey("platforms.id", ondelete="CASCADE"), index=True)
-    operation: Mapped[str] = mapped_column(CITEXT, index=True, nullable=False)
-    channel: Mapped[str] = mapped_column(CITEXT, nullable=False, default="cli")
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    op_type: Mapped[str] = mapped_column(CITEXT, index=True, nullable=False)
     template: Mapped[str] = mapped_column(Text, nullable=False)
-    success_patterns: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
-    extras: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    variables: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     platform = db.relationship("Platforms", backref="operation_templates")
 
     __table_args__ = (
-        UniqueConstraint("platform_id", "operation", name="uq_platform_operation"),
-        Index("ix_platform_op", "platform_id", "operation"),
+        UniqueConstraint("platform_id", "op_type", "name", name="uq_platform_op_template"),
+        Index("ix_platform_op", "platform_id", "op_type"),
     )
 
     def __repr__(self) -> str:
-        return f"<PlatformOpTemplate {self.platform_id}:{self.operation}>"
+        return f"<PlatformOpTemplate {self.platform_id}:{self.op_type}:{self.name}>"
 
     @classmethod
-    def get(cls, platform_id: int, operation: str) -> "PlatformOperationTemplates | None":
+    def get(cls, platform_id: int, op_type: str) -> "PlatformOperationTemplates | None":
         """
-        Fetch a template by platform and operation.
+        Fetch a template by platform and operation type.
 
         Parameters
         ----------
         platform_id : int
-        operation : str
+        op_type : str
 
         Returns
         -------
         PlatformOperationTemplates | None
         """
-        return cls.query.filter_by(platform_id=platform_id, operation=operation).first()
+        return cls.query.filter_by(platform_id=platform_id, op_type=op_type).first()
 
 
 # =============================================================================
