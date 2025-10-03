@@ -25,8 +25,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import CITEXT, INET, JSONB
-
-db = SQLAlchemy()
+from .extensions import db
 
 
 @dataclass_transform(field_specifiers=(mapped_column,))

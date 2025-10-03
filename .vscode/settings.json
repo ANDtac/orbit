@@ -1,5 +1,5 @@
 {
-  "python.defaultInterpreterPath": "${workspaceFolder}/apps/backend/.venv/bin/python",
+  "python.defaultInterpreterPath": "${workspaceFolder}/apps/backend/.venv/Scripts/python",
   "python.analysis.typeCheckingMode": "basic",
   "python.terminal.activateEnvironment": true,
   "editor.formatOnSave": true

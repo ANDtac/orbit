@@ -15,7 +15,7 @@ Notes
 - Each resource module defines its own `Namespace` object which is added here.
 """
 
-from __futurxe__ import annotations
+from __future__ import annotations
 
 from flask import Blueprint
 from flask_restx import Api

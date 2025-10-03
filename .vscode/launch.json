@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "Attach: Backend (Flask in Docker)",
-      "type": "python",
+      "type": "debugpy",
       "request": "attach",
       "connect": { "host": "localhost", "port": 5678 },
       "pathMappings": [{ "localRoot": "${workspaceFolder}/apps/backend", "remoteRoot": "/app" }],
@@ -18,7 +18,6 @@
       "address": "localhost",
       "port": 9229,
       "restart": true,
-      "protocol": "inspector",
       "cwd": "${workspaceFolder}/apps/frontend",
       "localRoot": "${workspaceFolder}/apps/frontend",
       "remoteRoot": "/usr/src/app"

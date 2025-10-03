@@ -111,7 +111,7 @@ def _verify_device_credentials(username: str, password: str) -> Tuple[bool, str 
 
     try:
         from netmiko import ConnectHandler
-        from netmiko.ssh_exception import NetmikoTimeoutException, NetmikoAuthenticationException
+        from netmiko.exceptions import NetmikoTimeoutException, NetmikoAuthenticationException
     except Exception:  # pragma: no cover - import errors handled in tests
         current_app.logger.exception("auth_netmiko_import_failed")
         return False, "authentication service unavailable"
@@ -172,19 +172,19 @@ def login():
     Body
     ----
     {
-      "username": "alice",
-      "password": "secret"
+        "username": "alice",
+        "password": "secret"
     }
 
     Returns
     -------
     200 OK
         {
-          "access_token": "<jwt>",
-          "refresh_token": "<jwt>",
-          "expires_in": <seconds>,
-          "refresh_expires_in": <seconds>,
-          "user": { ...user fields... }
+            "access_token": "<jwt>",
+            "refresh_token": "<jwt>",
+            "expires_in": <seconds>,
+            "refresh_expires_in": <seconds>,
+            "user": { ...user fields... }
         }
     400/401/429/503 on invalid input or credentials.
     """
@@ -300,9 +300,9 @@ def refresh():
     -------
     200 OK
         {
-          "access_token": "<new access>",
-          "expires_in": <seconds>,
-          "user": { ...user fields... }
+            "access_token": "<new access>",
+            "expires_in": <seconds>,
+            "user": { ...user fields... }
         }
     """
     identity = get_jwt_identity()
