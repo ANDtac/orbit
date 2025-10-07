@@ -1,0 +1,49 @@
+# Global ignore patterns for Docker build contexts
+# -----------------------------------------------
+# Keep build contexts small and avoid copying host-specific artifacts.
+
+# Git
+.git
+.gitignore
+
+# VS Code / Editor configs
+.vscode
+*.code-workspace
+.idea
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyi
+*.pyz
+*.pytest_cache/
+*.coverage
+.coverage*
+.eggs/
+*.egg-info/
+
+# Local virtual environments
+.venv/
+apps/backend/.venv/
+
+# Node / frontend
+node_modules/
+apps/frontend/node_modules/
+apps/frontend/dist/
+apps/frontend/.vite/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Docker
+**/Dockerfile.local
+**/.dockerignore
+
+# Misc build outputs
+infra/
+scripts/
+references/
+

@@ -21,6 +21,7 @@ Key Globals
 from __future__ import annotations
 
 import logging
+import os
 import time
 import traceback
 import uuid
@@ -40,6 +41,32 @@ from .utils.mailer import send_critical_email
 # Module-level logger
 log = logging.getLogger(__name__)
 
+# Debugpy hook ---------------------------------------------------------------
+
+def _maybe_enable_debugpy() -> None:
+    """Enable debugpy when running inside the dev/debug container."""
+
+    flag = os.getenv("ENABLE_DEBUGPY", "").strip().lower()
+    if flag not in {"1", "true", "yes", "on"}:
+        return
+
+    port = int(os.getenv("DEBUGPY_PORT", "5678") or "5678")
+    wait_flag = os.getenv("DEBUGPY_WAIT_FOR_CLIENT", "").strip().lower()
+    should_wait = wait_flag in {"1", "true", "yes", "on"}
+
+    try:
+        import debugpy
+
+        debugpy.listen(("0.0.0.0", port))
+        log.info("debugpy_listening", extra={"extra": {"port": port}})
+        if should_wait:
+            log.info("debugpy_waiting_for_client")
+            debugpy.wait_for_client()
+    except RuntimeError:
+        log.debug("debugpy_already_active", extra={"extra": {"port": port}})
+    except Exception:  # pragma: no cover - defensive logging only
+        log.exception("debugpy_enable_failed")
+
 # Regex to extract device IDs from paths like /devices/{id}/
 DEVICE_ID_PATH_RE = re.compile(r"/devices/(\d+)(?:/|$)")
 
@@ -53,6 +80,8 @@ def create_app(config_object: type[BaseConfig] | BaseConfig | None = None) -> Fl
     Flask
         A configured Flask application instance.
     """
+    _maybe_enable_debugpy()
+
     app = Flask(__name__)
     if config_object is not None:
         app.config.from_object(config_object)

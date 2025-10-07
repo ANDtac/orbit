@@ -6,7 +6,12 @@
       "type": "debugpy",
       "request": "attach",
       "connect": { "host": "localhost", "port": 5678 },
-      "pathMappings": [{ "localRoot": "${workspaceFolder}/apps/backend", "remoteRoot": "/app" }],
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}/apps/backend",
+          "remoteRoot": "/app/apps/backend"
+        }
+      ],
       "justMyCode": true,
       "preLaunchTask": "docker: up backend-debug",
       "postDebugTask": "docker: down backend-debug"
@@ -20,7 +25,7 @@
       "restart": true,
       "cwd": "${workspaceFolder}/apps/frontend",
       "localRoot": "${workspaceFolder}/apps/frontend",
-      "remoteRoot": "/usr/src/app"
+      "remoteRoot": "/web/apps/frontend"
     }
   ],
   "compounds": [
