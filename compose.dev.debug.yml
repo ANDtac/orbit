@@ -8,15 +8,24 @@ version: "3.9"
 
 services:
   backend:
+    command: >
+      bash -lc "cd apps/backend &&
+                export FLASK_APP=app:create_app &&
+                flask run --reload --host 0.0.0.0 --port 8000"
     environment:
       - APP_ENV=development
       - FLASK_ENV=development
-      - GUNICORN_RELOAD=true
-      - GUNICORN_WORKERS=1
-      - GUNICORN_THREADS=4
-      - GUNICORN_LOGLEVEL=debug
-    # Mount also the repo root (optional) if you want to tweak shared pkgs live
+      - FLASK_DEBUG=1
+      - ENABLE_DEBUGPY=1
+      - DEBUGPY_PORT=5678
+      - DEBUGPY_WAIT_FOR_CLIENT=1
+    ports:
+      - "8000:8000"
+      - "5678:5678"
+    # Mount the repo for live-editing shared packages while debugging
     volumes:
+      - ./apps/backend:/app/apps/backend:rw
+      - ./packages:/app/packages:rw
       - ./:/app:rw
 
   frontend:
@@ -24,4 +33,5 @@ services:
       bash -lc "cd apps/frontend &&
                 node --inspect=0.0.0.0:9229 node_modules/vite/bin/vite.js --host 0.0.0.0"
     ports:
+      - "5173:5173"
       - "9229:9229"   # Node inspector
