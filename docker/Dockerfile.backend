@@ -33,12 +33,9 @@ WORKDIR /app
 # Copy only the requirements first to maximize cache hits
 COPY apps/backend/requirements.txt ./apps/backend/requirements.txt
 
-# Optional: create an in-container venv for isolation
-RUN python -m venv /venv && . /venv/bin/activate && \
-    pip install --upgrade pip && \
+# Install backend dependencies
+RUN pip install --upgrade pip && \
     pip install -r apps/backend/requirements.txt
-
-ENV PATH="/venv/bin:$PATH"
 
 # -----------------------------------------------------------------------------
 # App layer
