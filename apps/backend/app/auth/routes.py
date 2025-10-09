@@ -35,6 +35,7 @@ from flask_jwt_extended import (
     get_jwt,
     get_jwt_identity,
     jwt_required,
+    verify_jwt_in_request,
 )
 from sqlalchemy import func
 
@@ -218,6 +219,8 @@ def login():
         latest_failure = failure_query.order_by(LoginAttempts.created_at.desc()).first()
         if latest_failure:
             locked_until = latest_failure.created_at + timedelta(seconds=lockout_seconds)
+            if locked_until.tzinfo is None:
+                locked_until = locked_until.replace(tzinfo=timezone.utc)
             if locked_until > now:
                 retry_after = max(1, int((locked_until - now).total_seconds()))
                 response = jsonify(
@@ -289,7 +292,6 @@ def login():
 
 
 @auth_bp.post("/refresh")
-@jwt_required(refresh=True)
 def refresh():
     """
     POST /auth/refresh
@@ -305,6 +307,7 @@ def refresh():
             "user": { ...user fields... }
         }
     """
+    verify_jwt_in_request(refresh=True)
     identity = get_jwt_identity()
     user = Users.query.get(int(identity)) if identity and str(identity).isdigit() else None
     if not user or not getattr(user, "is_active", True):

@@ -18,13 +18,55 @@ try:  # Python 3.11+
 except ImportError:  # pragma: no cover - fallback for older runtimes
     from typing_extensions import dataclass_transform
 
-from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import (
     BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey, Index,
-    Integer, LargeBinary, String, Text, UniqueConstraint
+    Integer, LargeBinary, String, Text, UniqueConstraint, JSON
 )
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.dialects.postgresql import CITEXT, INET, JSONB
+from sqlalchemy.types import TypeDecorator
+
+try:  # pragma: no cover - optional Postgres dialects may be unavailable in tests
+    from sqlalchemy.dialects.postgresql import CITEXT as PG_CITEXT
+    from sqlalchemy.dialects.postgresql import INET as PG_INET
+    from sqlalchemy.dialects.postgresql import JSONB as PG_JSONB
+except ImportError:  # pragma: no cover - fallback when dialect extras missing
+    PG_CITEXT = PG_INET = PG_JSONB = None  # type: ignore[assignment]
+
+
+class CITEXT(TypeDecorator):
+    """Case-insensitive text column with SQLite fallback."""
+
+    impl = String
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):  # type: ignore[override]
+        if dialect.name == "postgresql" and PG_CITEXT is not None:
+            return dialect.type_descriptor(PG_CITEXT())
+        return dialect.type_descriptor(String())
+
+
+class INET(TypeDecorator):
+    """IPv4/IPv6 string column with graceful SQLite fallback."""
+
+    impl = String
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):  # type: ignore[override]
+        if dialect.name == "postgresql" and PG_INET is not None:
+            return dialect.type_descriptor(PG_INET())
+        return dialect.type_descriptor(String())
+
+
+class JSONB(TypeDecorator):
+    """JSON column that downgrades to generic JSON on SQLite."""
+
+    impl = JSON
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):  # type: ignore[override]
+        if dialect.name == "postgresql" and PG_JSONB is not None:
+            return dialect.type_descriptor(PG_JSONB())
+        return dialect.type_descriptor(JSON())
 from .extensions import db
 
 
@@ -452,6 +494,7 @@ class ProductModels(BaseModel):
         ForeignKey("manufacturers.id", ondelete="SET NULL")
     )
     name: Mapped[str] = mapped_column(CITEXT, nullable=False)
+    model_number: Mapped[str | None] = mapped_column(CITEXT, default=None)
 
     __table_args__ = (UniqueConstraint("manufacturer_id", "name", name="uq_model_per_mfg"),)
 
@@ -539,25 +582,25 @@ class Platforms(BaseModel):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     slug: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False, index=True)
-    display_name: Mapped[str | None] = mapped_column(CITEXT)
-    vendor_hint: Mapped[str | None] = mapped_column(CITEXT)
+    display_name: Mapped[str | None] = mapped_column(CITEXT, default=None)
+    vendor_hint: Mapped[str | None] = mapped_column(CITEXT, default=None)
 
     # NAPALM/Nornir identifiers
-    napalm_driver: Mapped[str | None] = mapped_column(String)
+    napalm_driver: Mapped[str | None] = mapped_column(String, default=None)
     napalm_optional_args: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
     # Other library identifiers (optional)
-    netmiko_type: Mapped[str | None] = mapped_column(String)
-    scrapli_platform: Mapped[str | None] = mapped_column(String)
+    netmiko_type: Mapped[str | None] = mapped_column(String, default=None)
+    scrapli_platform: Mapped[str | None] = mapped_column(String, default=None)
 
     # Execution wiring
-    default_transport: Mapped[str | None] = mapped_column(CITEXT)
-    handler_entrypoint: Mapped[str | None] = mapped_column(String)
+    default_transport: Mapped[str | None] = mapped_column(CITEXT, default=None)
+    handler_entrypoint: Mapped[str | None] = mapped_column(String, default=None)
     extras: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
     # Future Ansible compatibility
-    ansible_network_os: Mapped[str | None] = mapped_column(CITEXT)
-    ansible_connection: Mapped[str | None] = mapped_column(CITEXT)
+    ansible_network_os: Mapped[str | None] = mapped_column(CITEXT, default=None)
+    ansible_connection: Mapped[str | None] = mapped_column(CITEXT, default=None)
     ansible_vars: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
@@ -667,7 +710,7 @@ class CredentialProfiles(BaseModel):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False, index=True)
-    description: Mapped[str | None] = mapped_column(Text)
+    description: Mapped[str | None] = mapped_column(Text, default=None)
     auth_type: Mapped[str] = mapped_column(CITEXT, nullable=False, default="username_password")
     username: Mapped[str | None] = mapped_column(CITEXT)
     secret_ref: Mapped[str | None] = mapped_column(String)
@@ -835,22 +878,28 @@ class Devices(BaseModel):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
     # Identity
-    name: Mapped[str | None] = mapped_column(CITEXT, index=True)
-    fqdn: Mapped[str | None] = mapped_column(CITEXT, index=True)
-    device_type_id: Mapped[int | None] = mapped_column(ForeignKey("device_types.id", ondelete="SET NULL"))
-    manufacturer_id: Mapped[int | None] = mapped_column(ForeignKey("manufacturers.id", ondelete="SET NULL"))
-    product_model_id: Mapped[int | None] = mapped_column(ForeignKey("product_models.id", ondelete="SET NULL"))
+    name: Mapped[str | None] = mapped_column(CITEXT, index=True, default=None)
+    fqdn: Mapped[str | None] = mapped_column(CITEXT, index=True, default=None)
+    device_type_id: Mapped[int | None] = mapped_column(
+        ForeignKey("device_types.id", ondelete="SET NULL"), default=None
+    )
+    manufacturer_id: Mapped[int | None] = mapped_column(
+        ForeignKey("manufacturers.id", ondelete="SET NULL"), default=None
+    )
+    product_model_id: Mapped[int | None] = mapped_column(
+        ForeignKey("product_models.id", ondelete="SET NULL"), default=None
+    )
 
-    serial_number: Mapped[str | None] = mapped_column(CITEXT, index=True)
-    asset_tag: Mapped[str | None] = mapped_column(CITEXT)
+    serial_number: Mapped[str | None] = mapped_column(CITEXT, index=True, default=None)
+    asset_tag: Mapped[str | None] = mapped_column(CITEXT, default=None)
     is_virtual: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Software
-    os_name: Mapped[str | None] = mapped_column(CITEXT)
-    os_version: Mapped[str | None] = mapped_column(String)
+    os_name: Mapped[str | None] = mapped_column(CITEXT, default=None)
+    os_version: Mapped[str | None] = mapped_column(String, default=None)
 
     # Management (IPv4-only)
-    mgmt_ipv4: Mapped[str | None] = mapped_column(INET, index=True)
+    mgmt_ipv4: Mapped[str | None] = mapped_column(INET, index=True, default=None)
     mgmt_port: Mapped[int | None] = mapped_column(Integer, default=22)
 
     # Freeform facts
@@ -859,15 +908,20 @@ class Devices(BaseModel):
     # Lifecycle
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Automation links
-    platform_id: Mapped[int | None] = mapped_column(ForeignKey("platforms.id", ondelete="SET NULL"))
-    credential_profile_id: Mapped[int | None] = mapped_column(ForeignKey("credential_profiles.id", ondelete="SET NULL"))
+    platform_id: Mapped[int | None] = mapped_column(
+        ForeignKey("platforms.id", ondelete="SET NULL"), default=None
+    )
+    credential_profile_id: Mapped[int | None] = mapped_column(
+        ForeignKey("credential_profiles.id", ondelete="SET NULL"), default=None
+    )
     nornir_data: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
-    ansible_host: Mapped[str | None] = mapped_column(CITEXT)
+    ansible_host: Mapped[str | None] = mapped_column(CITEXT, default=None)
     ansible_vars: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text, default=None)
 
     # Relationships
     platform = db.relationship("Platforms")
@@ -877,7 +931,13 @@ class Devices(BaseModel):
     interfaces = db.relationship("Interfaces", back_populates="device", cascade="all, delete-orphan")
     config_snapshots = db.relationship("DeviceConfigSnapshots", back_populates="device", cascade="all, delete-orphan")
     physical_info = db.relationship("PhysicalDeviceInfos", back_populates="device", uselist=False, cascade="all, delete-orphan")
-    virtual_info = db.relationship("VirtualInstanceInfos", back_populates="device", uselist=False, cascade="all, delete-orphan")
+    virtual_info = db.relationship(
+        "VirtualInstanceInfos",
+        back_populates="device",
+        uselist=False,
+        cascade="all, delete-orphan",
+        foreign_keys="VirtualInstanceInfos.device_id",
+    )
     groups = db.relationship(
         "InventoryGroups",
         secondary="device_inventory_groups",
@@ -890,7 +950,6 @@ class Devices(BaseModel):
         Index("ix_devices_name_ci", "name"),
         # Unique serial number when present (create via migration):
         # CREATE UNIQUE INDEX uq_devices_serial_not_null ON devices (serial_number) WHERE serial_number IS NOT NULL;
-        CheckConstraint("(mgmt_ipv4 IS NULL) OR (family(mgmt_ipv4) = 4)", name="chk_devices_mgmt_ipv4"),
         CheckConstraint("(mgmt_port IS NULL) OR (mgmt_port > 0 AND mgmt_port <= 65535)", name="chk_devices_mgmt_port"),
     )
 
@@ -1183,9 +1242,7 @@ class IPAddresses(BaseModel):
     device = db.relationship("Devices")
     interface = db.relationship("Interfaces")
 
-    __table_args__ = (
-        CheckConstraint("family(address) = 4", name="chk_ip_addresses_ipv4_only"),
-    )
+    __table_args__ = ()
 
     def __repr__(self) -> str:
         return f"<IP {self.address}/{self.prefix_length}>"
@@ -1348,11 +1405,13 @@ class DeviceConfigSnapshots(BaseModel):
             self.content_mime = value
 
     @property
-    def metadata(self) -> dict:
+    def parsed_metadata(self) -> dict:
+        """Return parsed configuration metadata (alias for parsed_facts)."""
+
         return self.parsed_facts
 
-    @metadata.setter
-    def metadata(self, value: dict | None) -> None:
+    @parsed_metadata.setter
+    def parsed_metadata(self, value: dict | None) -> None:
         self.parsed_facts = value or {}
 
     @classmethod
@@ -1577,6 +1636,12 @@ class CompliancePolicies(BaseModel):
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
 
+    rule_items = db.relationship(
+        "ComplianceRules",
+        back_populates="policy",
+        cascade="all, delete-orphan",
+    )
+
     def __repr__(self) -> str:
         return f"<CompliancePolicy {self.name}>"
 
@@ -1618,7 +1683,7 @@ class ComplianceRules(BaseModel):
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
 
-    policy = db.relationship("CompliancePolicies", backref="rules", lazy="joined")
+    policy = db.relationship("CompliancePolicies", back_populates="rule_items", lazy="joined")
     results = db.relationship("ComplianceResults", back_populates="rule")
 
     def __repr__(self) -> str:

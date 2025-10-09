@@ -87,6 +87,21 @@ def _int_env(name: str, default: int) -> int:
         return default
 
 
+def _optional_int_env(name: str) -> int | None:
+    """Read an optional integer environment variable."""
+
+    raw = os.getenv(name)
+    if raw is None:
+        return None
+    raw = raw.strip()
+    if not raw:
+        return None
+    try:
+        return int(raw)
+    except ValueError:
+        return None
+
+
 def _json_env(name: str) -> dict[str, Any] | None:
     """Attempt to parse a JSON object from an environment variable."""
 
@@ -172,6 +187,16 @@ class BaseConfig:
     AUTH_LOGIN_MAX_ATTEMPTS: int = _int_env("AUTH_LOGIN_MAX_ATTEMPTS", 5)
     AUTH_LOGIN_WINDOW_SECONDS: int = _int_env("AUTH_LOGIN_WINDOW_SECONDS", 15 * 60)
     AUTH_LOGIN_LOCKOUT_SECONDS: int = _int_env("AUTH_LOGIN_LOCKOUT_SECONDS", 15 * 60)
+
+    # SMTP / mailer configuration
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "")
+    SMTP_PORT: int | None = _optional_int_env("SMTP_PORT")
+    SMTP_USERNAME: str | None = os.getenv("SMTP_USERNAME")
+    SMTP_PASSWORD: str | None = os.getenv("SMTP_PASSWORD")
+    SMTP_USE_TLS: bool = _bool_env("SMTP_USE_TLS", False)
+    SMTP_STARTTLS: bool = _bool_env("SMTP_STARTTLS", False)
+    MAIL_FROM: str = os.getenv("MAIL_FROM", "orbit@yourorg.local")
+    MAIL_TO_CRITICAL: str | None = os.getenv("MAIL_TO_CRITICAL")
 
 
 class DevConfig(BaseConfig):

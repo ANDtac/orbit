@@ -36,12 +36,13 @@ Notes
 from __future__ import annotations
 
 import code
-import json
 import os
 import sys
+from pathlib import Path
 from typing import Any, Iterable
 
 import click
+from sqlalchemy.engine.url import make_url
 
 # Ensure package-relative imports resolve when invoked as a module
 # (python -m apps.backend.manage ...)
@@ -101,6 +102,44 @@ def _confirm_danger(action: str) -> bool:
     return click.confirm(f"About to {action}. Are you sure?", default=False)
 
 
+def _ensure_dev_sqlite_db(app) -> tuple[Path | None, bool]:
+    """Ensure the development SQLite database file exists."""
+
+    env = os.getenv("APP_ENV", "development").strip().lower()
+    if env not in {"dev", "development"}:
+        return None, False
+
+    uri = str(app.config.get("SQLALCHEMY_DATABASE_URI") or "").strip()
+    if not uri:
+        return None, False
+
+    try:
+        url = make_url(uri)
+    except Exception:
+        return None, False
+
+    if url.drivername != "sqlite":
+        return None, False
+
+    database = (url.database or "").strip()
+    if not database or database == ":memory:":
+        return None, False
+
+    path = Path(database).expanduser()
+    if not path.is_absolute():
+        path = Path.cwd() / path
+
+    if path.parent and not path.parent.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+    created = False
+    if not path.exists():
+        path.touch()
+        created = True
+
+    return path, created
+
+
 # ---------------------------------------------------------------------------
 # Commands
 # ---------------------------------------------------------------------------
@@ -116,8 +155,13 @@ def create_db():
     """
     app = _get_app()
     with app.app_context():
+        db_path, created = _ensure_dev_sqlite_db(app)
         db.create_all()
-        _echo("✅ Tables created (or already exist).")
+        if db_path:
+            status = "created" if created else "already exists"
+            _echo(f"✅ Tables ready (SQLite file {status} at {db_path}).")
+        else:
+            _echo("✅ Tables created (or already exist).")
 
 
 @cli.command("drop-db", help="Drop all tables (DANGER).")
@@ -236,13 +280,19 @@ def seed_dev():
                 mgmt_ipv4="10.0.0.10",
                 mgmt_port=22,
                 platform_id=p_iosxe.id if p_iosxe else None,
-                inventory_group_id=group.id if group else None,
                 is_active=False,
                 notes="Seed device for local development",
             )
             db.session.add(dev)
-
-        db.session.commit()
+            db.session.commit()
+            if group:
+                try:
+                    dev.inventory_group_id = group.id
+                    db.session.commit()
+                except ValueError:
+                    db.session.rollback()
+        else:
+            db.session.commit()
         _echo("🌱 Seed data ensured (admin/admin, platforms, Default group, sample device).")
 
 

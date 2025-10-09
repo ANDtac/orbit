@@ -20,7 +20,7 @@ Key Globals
 
 from __future__ import annotations
 
-import logging
+import logging as std_logging
 import os
 import time
 import traceback
@@ -28,7 +28,18 @@ import uuid
 import re
 
 from flask import Flask, jsonify, g, request
-from flask_jwt_extended import get_jwt, verify_jwt_in_request, JWTDecodeError
+try:
+    from flask_jwt_extended import get_jwt, verify_jwt_in_request, JWTDecodeError
+    from flask_jwt_extended.exceptions import WrongTokenError
+except ImportError:  # pragma: no cover - compatibility with older flask-jwt-extended
+    from flask_jwt_extended import get_jwt, verify_jwt_in_request
+
+    try:
+        from jwt import DecodeError as JWTDecodeError  # type: ignore
+    except ImportError:  # pragma: no cover - extremely defensive fallback
+        JWTDecodeError = Exception  # type: ignore[assignment]
+
+    WrongTokenError = Exception  # type: ignore[assignment]
 
 from .config import BaseConfig, select_config
 from .extensions import db, migrate, jwt
@@ -37,9 +48,10 @@ from .auth.routes import auth_bp
 from .logging import setup_logging
 from .models import RequestLogs, ErrorLogs, AppEvents, JWTTokenBlocklist
 from .utils.mailer import send_critical_email
+from sqlalchemy import inspect
 
 # Module-level logger
-log = logging.getLogger(__name__)
+log = std_logging.getLogger(__name__)
 
 # Debugpy hook ---------------------------------------------------------------
 
@@ -180,7 +192,7 @@ def create_app(config_object: type[BaseConfig] | BaseConfig | None = None) -> Fl
             if claims:
                 g.auth_subject = str(claims.get("sub") or "")
                 g.user_id = int(claims.get("sub")) if str(claims.get("sub") or "").isdigit() else None
-        except JWTDecodeError:
+        except (JWTDecodeError, WrongTokenError):
             pass
 
     @app.after_request
@@ -266,13 +278,17 @@ def create_app(config_object: type[BaseConfig] | BaseConfig | None = None) -> Fl
             JSON error response and HTTP status.
         """
         status = getattr(e, "code", 500)
+        try:
+            status_int = int(status)
+        except (TypeError, ValueError):
+            status_int = 500
         msg = getattr(e, "description", str(e))
         tb = traceback.format_exc()
 
         try:
             el = ErrorLogs(
                 correlation_id=getattr(g, "correlation_id", str(uuid.uuid4())),
-                level=("CRITICAL" if status >= 500 else "ERROR"),
+                level=("CRITICAL" if status_int >= 500 else "ERROR"),
                 message=str(e),
                 traceback=tb,
                 context={
@@ -287,37 +303,42 @@ def create_app(config_object: type[BaseConfig] | BaseConfig | None = None) -> Fl
             log.exception("error_logging_failed")
             db.session.rollback()
 
-        if status >= 500:
+        if status_int >= 500:
             try:
                 send_critical_email(
-                    subject=f"[API CRITICAL] {type(e).__name__} {status}",
+                    subject=f"[API CRITICAL] {type(e).__name__} {status_int}",
                     body=f"Correlation-ID: {getattr(g,'correlation_id','-')}\nPath: {request.path}\n\n{tb}"
                 )
             except Exception:
                 log.exception("critical_email_failed")
 
         return jsonify({
-            "error": "internal_error" if status >= 500 else "error",
+            "error": "internal_error" if status_int >= 500 else "error",
             "message": msg,
             "correlation_id": getattr(g, "correlation_id", None)
-        }), status
+        }), status_int
 
     # ---------------------------------------------------------------------
     # App startup event
     # ---------------------------------------------------------------------
-    try:
-        with app.app_context():
-            db.session.add(AppEvents(level="INFO", event="startup", message="App initialized", extra={}))
-            db.session.commit()
-    except Exception:
-        log.exception("app_event_startup_failed")
-        db.session.rollback()
+    with app.app_context():
+        try:
+            if inspect(db.engine).has_table(AppEvents.__tablename__):
+                db.session.add(
+                    AppEvents(
+                        level="INFO", event="startup", message="App initialized", extra={}
+                    )
+                )
+                db.session.commit()
+        except Exception:
+            log.exception("app_event_startup_failed")
+            db.session.rollback()
 
     # ---------------------------------------------------------------------
     # Blueprint registration
     # ---------------------------------------------------------------------
     app.register_blueprint(auth_bp, url_prefix="/auth")
-    app.register_blueprint(api_bp, url_prefix="/api")
+    app.register_blueprint(api_bp)
 
     @app.get("/healthz")
     def healthz():
