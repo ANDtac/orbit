@@ -60,11 +60,13 @@ Notes
 from __future__ import annotations
 
 import logging
-import os
 import smtplib
 import socket
+from collections.abc import Mapping
 from email.message import EmailMessage
 from typing import Iterable, Optional
+
+from flask import current_app, has_app_context
 
 log = logging.getLogger(__name__)
 
@@ -75,32 +77,9 @@ log = logging.getLogger(__name__)
 CRITICAL_ALERT_EMAIL: str = "orbit-critical-alerts@yourorg.local"
 
 
-def _bool_env(name: str, default: bool) -> bool:
-    """Parse a boolean environment variable."""
-    raw = os.getenv(name)
-    if raw is None:
-        return default
-    return raw.strip().lower() in {"1", "true", "yes", "on"}
-
-
-def _int_env(name: str) -> int | None:
-    """Parse an optional integer environment variable."""
-    raw = os.getenv(name)
-    if raw is None:
-        return None
-    raw = raw.strip()
-    if not raw:
-        return None
-    try:
-        return int(raw)
-    except ValueError:
-        log.warning("Invalid integer for %s: %s", name, raw)
-        return None
-
-
-def _get_smtp_config() -> dict:
+def _get_smtp_config(config: Mapping[str, object] | None = None) -> dict:
     """
-    Build an SMTP configuration dictionary from environment variables.
+    Build an SMTP configuration dictionary from application configuration.
 
     Returns
     -------
@@ -116,14 +95,39 @@ def _get_smtp_config() -> dict:
           "critical_to": str,
         }
     """
-    host = os.getenv("SMTP_HOST", "")
-    port = _int_env("SMTP_PORT")
-    username = os.getenv("SMTP_USERNAME")
-    password = os.getenv("SMTP_PASSWORD")
-    use_tls = _bool_env("SMTP_USE_TLS", False)        # implicit TLS (465)
-    starttls = _bool_env("SMTP_STARTTLS", False)      # STARTTLS (587)
-    mail_from = os.getenv("MAIL_FROM", "orbit@yourorg.local")
-    critical_to = os.getenv("MAIL_TO_CRITICAL", CRITICAL_ALERT_EMAIL)
+    cfg = config
+    if cfg is None and has_app_context():
+        cfg = current_app.config
+
+    def _cfg_value(name: str) -> object | None:
+        if cfg is None:
+            return None
+        return cfg.get(name)
+
+    def _normalize_str(value: object | None) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            value = value.strip()
+            return value or None
+        return str(value)
+
+    host = _normalize_str(_cfg_value("SMTP_HOST")) or ""
+
+    port_value = _cfg_value("SMTP_PORT")
+    port = int(port_value) if isinstance(port_value, int) else None
+
+    username = _normalize_str(_cfg_value("SMTP_USERNAME"))
+    password = _normalize_str(_cfg_value("SMTP_PASSWORD"))
+
+    raw_use_tls = _cfg_value("SMTP_USE_TLS")
+    use_tls = bool(raw_use_tls) if isinstance(raw_use_tls, bool) else False
+
+    raw_starttls = _cfg_value("SMTP_STARTTLS")
+    starttls = bool(raw_starttls) if isinstance(raw_starttls, bool) else False
+
+    mail_from = _normalize_str(_cfg_value("MAIL_FROM")) or "orbit@yourorg.local"
+    critical_to = _normalize_str(_cfg_value("MAIL_TO_CRITICAL")) or CRITICAL_ALERT_EMAIL
 
     # If implicit TLS requested, STARTTLS should be off to avoid confusion
     if use_tls:
@@ -262,7 +266,7 @@ def send_email(
                 extra={"extra": {"to": recipients, "subject": subject, "attempt": attempt}},
             )
             return True
-        except (smtplib.SMTPException, OSError, socket.timeout) as exc:
+        except (smtplib.SMTPException, OSError, socket.timeout, RuntimeError) as exc:
             log.warning(
                 "mailer_send_failed",
                 extra={

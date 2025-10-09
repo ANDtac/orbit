@@ -42,7 +42,7 @@ All endpoints require a valid JWT.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import request
 from flask_restx import Namespace, Resource, fields
 from flask_restx._http import HTTPStatus
@@ -63,6 +63,56 @@ HardwareIn = ns.model("HardwareLifecycleIn", {
     "notes": fields.String,
 })
 HardwareOut = HardwareIn.clone("HardwareLifecycleOut", {"id": fields.Integer})
+
+
+_DATE_FIELDS = {
+    "end_of_sale_date",
+    "end_of_software_maintenance_date",
+    "end_of_security_fixes_date",
+    "last_day_of_support_date",
+}
+
+
+def _parse_iso8601(value) -> datetime | None:
+    """Convert ISO 8601 strings (or datetimes) into naive UTC datetimes."""
+
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.astimezone(timezone.utc).replace(tzinfo=None) if value.tzinfo else value
+    if isinstance(value, str):
+        raw = value.strip()
+        if not raw:
+            return None
+        if raw.endswith("Z"):
+            raw = raw[:-1] + "+00:00"
+        try:
+            dt = datetime.fromisoformat(raw)
+        except ValueError:
+            try:
+                dt = datetime.strptime(raw, "%Y-%m-%d")
+            except ValueError as exc2:
+                raise ValueError from exc2
+        return dt.astimezone(timezone.utc).replace(tzinfo=None) if dt.tzinfo else dt
+    raise TypeError(f"Unsupported date value {value!r}")
+
+
+def _coerce_date_fields(payload: dict) -> tuple[dict, dict[str, str]]:
+    """Parse ISO 8601 strings into datetimes for known lifecycle date fields."""
+
+    errors: dict[str, str] = {}
+    for field in list(payload.keys()):
+        if field not in _DATE_FIELDS:
+            continue
+        value = payload[field]
+        if value in (None, ""):
+            payload[field] = None
+            continue
+        try:
+            payload[field] = _parse_iso8601(value)
+        except (TypeError, ValueError):
+            errors[field] = "Invalid ISO 8601 datetime"
+    return payload, errors
 
 
 @ns.route("")
@@ -135,6 +185,9 @@ class HardwareList(Resource):
         HardwareLifecycleOut
         """
         payload = request.get_json(force=True)
+        payload, errors = _coerce_date_fields(payload or {})
+        if errors:
+            return {"message": "Invalid date value", "errors": errors}, HTTPStatus.BAD_REQUEST
         ProductModels.query.get_or_404(payload["product_model_id"])
         row = HardwareLifecycle(**payload)
         db.session.add(row)
@@ -162,7 +215,11 @@ class HardwareItem(Resource):
     def patch(self, id: int):
         """Partially update a lifecycle row."""
         row = HardwareLifecycle.query.get_or_404(id)
-        for k, v in (request.get_json(force=True) or {}).items():
+        updates = request.get_json(force=True) or {}
+        updates, errors = _coerce_date_fields(updates)
+        if errors:
+            return {"message": "Invalid date value", "errors": errors}, HTTPStatus.BAD_REQUEST
+        for k, v in updates.items():
             setattr(row, k, v)
         db.session.commit()
         return row, HTTPStatus.OK
