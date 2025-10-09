@@ -1,18 +1,116 @@
 {
   "version": "2.0.0",
   "tasks": [
-    { "label": "docker: up backend-debug", "type": "shell", "command": "docker compose -f compose.yml -f compose.dev.debug.yml up -d --build backend" },
+    {
+      "label": "docker: build backend-debug",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.dev.debug.yml",
+        "build",
+        "backend"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "docker: up backend-debug",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.dev.debug.yml",
+        "up",
+        "-d",
+        "backend"
+      ],
+      "dependsOn": ["docker: build backend-debug"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
     {
       "label": "docker: down backend-debug",
-      "type": "shell",
-      "command": "docker compose -f compose.yml -f compose.dev.debug.yml down --remove-orphans"
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.dev.debug.yml",
+        "down",
+        "-v"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
     },
 
-    { "label": "docker: up dev-debug", "type": "shell", "command": "docker compose -f compose.yml -f compose.dev.debug.yml up -d --build" },
+    {
+      "label": "docker: build dev-debug",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.dev.debug.yml",
+        "build"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "docker: up dev-debug",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.dev.debug.yml",
+        "up",
+        "-d"
+      ],
+      "dependsOn": ["docker: build dev-debug"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
     {
       "label": "docker: down dev-debug",
-      "type": "shell",
-      "command": "docker compose -f compose.yml -f compose.dev.debug.yml down --remove-orphans"
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.dev.debug.yml",
+        "down",
+        "-v"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
     }
   ]
 }

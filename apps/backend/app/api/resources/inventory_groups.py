@@ -63,8 +63,8 @@ from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required
 
 from ...extensions import db
-from ...models import InventoryGroups, Devices
-from ..utils import get_pagination, apply_sorting
+from ...models import InventoryGroups, Devices, DeviceInventoryGroups
+from ..utils import get_pagination, apply_sorting, paginate_query
 
 # ---------------------------------------------------------------------------
 # Namespace
@@ -196,7 +196,7 @@ class GroupList(Resource):
             default="-id",
             allowed={"id", "name", "is_active", "created_at", "updated_at"},
         )
-        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        rows = paginate_query(q, page=page, per_page=per_page).items
         return rows, HTTPStatus.OK
 
     @jwt_required()
@@ -362,7 +362,14 @@ class GroupDevices(Resource):
         list[DeviceLight]
         """
         InventoryGroups.query.get_or_404(id)
-        rows = Devices.query.with_entities(Devices.id, Devices.name, Devices.inventory_group_id)\
-                            .filter(Devices.inventory_group_id == id).all()
-        # .with_entities returns lightweight rows; Marshaling expects dict-like
-        return [{"id": r.id, "name": r.name, "inventory_group_id": r.inventory_group_id} for r in rows], HTTPStatus.OK
+        rows = (
+            db.session.query(Devices)
+            .join(DeviceInventoryGroups, DeviceInventoryGroups.device_id == Devices.id)
+            .filter(DeviceInventoryGroups.group_id == id)
+            .order_by(Devices.id.asc())
+            .all()
+        )
+        return [
+            {"id": dev.id, "name": dev.name, "inventory_group_id": id}
+            for dev in rows
+        ], HTTPStatus.OK

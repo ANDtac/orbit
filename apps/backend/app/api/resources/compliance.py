@@ -88,7 +88,7 @@ from ...models import (
     ComplianceRules,
     ComplianceResults,
 )
-from ..utils import get_pagination, apply_sorting
+from ..utils import get_pagination, apply_sorting, paginate_query
 
 # ---------------------------------------------------------------------------
 # Namespace
@@ -262,7 +262,7 @@ class PolicyList(Resource):
             default="-id",
             allowed={"id", "name", "is_active", "created_at", "updated_at"},
         )
-        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        rows = paginate_query(q, page=page, per_page=per_page).items
         return rows, HTTPStatus.OK
 
     @jwt_required()
@@ -414,7 +414,7 @@ class RuleList(Resource):
             default="-id",
             allowed={"id", "policy_id", "name", "severity", "created_at", "updated_at"},
         )
-        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        rows = paginate_query(q, page=page, per_page=per_page).items
         return rows, HTTPStatus.OK
 
     @jwt_required()
@@ -576,7 +576,7 @@ class ResultList(Resource):
             default="-evaluated_at",
             allowed={"id", "device_id", "policy_id", "rule_id", "status", "evaluated_at"},
         )
-        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        rows = paginate_query(q, page=page, per_page=per_page).items
         return rows, HTTPStatus.OK
 
 

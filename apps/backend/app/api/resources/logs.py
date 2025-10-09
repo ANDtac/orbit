@@ -76,7 +76,7 @@ from flask_jwt_extended import jwt_required
 
 from ...extensions import db
 from ...models import RequestLogs, ErrorLogs, AppEvents
-from ..utils import get_pagination, apply_sorting
+from ..utils import get_pagination, apply_sorting, paginate_query
 
 # ---------------------------------------------------------------------------
 # Namespace
@@ -91,7 +91,7 @@ RequestLogOut = ns.model(
     "RequestLogOut",
     {
         "id": fields.Integer(required=True),
-        "created_at": fields.DateTime,
+        "created_at": fields.DateTime(attribute="occurred_at"),
         "correlation_id": fields.String,
         "user_id": fields.Integer,
         "auth_subject": fields.String,
@@ -117,7 +117,7 @@ ErrorLogOut = ns.model(
     "ErrorLogOut",
     {
         "id": fields.Integer(required=True),
-        "created_at": fields.DateTime,
+        "created_at": fields.DateTime(attribute="occurred_at"),
         "correlation_id": fields.String,
         "user_id": fields.Integer,
         "level": fields.String,
@@ -131,7 +131,7 @@ EventOut = ns.model(
     "EventOut",
     {
         "id": fields.Integer(required=True),
-        "created_at": fields.DateTime,
+        "created_at": fields.DateTime(attribute="occurred_at"),
         "level": fields.String,
         "event": fields.String,
         "message": fields.String,
@@ -230,25 +230,25 @@ class RequestLogList(Resource):
 
         since = _parse_iso_dt(request.args.get("since"))
         if since:
-            q = q.filter(RequestLogs.created_at >= since)
+            q = q.filter(RequestLogs.occurred_at >= since)
 
         until = _parse_iso_dt(request.args.get("until"))
         if until:
-            q = q.filter(RequestLogs.created_at < until)
+            q = q.filter(RequestLogs.occurred_at < until)
 
         q = apply_sorting(
             q,
             RequestLogs,
-            default="-created_at",
+            default="-occurred_at",
             allowed={
                 "id",
-                "created_at",
+                "occurred_at",
                 "status_code",
                 "latency_ms",
                 "user_id",
             },
         )
-        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        rows = paginate_query(q, page=page, per_page=per_page).items
         return rows, HTTPStatus.OK
 
 
@@ -324,19 +324,19 @@ class ErrorLogList(Resource):
 
         since = _parse_iso_dt(request.args.get("since"))
         if since:
-            qy = qy.filter(ErrorLogs.created_at >= since)
+            qy = qy.filter(ErrorLogs.occurred_at >= since)
 
         until = _parse_iso_dt(request.args.get("until"))
         if until:
-            qy = qy.filter(ErrorLogs.created_at < until)
+            qy = qy.filter(ErrorLogs.occurred_at < until)
 
         qy = apply_sorting(
             qy,
             ErrorLogs,
-            default="-created_at",
-            allowed={"id", "created_at", "level"},
+            default="-occurred_at",
+            allowed={"id", "occurred_at", "level"},
         )
-        rows = qy.paginate(page=page, per_page=per_page, error_out=False).items
+        rows = paginate_query(qy, page=page, per_page=per_page).items
         return rows, HTTPStatus.OK
 
 
@@ -404,17 +404,17 @@ class EventList(Resource):
 
         since = _parse_iso_dt(request.args.get("since"))
         if since:
-            q = q.filter(AppEvents.created_at >= since)
+            q = q.filter(AppEvents.occurred_at >= since)
 
         until = _parse_iso_dt(request.args.get("until"))
         if until:
-            q = q.filter(AppEvents.created_at < until)
+            q = q.filter(AppEvents.occurred_at < until)
 
         q = apply_sorting(
             q,
             AppEvents,
-            default="-created_at",
-            allowed={"id", "created_at", "level", "event"},
+            default="-occurred_at",
+            allowed={"id", "occurred_at", "level", "event"},
         )
-        rows = db.paginate(q, page=page, per_page=per_page, error_out=False).items
+        rows = paginate_query(q, page=page, per_page=per_page).items
         return rows, HTTPStatus.OK
