@@ -16,11 +16,12 @@ WORKDIR /web
 
 # Install deps with good cache behavior
 COPY apps/frontend/package.json apps/frontend/package-lock.json* ./apps/frontend/
-RUN cd apps/frontend && \
-    if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+
+WORKDIR /web/apps/frontend
+RUN if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
 
 # Copy the rest of the frontend source
-COPY --chown=orbit:orbit apps/frontend ./apps/frontend
+COPY --chown=orbit:orbit apps/frontend .
 
 EXPOSE 5173
 
@@ -28,7 +29,7 @@ EXPOSE 5173
 # Example production build:
 #   docker build -f docker/Dockerfile.frontend --target prod -t orbit-frontend:prod .
 #   and use infra/nginx to serve /dist
-CMD ["bash", "-lc", "cd apps/frontend && npm run dev -- --host 0.0.0.0"]
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
 # -----------------------------------------------------------------------------
 # Optional production stage (uncomment for CI/CD use)

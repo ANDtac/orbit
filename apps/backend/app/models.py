@@ -11,12 +11,7 @@ import gzip
 import hashlib
 from importlib import import_module
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any
-
-try:  # Python 3.11+
-    from typing import dataclass_transform
-except ImportError:  # pragma: no cover - fallback for older runtimes
-    from typing_extensions import dataclass_transform
+from typing import Any
 
 from sqlalchemy import (
     BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey, Index,
@@ -70,15 +65,7 @@ class JSONB(TypeDecorator):
 from .extensions import db
 
 
-@dataclass_transform(field_specifiers=(mapped_column,))
-class _TypeCheckedModel:
-    """Provide type-checker-friendly ``__init__`` for declarative models."""
-
-    if TYPE_CHECKING:
-        def __init__(self, **kwargs: Any) -> None: ...
-
-
-class BaseModel(db.Model, _TypeCheckedModel):
+class BaseModel(db.Model):
     """Base class that equips SQLAlchemy models with typed ``__init__``."""
 
     __abstract__ = True
