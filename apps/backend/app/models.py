@@ -13,7 +13,6 @@ from importlib import import_module
 from datetime import datetime, timezone
 from typing import Any
 
-from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import (
     BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey, Index,
     Integer, LargeBinary, String, Text, UniqueConstraint, JSON
