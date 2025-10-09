@@ -213,7 +213,14 @@ def create_platform(db) -> Callable[[str, str], Platforms]:
     """
 
     def _factory(slug: str, napalm_driver: str = "ios") -> Platforms:
-        p = Platforms(slug=slug, display_name=slug.replace("_", " ").title(), napalm_driver=napalm_driver)
+        existing = Platforms.query.filter_by(slug=slug).first()
+        if existing:
+            return existing
+        p = Platforms(
+            slug=slug,
+            display_name=slug.replace("_", " ").title(),
+            napalm_driver=napalm_driver,
+        )
         _db.session.add(p)
         _db.session.commit()
         return p
@@ -233,6 +240,9 @@ def create_inventory_group(db) -> Callable[[str], InventoryGroups]:
     """
 
     def _factory(name: str = "Default") -> InventoryGroups:
+        existing = InventoryGroups.query.filter_by(name=name).first()
+        if existing:
+            return existing
         g = InventoryGroups(name=name, is_active=True)
         _db.session.add(g)
         _db.session.commit()
@@ -255,13 +265,13 @@ def create_device(db, create_platform, create_inventory_group) -> Callable[..., 
     def _factory(**overrides) -> Devices:
         platform = overrides.pop("platform", None) or create_platform("cisco_xe", "ios")
         group = overrides.pop("group", None) or create_inventory_group("Default")
+        inventory_group_id = overrides.pop("inventory_group_id", group.id)
         d = Devices(
             name=overrides.pop("name", "dev-1"),
             fqdn=overrides.pop("fqdn", "dev-1.local"),
             mgmt_ipv4=overrides.pop("mgmt_ipv4", "10.0.0.10"),
             mgmt_port=overrides.pop("mgmt_port", 22),
             platform_id=overrides.pop("platform_id", platform.id),
-            inventory_group_id=overrides.pop("inventory_group_id", group.id),
             os_name=overrides.pop("os_name", "iosxe"),
             os_version=overrides.pop("os_version", "17.3.1"),
             is_active=overrides.pop("is_active", True),
@@ -269,6 +279,12 @@ def create_device(db, create_platform, create_inventory_group) -> Callable[..., 
         )
         _db.session.add(d)
         _db.session.commit()
+        if inventory_group_id:
+            try:
+                d.inventory_group_id = inventory_group_id
+                _db.session.commit()
+            except ValueError:
+                _db.session.rollback()
         return d
 
     return _factory
@@ -278,7 +294,9 @@ def create_device(db, create_platform, create_inventory_group) -> Callable[..., 
 # Auth helpers
 # -----------------------------------------------------------------------------
 @pytest.fixture(scope="function")
-def auth_tokens(client: FlaskClient, create_user) -> Callable[[str, str], Tuple[str, str]]:
+def auth_tokens(
+    client: FlaskClient, create_user, auth_passwords
+) -> Callable[[str, str], Tuple[str, str]]:
     """
     Helper: obtain (access_token, refresh_token) for a username/password.
 
@@ -295,6 +313,7 @@ def auth_tokens(client: FlaskClient, create_user) -> Callable[[str, str], Tuple[
 
     def _login(username: str = "admin", password: str = "admin") -> tuple[str, str]:
         # Ensure user exists
+        auth_passwords.add(password)
         create_user(username, password)
         resp = client.post("/auth/login", json={"username": username, "password": password})
         assert resp.status_code == 200, f"login failed: {resp.status_code} {resp.data}"

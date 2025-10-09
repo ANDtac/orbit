@@ -280,13 +280,19 @@ def seed_dev():
                 mgmt_ipv4="10.0.0.10",
                 mgmt_port=22,
                 platform_id=p_iosxe.id if p_iosxe else None,
-                inventory_group_id=group.id if group else None,
                 is_active=False,
                 notes="Seed device for local development",
             )
             db.session.add(dev)
-
-        db.session.commit()
+            db.session.commit()
+            if group:
+                try:
+                    dev.inventory_group_id = group.id
+                    db.session.commit()
+                except ValueError:
+                    db.session.rollback()
+        else:
+            db.session.commit()
         _echo("🌱 Seed data ensured (admin/admin, platforms, Default group, sample device).")
 
 
