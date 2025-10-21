@@ -1,5 +1,5 @@
 """
-app/auth/routes.py
+app/api/v1/auth/routes.py
 ------------------
 Authentication and token management routes leveraging device-backed logins.
 
@@ -9,7 +9,7 @@ Responsibilities
 - Enforce rate limiting and lockout windows for repeated failed attempts.
 - Issue JWT access and refresh tokens on login and refresh requests.
 - Revoke tokens by storing their JTI in a blocklist (logout).
-- Return current user info (`/auth/me`) for convenience.
+- Return current user info (`/api/v1/auth/me`) for convenience.
 
 Security Model
 --------------
@@ -64,7 +64,7 @@ def _user_to_dict(user: Users) -> Dict[str, Any]:
         "username": getattr(user, "username", None),
         "email": getattr(user, "email", None),
         "is_active": getattr(user, "is_active", True),
-        "roles": getattr(user, "roles", None),
+        "roles": list(getattr(user, "roles", []) or []),
         "last_login_at": user.last_login_at.isoformat() if user.last_login_at else None,
     }
 
@@ -166,7 +166,7 @@ def _record_login_attempt(
 @auth_bp.post("/login")
 def login():
     """
-    POST /auth/login
+    POST /api/v1/auth/login
     ----------------
     Authenticate with username and password by validating against a test device.
 
@@ -294,7 +294,7 @@ def login():
 @auth_bp.post("/refresh")
 def refresh():
     """
-    POST /auth/refresh
+    POST /api/v1/auth/refresh
     ------------------
     Exchange a valid refresh token for a new access token.
 
@@ -324,7 +324,7 @@ def refresh():
 @jwt_required()
 def logout():
     """
-    POST /auth/logout
+    POST /api/v1/auth/logout
     -----------------
     Revoke the current token by storing its JTI in the blocklist.
 
@@ -352,7 +352,7 @@ def logout():
 @jwt_required()
 def me():
     """
-    GET /auth/me
+    GET /api/v1/auth/me
     ------------
     Return the current authenticated user's profile.
 

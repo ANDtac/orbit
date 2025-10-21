@@ -19,7 +19,7 @@ def test_devices_requires_auth(client):
     """
     GET /devices should require authentication.
     """
-    resp = client.get("/devices")
+    resp = client.get("/api/v1/devices")
     assert resp.status_code in (401, 422)
 
 
@@ -29,7 +29,7 @@ def test_device_crud_flow(client, auth_headers, create_platform, create_inventor
     - POST /devices
     - GET /devices/<id>
     - PATCH /devices/<id>
-    - GET /devices?name=
+    - GET /devices?filter[name]=
     - DELETE /devices/<id>
     """
     headers = auth_headers("tester", "pw")
@@ -50,7 +50,7 @@ def test_device_crud_flow(client, auth_headers, create_platform, create_inventor
         "is_active": True,
         "notes": "created via test",
     }
-    r = client.post("/devices", json=payload, headers=headers)
+    r = client.post("/api/v1/devices", json=payload, headers=headers)
     assert r.status_code == 201, r.data
     created = r.get_json()
     dev_id = created["id"]
@@ -58,30 +58,32 @@ def test_device_crud_flow(client, auth_headers, create_platform, create_inventor
     assert created["platform_id"] == platform.id
 
     # Read
-    r = client.get(f"/devices/{dev_id}", headers=headers)
+    r = client.get(f"/api/v1/devices/{dev_id}", headers=headers)
     assert r.status_code == 200
     got = r.get_json()
     assert got["id"] == dev_id
     assert got["name"] == "edge-sw1"
 
     # Update (PATCH)
-    r = client.patch(f"/devices/{dev_id}", json={"name": "edge-sw1-renamed"}, headers=headers)
+    r = client.patch(f"/api/v1/devices/{dev_id}", json={"name": "edge-sw1-renamed"}, headers=headers)
     assert r.status_code == 200
     updated = r.get_json()
     assert updated["name"] == "edge-sw1-renamed"
 
     # List with filter
-    r = client.get("/devices?name=edge-sw1-renamed", headers=headers)
+    r = client.get(
+        "/api/v1/devices?filter[name]=edge-sw1-renamed", headers=headers
+    )
     assert r.status_code == 200
-    items = r.get_json()
-    assert any(it["id"] == dev_id for it in items)
+    payload = r.get_json()
+    assert any(it["id"] == dev_id for it in payload["data"])
 
     # Delete
-    r = client.delete(f"/devices/{dev_id}", headers=headers)
+    r = client.delete(f"/api/v1/devices/{dev_id}", headers=headers)
     assert r.status_code == 200
 
     # Ensure gone
-    r = client.get(f"/devices/{dev_id}", headers=headers)
+    r = client.get(f"/api/v1/devices/{dev_id}", headers=headers)
     assert r.status_code == 404
 
 
@@ -90,7 +92,7 @@ def test_devices_filters_sort_pagination(client, auth_headers, create_device):
     Create several devices and validate:
     - name filter
     - sort param (by name ASC/DESC)
-    - pagination (page/per_page)
+    - pagination (cursor-based page[size]/page[cursor])
     """
     headers = auth_headers("u", "p")
 
@@ -100,33 +102,44 @@ def test_devices_filters_sort_pagination(client, auth_headers, create_device):
         create_device(name=name, fqdn=f"{name}.local", mgmt_ipv4=f"10.0.0.{i}")
 
     # Name filter (substring)
-    r = client.get("/devices?name=ha", headers=headers)
+    r = client.get("/api/v1/devices?filter[name]=ha", headers=headers)
     assert r.status_code == 200
-    rows = r.get_json()
+    rows = r.get_json()["data"]
     got_names = {row["name"] for row in rows}
     assert "charlie" in got_names  # contains 'ha'
 
     # Sort ascending by name
-    r = client.get("/devices?sort=name", headers=headers)
+    r = client.get("/api/v1/devices?sort=name", headers=headers)
     assert r.status_code == 200
-    asc = [row["name"] for row in r.get_json()]
+    asc = [row["name"] for row in r.get_json()["data"]]
     assert asc == sorted(asc)
 
     # Sort descending by name
-    r = client.get("/devices?sort=-name", headers=headers)
+    r = client.get("/api/v1/devices?sort=-name", headers=headers)
     assert r.status_code == 200
-    desc = [row["name"] for row in r.get_json()]
+    desc = [row["name"] for row in r.get_json()["data"]]
     assert desc == sorted(desc, reverse=True)
 
-    # Pagination (per_page=2)
-    r1 = client.get("/devices?per_page=2&sort=name", headers=headers)
-    r2 = client.get("/devices?per_page=2&page=2&sort=name", headers=headers)
-    assert r1.status_code == 200 and r2.status_code == 200
-    page1 = [row["name"] for row in r1.get_json()]
-    page2 = [row["name"] for row in r2.get_json()]
-    # Ensure no overlap and total equals at least 4 created
+    # Pagination (page[size]=2)
+    r1 = client.get("/api/v1/devices?page[size]=2&sort=name", headers=headers)
+    assert r1.status_code == 200
+    payload1 = r1.get_json()
+    page1 = [row["name"] for row in payload1["data"]]
+    assert len(page1) == 2
+
+    next_cursor = payload1["page"]["next"]
+    assert next_cursor is not None
+
+    r2 = client.get(
+        f"/api/v1/devices?page[size]=2&page[cursor]={next_cursor}&sort=name",
+        headers=headers,
+    )
+    assert r2.status_code == 200
+    payload2 = r2.get_json()
+    page2 = [row["name"] for row in payload2["data"]]
+
+    assert len(page2) == 2
     assert not set(page1).intersection(page2)
-    assert len(page1) == 2 and len(page2) == 2
 
 
 def test_patch_ignores_unknown_fields(client, auth_headers, create_device):
@@ -137,7 +150,7 @@ def test_patch_ignores_unknown_fields(client, auth_headers, create_device):
     d = create_device(name="unknown-test")
 
     r = client.patch(
-        f"/devices/{d.id}",
+        f"/api/v1/devices/{d.id}",
         json={"name": "unknown-test-upd", "nonexistent_field": "ignored"},
         headers=headers,
     )

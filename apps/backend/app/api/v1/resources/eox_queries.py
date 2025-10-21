@@ -37,7 +37,7 @@ from flask_restx import Namespace, Resource, fields
 from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required
 
-from ...models import Devices, HardwareLifecycle, SoftwareLifecycle
+from app.models import Devices, HardwareLifecycle, SoftwareLifecycle
 
 ns = Namespace("eox", description="Lifecycle (EoX) queries")
 

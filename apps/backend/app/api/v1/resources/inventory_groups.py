@@ -52,7 +52,7 @@ is_active : bool-like
 
 Security
 --------
-All endpoints require a valid JWT (see /auth/login).
+All endpoints require a valid JWT (see /api/v1/auth/login).
 """
 
 from __future__ import annotations
@@ -62,8 +62,8 @@ from flask_restx import Namespace, Resource, fields
 from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required
 
-from ...extensions import db
-from ...models import InventoryGroups, Devices, DeviceInventoryGroups
+from app.extensions import db
+from app.models import InventoryGroups, Devices, DeviceInventoryGroups
 from ..utils import get_pagination, apply_sorting, paginate_query
 
 # ---------------------------------------------------------------------------

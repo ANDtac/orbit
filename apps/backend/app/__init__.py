@@ -27,7 +27,8 @@ import traceback
 import uuid
 import re
 
-from flask import Flask, jsonify, g, request
+from flask import Flask, jsonify, g, request, render_template_string, url_for
+from werkzeug.exceptions import HTTPException
 try:
     from flask_jwt_extended import get_jwt, verify_jwt_in_request, JWTDecodeError
     from flask_jwt_extended.exceptions import WrongTokenError
@@ -49,6 +50,7 @@ from .logging import setup_logging
 from .models import RequestLogs, ErrorLogs, AppEvents, JWTTokenBlocklist
 from .utils.mailer import send_critical_email
 from sqlalchemy import inspect
+from .api.v1.utils import problem_response
 
 # Module-level logger
 log = std_logging.getLogger(__name__)
@@ -277,12 +279,17 @@ def create_app(config_object: type[BaseConfig] | BaseConfig | None = None) -> Fl
         tuple[dict, int]
             JSON error response and HTTP status.
         """
-        status = getattr(e, "code", 500)
-        try:
-            status_int = int(status)
-        except (TypeError, ValueError):
-            status_int = 500
-        msg = getattr(e, "description", str(e))
+        status_int = 500
+        detail = str(e)
+        title = "Internal Server Error"
+
+        if isinstance(e, HTTPException):
+            try:
+                status_int = int(e.code or 500)
+            except (TypeError, ValueError):
+                status_int = 500
+            detail = e.description or detail
+            title = getattr(e, "name", title)
         tb = traceback.format_exc()
 
         try:
@@ -312,11 +319,15 @@ def create_app(config_object: type[BaseConfig] | BaseConfig | None = None) -> Fl
             except Exception:
                 log.exception("critical_email_failed")
 
-        return jsonify({
-            "error": "internal_error" if status_int >= 500 else "error",
-            "message": msg,
-            "correlation_id": getattr(g, "correlation_id", None)
-        }), status_int
+        response = problem_response(
+            status_int,
+            title=title,
+            detail=detail,
+            extra={"correlation_id": getattr(g, "correlation_id", None)},
+            instance=request.path if request else None,
+        )
+        response.headers["X-Request-ID"] = getattr(g, "correlation_id", "")
+        return response
 
     # ---------------------------------------------------------------------
     # App startup event
@@ -337,8 +348,56 @@ def create_app(config_object: type[BaseConfig] | BaseConfig | None = None) -> Fl
     # ---------------------------------------------------------------------
     # Blueprint registration
     # ---------------------------------------------------------------------
-    app.register_blueprint(auth_bp, url_prefix="/auth")
+    app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
     app.register_blueprint(api_bp)
+
+    swagger_template = """
+    <!DOCTYPE html>
+    <html lang=\"en\">
+      <head>
+        <meta charset=\"utf-8\" />
+        <title>Orbit API Reference</title>
+        <link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css\" />
+      </head>
+      <body>
+        <div id=\"swagger-ui\"></div>
+        <script src=\"https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js\"></script>
+        <script>
+          window.onload = () => {
+            window.ui = SwaggerUIBundle({
+              url: '{{ openapi_url }}',
+              dom_id: '#swagger-ui',
+              displayRequestDuration: true,
+              docExpansion: 'none'
+            });
+          };
+        </script>
+      </body>
+    </html>
+    """
+
+    redoc_template = """
+    <!DOCTYPE html>
+    <html lang=\"en\">
+      <head>
+        <meta charset=\"utf-8\" />
+        <title>Orbit API Reference</title>
+        <style>body{margin:0;padding:0;}redoc{height:100vh;}</style>
+        <script src=\"https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js\"></script>
+      </head>
+      <body>
+        <redoc spec-url=\"{{ openapi_url }}\"></redoc>
+      </body>
+    </html>
+    """
+
+    @app.get("/docs")
+    def swagger_docs():
+        return render_template_string(swagger_template, openapi_url=url_for("api_v1.specs"))
+
+    @app.get("/redoc")
+    def redoc_docs():
+        return render_template_string(redoc_template, openapi_url=url_for("api_v1.specs"))
 
     @app.get("/healthz")
     def healthz():
