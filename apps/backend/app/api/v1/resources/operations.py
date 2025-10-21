@@ -36,9 +36,10 @@ from flask_restx import Namespace, Resource, fields
 from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
-from ...models import Devices
+from app.models import Devices
 from ..utils import get_pagination  # reserved for future GETs
-from ...services import operations as ops_service
+from app.services import jobs as jobs_service
+from app.services import operations as ops_service
 
 # ---------------------------------------------------------------------------
 # Namespace
@@ -202,18 +203,67 @@ class OperationExecute(Resource):
             return {"error": "not_found", "missing_device_ids": missing}, HTTPStatus.NOT_FOUND
 
         if params["run_async"]:
-            # Stub: hand off to future queue and return job token
-            job = {
-                "kind": "operation",
-                "submitted_by": params["requested_by"],
+            idempotency_key = request.headers.get("Idempotency-Key")
+            owner_id = None
+            if params["requested_by"] and str(params["requested_by"]).isdigit():
+                owner_id = int(params["requested_by"])
+
+            job_payload = {
                 "scope": {"device_ids": device_ids},
-                "op": {"op_type": params["op_type"], "template_id": params["template_id"]},
+                "operation": {
+                    "op_type": params["op_type"],
+                    "template_id": params["template_id"],
+                },
+                "options": {
+                    "dry_run": params["dry_run"],
+                    "timeout_sec": params["timeout_sec"],
+                    "stop_on_error": params["stop_on_error"],
+                },
+                "variables": params["variables"],
             }
-            return {
-                "status": "queued",
-                "enqueued_at": datetime.utcnow().isoformat() + "Z",
-                "job": job,
-            }, HTTPStatus.ACCEPTED
+
+            task_specs = [
+                jobs_service.JobTaskSpec(
+                    task_type="operation.device",
+                    sequence=index,
+                    device_id=device_id,
+                    parameters={
+                        "op_type": params["op_type"],
+                        "template_id": params["template_id"],
+                        "variables": params["variables"],
+                        "dry_run": params["dry_run"],
+                        "timeout_sec": params["timeout_sec"],
+                        "stop_on_error": params["stop_on_error"],
+                    },
+                )
+                for index, device_id in enumerate(device_ids)
+            ]
+
+            job, created = jobs_service.enqueue_job(
+                job_type="operation.execute",
+                owner_id=owner_id,
+                parameters=job_payload,
+                idempotency_key=idempotency_key,
+                tasks=task_specs,
+                event_message="operation execution queued",
+                event_context={
+                    "device_count": len(device_ids),
+                    "op_type": params["op_type"],
+                    "template_id": params["template_id"],
+                    "requested_by": params["requested_by"],
+                },
+            )
+
+            status = HTTPStatus.ACCEPTED if created else HTTPStatus.OK
+            return (
+                {
+                    "status": "queued",
+                    "enqueued_at": job.created_at.isoformat(),
+                    "job": jobs_service.serialize_job(job),
+                },
+                status,
+                {"Location": jobs_service.job_location(job)},
+            )
 
         # Synchronous execution path
         started = datetime.utcnow()
@@ -280,17 +330,64 @@ class OperationDevice(Resource):
             return {"error": "not_found", "missing_device_ids": [device_id]}, HTTPStatus.NOT_FOUND
 
         if params["run_async"]:
-            job = {
-                "kind": "operation",
-                "submitted_by": params["requested_by"],
+            idempotency_key = request.headers.get("Idempotency-Key")
+            owner_id = None
+            if params["requested_by"] and str(params["requested_by"]).isdigit():
+                owner_id = int(params["requested_by"])
+
+            job_payload = {
                 "scope": {"device_ids": device_ids},
-                "op": {"op_type": params["op_type"], "template_id": params["template_id"]},
+                "operation": {
+                    "op_type": params["op_type"],
+                    "template_id": params["template_id"],
+                },
+                "options": {
+                    "dry_run": params["dry_run"],
+                    "timeout_sec": params["timeout_sec"],
+                    "stop_on_error": params["stop_on_error"],
+                },
+                "variables": params["variables"],
             }
-            return {
-                "status": "queued",
-                "enqueued_at": datetime.utcnow().isoformat() + "Z",
-                "job": job,
-            }, HTTPStatus.ACCEPTED
+
+            job, created = jobs_service.enqueue_job(
+                job_type="operation.execute",
+                owner_id=owner_id,
+                parameters=job_payload,
+                idempotency_key=idempotency_key,
+                tasks=[
+                    jobs_service.JobTaskSpec(
+                        task_type="operation.device",
+                        sequence=0,
+                        device_id=device_ids[0],
+                        parameters={
+                            "op_type": params["op_type"],
+                            "template_id": params["template_id"],
+                            "variables": params["variables"],
+                            "dry_run": params["dry_run"],
+                            "timeout_sec": params["timeout_sec"],
+                            "stop_on_error": params["stop_on_error"],
+                        },
+                    )
+                ],
+                event_message="operation execution queued",
+                event_context={
+                    "device_count": 1,
+                    "op_type": params["op_type"],
+                    "template_id": params["template_id"],
+                    "requested_by": params["requested_by"],
+                },
+            )
+
+            status = HTTPStatus.ACCEPTED if created else HTTPStatus.OK
+            return (
+                {
+                    "status": "queued",
+                    "enqueued_at": job.created_at.isoformat(),
+                    "job": jobs_service.serialize_job(job),
+                },
+                status,
+                {"Location": jobs_service.job_location(job)},
+            )
 
         started = datetime.utcnow()
         summary, per_host = ops_service.execute_operation_sync(

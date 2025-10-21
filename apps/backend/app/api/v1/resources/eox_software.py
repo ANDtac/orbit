@@ -45,8 +45,8 @@ from flask_restx import Namespace, Resource, fields
 from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required
 
-from ...extensions import db
-from ...models import SoftwareLifecycle, Platforms
+from app.extensions import db
+from app.models import SoftwareLifecycle, Platforms
 
 ns = Namespace("eox_software", description="Software lifecycle per OS/version matcher")
 

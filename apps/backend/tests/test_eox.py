@@ -47,39 +47,39 @@ def test_eox_hardware_crud_and_filters(client, auth_headers):
         "notes": "initial",
     }
     # Create
-    r = client.post("/eox_hardware", json=payload, headers=headers)
+    r = client.post("/api/v1/eox_hardware", json=payload, headers=headers)
     assert r.status_code == 201, r.data
     row = r.get_json()
     rid = row["id"]
     assert row["product_model_id"] == pm.id
 
     # List (filter by product_model_id)
-    r = client.get(f"/eox_hardware?product_model_id={pm.id}", headers=headers)
+    r = client.get(f"/api/v1/eox_hardware?product_model_id={pm.id}", headers=headers)
     assert r.status_code == 200
     rows = r.get_json()
     assert any(x["id"] == rid for x in rows)
 
     # List (past=eos)
-    r = client.get("/eox_hardware?past=eos", headers=headers)
+    r = client.get("/api/v1/eox_hardware?past=eos", headers=headers)
     assert r.status_code == 200
     assert any(x["id"] == rid for x in r.get_json())
 
     # Get
-    r = client.get(f"/eox_hardware/{rid}", headers=headers)
+    r = client.get(f"/api/v1/eox_hardware/{rid}", headers=headers)
     assert r.status_code == 200
     assert r.get_json()["id"] == rid
 
     # Patch
-    r = client.patch(f"/eox_hardware/{rid}", json={"notes": "updated"}, headers=headers)
+    r = client.patch(f"/api/v1/eox_hardware/{rid}", json={"notes": "updated"}, headers=headers)
     assert r.status_code == 200
     assert r.get_json()["notes"] == "updated"
 
     # Delete
-    r = client.delete(f"/eox_hardware/{rid}", headers=headers)
+    r = client.delete(f"/api/v1/eox_hardware/{rid}", headers=headers)
     assert r.status_code == 200
 
     # Ensure gone
-    r = client.get(f"/eox_hardware/{rid}", headers=headers)
+    r = client.get(f"/api/v1/eox_hardware/{rid}", headers=headers)
     assert r.status_code == 404
 
 
@@ -105,31 +105,31 @@ def test_eox_software_crud_and_list(client, auth_headers, create_platform):
     }
 
     # Create
-    r = client.post("/eox_software", json=payload, headers=headers)
+    r = client.post("/api/v1/eox_software", json=payload, headers=headers)
     assert r.status_code == 201, r.data
     row = r.get_json()
     rid = row["id"]
 
     # List (filter by os_name)
-    r = client.get("/eox_software?os_name=iosxe", headers=headers)
+    r = client.get("/api/v1/eox_software?os_name=iosxe", headers=headers)
     assert r.status_code == 200
     assert any(x["id"] == rid for x in r.get_json())
 
     # Get
-    r = client.get(f"/eox_software/{rid}", headers=headers)
+    r = client.get(f"/api/v1/eox_software/{rid}", headers=headers)
     assert r.status_code == 200
 
     # Patch
-    r = client.patch(f"/eox_software/{rid}", json={"notes": "updated"}, headers=headers)
+    r = client.patch(f"/api/v1/eox_software/{rid}", json={"notes": "updated"}, headers=headers)
     assert r.status_code == 200
     assert r.get_json()["notes"] == "updated"
 
     # Delete
-    r = client.delete(f"/eox_software/{rid}", headers=headers)
+    r = client.delete(f"/api/v1/eox_software/{rid}", headers=headers)
     assert r.status_code == 200
 
     # Ensure gone
-    r = client.get(f"/eox_software/{rid}", headers=headers)
+    r = client.get(f"/api/v1/eox_software/{rid}", headers=headers)
     assert r.status_code == 404
 
 
@@ -163,7 +163,7 @@ def test_eox_devices_query_past_and_due(client, auth_headers, create_device, cre
     # Create hardware lifecycle with LAST DAY OF SUPPORT in the past
     past_ldos = _iso(datetime.now(timezone.utc) - timedelta(days=7))
     r = client.post(
-        "/eox_hardware",
+        "/api/v1/eox_hardware",
         json={"product_model_id": pm.id, "last_day_of_support_date": past_ldos},
         headers=headers,
     )
@@ -172,7 +172,7 @@ def test_eox_devices_query_past_and_due(client, auth_headers, create_device, cre
     # Create software lifecycle with LAST DAY OF SUPPORT due soon (e.g., 30 days)
     soon_ldos = _iso(datetime.now(timezone.utc) + timedelta(days=30))
     r = client.post(
-        "/eox_software",
+        "/api/v1/eox_software",
         json={
             "platform_id": plat.id,
             "os_name": "iosxe",
@@ -185,14 +185,14 @@ def test_eox_devices_query_past_and_due(client, auth_headers, create_device, cre
     assert r.status_code == 201
 
     # Query: milestone=ldos, past=true -> should include device because hardware LDOS is past
-    r = client.get("/eox/devices?milestone=ldos&past=true", headers=headers)
+    r = client.get("/api/v1/eox/devices?milestone=ldos&past=true", headers=headers)
     assert r.status_code == 200
     items = r.get_json()
     ids = {it["device_id"] for it in items}
     assert dev.id in ids
 
     # Query: milestone=ldos, past=false, within_days=60 -> should include device due soon (software)
-    r = client.get("/eox/devices?milestone=ldos&past=false&within_days=60", headers=headers)
+    r = client.get("/api/v1/eox/devices?milestone=ldos&past=false&within_days=60", headers=headers)
     assert r.status_code == 200
     items = r.get_json()
     ids = {it["device_id"] for it in items}

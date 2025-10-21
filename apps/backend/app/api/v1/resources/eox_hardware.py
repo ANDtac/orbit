@@ -48,8 +48,8 @@ from flask_restx import Namespace, Resource, fields
 from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required
 
-from ...extensions import db
-from ...models import HardwareLifecycle, ProductModels
+from app.extensions import db
+from app.models import HardwareLifecycle, ProductModels
 
 ns = Namespace("eox_hardware", description="Hardware lifecycle per product model")
 

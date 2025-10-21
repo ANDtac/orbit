@@ -21,11 +21,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/auth/login",
+              "raw": "{{baseUrl}}/api/v1/auth/login",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v1",
                 "auth",
                 "login"
               ]
@@ -58,11 +60,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/auth/refresh",
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v1",
                 "auth",
                 "refresh"
               ]
@@ -86,11 +90,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/auth/logout",
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v1",
                 "auth",
                 "logout"
               ]
@@ -111,11 +117,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/auth/me",
+              "raw": "{{baseUrl}}/api/v1/auth/me",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v1",
                 "auth",
                 "me"
               ]
@@ -141,12 +149,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/devices",
+              "raw": "{{baseUrl}}/api/v1/devices",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
+                "v1",
                 "devices"
               ],
               "query": [
@@ -193,12 +202,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/devices",
+              "raw": "{{baseUrl}}/api/v1/devices",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
+                "v1",
                 "devices"
               ]
             },
@@ -227,12 +237,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/devices/1",
+              "raw": "{{baseUrl}}/api/v1/devices/1",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
+                "v1",
                 "devices",
                 "1"
               ]
@@ -258,12 +269,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/devices/1",
+              "raw": "{{baseUrl}}/api/v1/devices/1",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
+                "v1",
                 "devices",
                 "1"
               ]
@@ -293,12 +305,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/devices/1",
+              "raw": "{{baseUrl}}/api/v1/devices/1",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
+                "v1",
                 "devices",
                 "1"
               ]
@@ -334,7 +347,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "device-data",
                 "import"
               ]
@@ -369,7 +382,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "device-data",
                 "export"
               ],
@@ -412,7 +425,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "platforms"
               ],
               "query": [
@@ -456,7 +469,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "platforms"
               ]
             },
@@ -490,7 +503,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "platforms",
                 "1"
               ]
@@ -521,7 +534,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "platforms",
                 "1"
               ]
@@ -556,7 +569,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "platforms",
                 "1"
               ]
@@ -587,7 +600,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "credential_profiles"
               ],
               "query": [
@@ -631,7 +644,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "credential_profiles"
               ]
             },
@@ -665,7 +678,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "credential_profiles",
                 "1"
               ]
@@ -696,7 +709,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "credential_profiles",
                 "1"
               ]
@@ -731,7 +744,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "credential_profiles",
                 "1"
               ]
@@ -762,7 +775,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "inventory_groups"
               ],
               "query": [
@@ -806,7 +819,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "inventory_groups"
               ]
             },
@@ -840,7 +853,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "inventory_groups",
                 "1"
               ]
@@ -871,7 +884,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "inventory_groups",
                 "1"
               ]
@@ -906,7 +919,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "inventory_groups",
                 "1"
               ]
@@ -937,7 +950,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "inventory_groups",
                 "1",
                 "assign"
@@ -973,7 +986,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "inventory_groups",
                 "1",
                 "devices"
@@ -1005,7 +1018,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "interfaces"
               ],
               "query": [
@@ -1049,7 +1062,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "interfaces"
               ]
             },
@@ -1083,7 +1096,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "interfaces",
                 "1"
               ]
@@ -1114,7 +1127,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "interfaces",
                 "1"
               ]
@@ -1149,7 +1162,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "interfaces",
                 "1"
               ]
@@ -1180,7 +1193,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "ip_addresses"
               ],
               "query": [
@@ -1224,7 +1237,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "ip_addresses"
               ]
             },
@@ -1258,7 +1271,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "ip_addresses",
                 "1"
               ]
@@ -1289,7 +1302,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "ip_addresses",
                 "1"
               ]
@@ -1324,7 +1337,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "ip_addresses",
                 "1"
               ]
@@ -1355,7 +1368,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "snapshots"
               ],
               "query": [
@@ -1399,7 +1412,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "snapshots"
               ]
             },
@@ -1433,7 +1446,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "snapshots",
                 "1"
               ]
@@ -1464,7 +1477,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "snapshots",
                 "1"
               ]
@@ -1499,7 +1512,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "snapshots",
                 "1"
               ]
@@ -1530,7 +1543,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "platform_operation_templates"
               ],
               "query": [
@@ -1574,7 +1587,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "platform_operation_templates"
               ]
             },
@@ -1608,7 +1621,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "platform_operation_templates",
                 "1"
               ]
@@ -1639,7 +1652,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "platform_operation_templates",
                 "1"
               ]
@@ -1674,7 +1687,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "platform_operation_templates",
                 "1"
               ]
@@ -1705,7 +1718,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "compliance",
                 "policies"
               ],
@@ -1750,7 +1763,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "compliance",
                 "policies"
               ]
@@ -1785,7 +1798,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "compliance",
                 "policies",
                 "1"
@@ -1817,7 +1830,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "compliance",
                 "policies",
                 "1"
@@ -1853,7 +1866,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "compliance",
                 "policies",
                 "1"
@@ -1880,7 +1893,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "compliance",
                 "rules"
               ],
@@ -1925,7 +1938,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "compliance",
                 "rules"
               ]
@@ -1960,7 +1973,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "compliance",
                 "rules",
                 "1"
@@ -1992,7 +2005,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "compliance",
                 "rules",
                 "1"
@@ -2028,7 +2041,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "compliance",
                 "rules",
                 "1"
@@ -2055,7 +2068,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "compliance",
                 "results"
               ],
@@ -2104,7 +2117,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "compliance",
                 "evaluate"
               ]
@@ -2149,7 +2162,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "operations",
                 "execute"
               ]
@@ -2189,7 +2202,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "operations",
                 "devices",
                 "1",
@@ -2231,7 +2244,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "logs",
                 "requests"
               ],
@@ -2275,7 +2288,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "logs",
                 "requests",
                 "1"
@@ -2302,7 +2315,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "logs",
                 "errors"
               ],
@@ -2342,7 +2355,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "logs",
                 "errors",
                 "1"
@@ -2369,7 +2382,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "logs",
                 "events"
               ],
@@ -2414,7 +2427,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "eox_hardware"
               ],
               "query": [
@@ -2454,7 +2467,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "eox_hardware"
               ]
             },
@@ -2488,7 +2501,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "eox_hardware",
                 "1"
               ]
@@ -2519,7 +2532,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "eox_hardware",
                 "1"
               ]
@@ -2554,7 +2567,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "eox_hardware",
                 "1"
               ]
@@ -2585,7 +2598,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "eox_software"
               ],
               "query": [
@@ -2625,7 +2638,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "eox_software"
               ]
             },
@@ -2659,7 +2672,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "eox_software",
                 "1"
               ]
@@ -2690,7 +2703,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "eox_software",
                 "1"
               ]
@@ -2725,7 +2738,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "eox_software",
                 "1"
               ]
@@ -2756,7 +2769,7 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
+                "api/v1",
                 "eox",
                 "devices"
               ],

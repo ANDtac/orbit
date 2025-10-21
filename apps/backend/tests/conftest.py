@@ -15,13 +15,13 @@ Usage
 Import fixtures directly in your tests:
 
     def test_healthcheck(client):
-        resp = client.get("/api/docs")
+        resp = client.get("/docs")
         assert resp.status_code == 200
 
     def test_auth_flow(client, create_user, auth_headers):
         user = create_user("alice", "p@ssw0rd")
         hdrs = auth_headers("alice", "p@ssw0rd")
-        resp = client.get("/api/devices", headers=hdrs)
+        resp = client.get("/api/v1/devices", headers=hdrs)
         assert resp.status_code == 200
 """
 
@@ -178,7 +178,7 @@ def auth_passwords(app: Flask):
 
 
 @pytest.fixture(scope="function")
-def create_user(db) -> Callable[[str, str | None, bool], Users]:
+def create_user(db) -> Callable[[str, str | None, bool, list[str] | None], Users]:
     """
     Factory: create and persist a `Users` row.
 
@@ -192,8 +192,18 @@ def create_user(db) -> Callable[[str, str | None, bool], Users]:
         Function that accepts (username, optional password placeholder, is_active=True).
     """
 
-    def _factory(username: str, password: str | None = None, is_active: bool = True) -> Users:
-        u = Users(username=username, email=f"{username}@local", is_active=is_active)
+    def _factory(
+        username: str,
+        password: str | None = None,
+        is_active: bool = True,
+        roles: list[str] | None = None,
+    ) -> Users:
+        u = Users(
+            username=username,
+            email=f"{username}@local",
+            is_active=is_active,
+            roles=roles or ["network_admin"],
+        )
         _db.session.add(u)
         _db.session.commit()
         return u
@@ -315,7 +325,7 @@ def auth_tokens(
         # Ensure user exists
         auth_passwords.add(password)
         create_user(username, password)
-        resp = client.post("/auth/login", json={"username": username, "password": password})
+        resp = client.post("/api/v1/auth/login", json={"username": username, "password": password})
         assert resp.status_code == 200, f"login failed: {resp.status_code} {resp.data}"
         data = resp.get_json() or {}
         return data["access_token"], data["refresh_token"]

@@ -44,7 +44,7 @@ name : str
 
 Security
 --------
-All endpoints require a valid JWT (see /auth/login).
+All endpoints require a valid JWT (see /api/v1/auth/login).
 
 Notes
 -----
@@ -59,8 +59,8 @@ from flask_restx import Namespace, Resource, fields
 from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required
 
-from ...extensions import db
-from ...models import PlatformOperationTemplates
+from app.extensions import db
+from app.models import PlatformOperationTemplates
 from ..utils import get_pagination, apply_sorting, paginate_query
 
 # ---------------------------------------------------------------------------

@@ -74,8 +74,8 @@ from flask_restx import Namespace, Resource, fields
 from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required
 
-from ...extensions import db
-from ...models import RequestLogs, ErrorLogs, AppEvents
+from app.extensions import db
+from app.models import RequestLogs, ErrorLogs, AppEvents
 from ..utils import get_pagination, apply_sorting, paginate_query
 
 # ---------------------------------------------------------------------------
