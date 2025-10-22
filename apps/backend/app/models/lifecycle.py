@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped
@@ -42,7 +42,7 @@ class HardwareLifecycle(UuidPkMixin, IdPkMixin, BaseModel):
     def is_past(self, milestone: str, as_of: datetime | None = None) -> bool:
         """Return ``True`` if the given milestone date is in the past."""
 
-        as_of = as_of or datetime.utcnow()
+        as_of = as_of or datetime.now(timezone.utc)
         field = {
             "eos": "end_of_sale_date",
             "eoswm": "end_of_software_maintenance_date",
@@ -64,8 +64,8 @@ class SoftwareLifecycle(UuidPkMixin, IdPkMixin, BaseModel):
         ForeignKey("platforms.id", ondelete="SET NULL"), index=True
     )
     os_name: Mapped[str] = mapped_column(CITEXT, index=True, nullable=False)
-    match_operator: Mapped[str] = mapped_column(CITEXT, nullable=False, default="eq")
     match_value: Mapped[str] = mapped_column(String, nullable=False)
+    match_operator: Mapped[str] = mapped_column(CITEXT, nullable=False, default="eq")
 
     end_of_software_maintenance_date: Mapped[datetime | None] = mapped_column(DateTime)
     end_of_security_fixes_date: Mapped[datetime | None] = mapped_column(DateTime)

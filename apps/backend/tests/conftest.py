@@ -28,11 +28,13 @@ Import fixtures directly in your tests:
 from __future__ import annotations
 
 import os
-from typing import Callable, Dict, Iterable, Tuple
+from collections.abc import Generator
+from typing import Callable
 
 import pytest
 from flask.testing import FlaskClient
 from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
 
 from app import create_app
 from app.extensions import db as _db
@@ -83,7 +85,7 @@ class TestConfig:
 # App / DB fixtures
 # -----------------------------------------------------------------------------
 @pytest.fixture(scope="function")
-def app() -> Flask:
+def app() -> Generator[Flask, None, None]:
     """
     Create a Flask app instance for a single test function.
 
@@ -98,12 +100,14 @@ def app() -> Flask:
     app = create_app(TestConfig)  # type: ignore[arg-type]
     ctx = app.app_context()
     ctx.push()
-    yield app
-    ctx.pop()
+    try:
+        yield app
+    finally:
+        ctx.pop()
 
 
 @pytest.fixture(scope="function")
-def db(app: Flask):
+def db(app: Flask) -> Generator[SQLAlchemy, None, None]:
     """
     Provide a fresh database schema for each test function.
 
@@ -284,7 +288,7 @@ def create_device(db, create_platform, create_inventory_group) -> Callable[..., 
             platform_id=overrides.pop("platform_id", platform.id),
             os_name=overrides.pop("os_name", "iosxe"),
             os_version=overrides.pop("os_version", "17.3.1"),
-            is_active=overrides.pop("is_active", True),
+            active=overrides.pop("is_active", True),
             **overrides,
         )
         _db.session.add(d)
@@ -306,7 +310,7 @@ def create_device(db, create_platform, create_inventory_group) -> Callable[..., 
 @pytest.fixture(scope="function")
 def auth_tokens(
     client: FlaskClient, create_user, auth_passwords
-) -> Callable[[str, str], Tuple[str, str]]:
+) -> Callable[[str, str], tuple[str, str]]:
     """
     Helper: obtain (access_token, refresh_token) for a username/password.
 
@@ -334,7 +338,7 @@ def auth_tokens(
 
 
 @pytest.fixture(scope="function")
-def auth_headers(auth_tokens) -> Callable[[str, str], Dict[str, str]]:
+def auth_headers(auth_tokens) -> Callable[[str, str], dict[str, str]]:
     """
     Helper: return Authorization header dictionary for test requests.
 
@@ -348,7 +352,7 @@ def auth_headers(auth_tokens) -> Callable[[str, str], Dict[str, str]]:
         Function that yields {"Authorization": "Bearer <access>"} for the user.
     """
 
-    def _hdrs(username: str = "admin", password: str = "admin") -> Dict[str, str]:
+    def _hdrs(username: str = "admin", password: str = "admin") -> dict[str, str]:
         access, _ = auth_tokens(username, password)
         return {"Authorization": f"Bearer {access}"}
 

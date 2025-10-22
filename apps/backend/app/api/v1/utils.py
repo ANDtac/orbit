@@ -18,7 +18,7 @@ import base64
 import json
 from functools import wraps
 from http import HTTPStatus
-from typing import Iterable, Tuple, Set, Optional, TypeVar, Any, cast, Dict, Callable
+from typing import Iterable, Set, Optional, TypeVar, Any, cast, Dict, Callable
 
 from flask import jsonify, request
 from flask_jwt_extended import get_jwt_identity

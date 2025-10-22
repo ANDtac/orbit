@@ -18,14 +18,13 @@ class Jobs(UuidPkMixin, IdPkMixin, TimestampMixin, OwnedByUserMixin, BaseModel):
 
     __tablename__ = "jobs"
 
-    name: Mapped[str | None] = mapped_column(String(255))
+    name: Mapped[str | None] = mapped_column(String(255), default=None)
     job_type: Mapped[str] = mapped_column(CITEXT, index=True, nullable=False)
+    status_detail: Mapped[str | None] = mapped_column(Text, default=None)
+    queue: Mapped[str | None] = mapped_column(CITEXT, index=True, default=None)
     status: Mapped[str] = mapped_column(CITEXT, default="pending", index=True, nullable=False)
-    status_detail: Mapped[str | None] = mapped_column(Text)
-
-    queue: Mapped[str | None] = mapped_column(CITEXT, index=True)
     priority: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
-    idempotency_key: Mapped[str | None] = mapped_column(String(64), unique=True, index=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(64), unique=True, index=True, default=None)
 
     scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, index=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
@@ -99,12 +98,12 @@ class JobTasks(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     __tablename__ = "job_tasks"
 
     job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id", ondelete="CASCADE"), index=True, nullable=False)
-    sequence: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     task_type: Mapped[str] = mapped_column(CITEXT, index=True, nullable=False)
+    sequence: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     status: Mapped[str] = mapped_column(CITEXT, default="pending", index=True, nullable=False)
 
-    target_type: Mapped[str | None] = mapped_column(CITEXT)
-    target_id: Mapped[int | None] = mapped_column(Integer)
+    target_type: Mapped[str | None] = mapped_column(CITEXT, default=None)
+    target_id: Mapped[int | None] = mapped_column(Integer, default=None)
     device_id: Mapped[int | None] = mapped_column(
         ForeignKey("devices.id", ondelete="SET NULL"), index=True, default=None
     )
@@ -122,7 +121,7 @@ class JobTasks(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     progress_total: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     progress_completed: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
-    idempotency_key: Mapped[str | None] = mapped_column(String(64), index=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(64), index=True, default=None)
 
     parameters: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     result: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)

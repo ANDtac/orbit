@@ -507,7 +507,7 @@ class DeviceConfigSnapshots(UuidPkMixin, TimestampMixin, BaseModel):
         ForeignKey("users.id", ondelete="SET NULL"), index=True, default=None
     )
     captured_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, index=True, nullable=False
+        DateTime, default=utcnow, index=True, nullable=False
     )
     source: Mapped[str | None] = mapped_column(CITEXT)
 
@@ -634,7 +634,7 @@ class DeviceConfigSnapshots(UuidPkMixin, TimestampMixin, BaseModel):
 
         snap = cls(
             device_id=device_id,
-            captured_at=datetime.utcnow(),
+            captured_at=utcnow(),
             content_sha256=content_sha,
             size_bytes=size,
             storage_inline=storage_inline,
@@ -679,7 +679,7 @@ class DeviceConfigDiffs(BaseModel):
         ForeignKey("device_config_snapshots.id", ondelete="CASCADE")
     )
     diff_text: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
 
     device = db.relationship("Devices")
     from_snapshot = db.relationship("DeviceConfigSnapshots", foreign_keys=[from_snapshot_id])

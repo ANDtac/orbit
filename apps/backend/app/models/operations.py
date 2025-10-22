@@ -44,8 +44,8 @@ class PlatformOperationTemplates(UuidPkMixin, IdPkMixin, TimestampMixin, BaseMod
     description: Mapped[str | None] = mapped_column(Text)
     op_type: Mapped[str] = mapped_column(CITEXT, index=True, nullable=False)
     template: Mapped[str] = mapped_column(Text, nullable=False)
-    variables: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text)
+    variables: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
     platform = db.relationship("Platforms", backref="operation_templates")
 
