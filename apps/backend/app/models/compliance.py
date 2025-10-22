@@ -10,10 +10,10 @@ from sqlalchemy.orm import Mapped
 from ..extensions import db
 from .annotations import CITEXT, JSONB, mapped_column
 from .base import BaseModel
-from .mixins import IdPkMixin, TimestampMixin, UuidPkMixin
+from .mixins import DisableableMixin, IdPkMixin, TimestampMixin, UuidPkMixin
 
 
-class CompliancePolicies(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
+class CompliancePolicies(DisableableMixin, UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     """
     CompliancePolicies
     ------------------
@@ -24,7 +24,6 @@ class CompliancePolicies(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
 
     name: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     scope: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     rules: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
@@ -64,7 +63,7 @@ class ComplianceRules(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
         return f"<ComplianceRule {self.name} p={self.policy_id}>"
 
 
-class ComplianceResults(BaseModel):
+class ComplianceResults(TimestampMixin, BaseModel):
     """Time-series results of evaluating a device against a policy."""
 
     __tablename__ = "compliance_results"

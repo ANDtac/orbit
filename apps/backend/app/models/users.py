@@ -11,10 +11,10 @@ from sqlalchemy.orm import Mapped
 from ..extensions import db
 from .annotations import CITEXT, INET, JSONB, mapped_column
 from .base import BaseModel
-from .mixins import IdPkMixin, TimestampMixin, UuidPkMixin
+from .mixins import DisableableMixin, IdPkMixin, TimestampMixin, UuidPkMixin
 
 
-class Users(UuidPkMixin, IdPkMixin, BaseModel):
+class Users(DisableableMixin, UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     """
     Users
     -----
@@ -31,7 +31,9 @@ class Users(UuidPkMixin, IdPkMixin, BaseModel):
     jwt_auth_active : bool
         Whether JWT auth is active for this user.
     is_active : bool
-        Application-level active flag for soft disabling accounts.
+        Derived active flag (False when ``disabled_at`` is set).
+    disabled_at : datetime | None
+        Timestamp when the account was disabled.
     date_joined : datetime
         UTC timestamp when the user registered.
     last_login_at : datetime | None
@@ -69,7 +71,6 @@ class Users(UuidPkMixin, IdPkMixin, BaseModel):
     email: Mapped[str | None] = mapped_column(CITEXT, unique=True, index=True)
     roles: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
     jwt_auth_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     date_joined: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
