@@ -12,10 +12,10 @@ from sqlalchemy.orm import Mapped, validates
 from ..extensions import db
 from .annotations import CITEXT, JSONB, mapped_column
 from .base import BaseModel
-from .mixins import IdPkMixin, TimestampMixin, UuidPkMixin
+from .mixins import DisableableMixin, IdPkMixin, TimestampMixin, UuidPkMixin
 
 
-class Manufacturers(UuidPkMixin, IdPkMixin, BaseModel):
+class Manufacturers(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     """
     Manufacturers
     -------------
@@ -53,7 +53,7 @@ class Manufacturers(UuidPkMixin, IdPkMixin, BaseModel):
         return inst
 
 
-class DeviceTypes(UuidPkMixin, IdPkMixin, BaseModel):
+class DeviceTypes(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     """
     DeviceTypes
     -----------
@@ -75,7 +75,7 @@ class DeviceTypes(UuidPkMixin, IdPkMixin, BaseModel):
         return f"<DeviceType {self.name}>"
 
 
-class ProductModels(UuidPkMixin, IdPkMixin, BaseModel):
+class ProductModels(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     """
     ProductModels
     -------------
@@ -128,7 +128,7 @@ class ProductModels(UuidPkMixin, IdPkMixin, BaseModel):
         return inst
 
 
-class Platforms(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
+class Platforms(DisableableMixin, UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     """
     Platforms
     ---------
@@ -197,8 +197,7 @@ class Platforms(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     ansible_connection: Mapped[str | None] = mapped_column(CITEXT, default=None)
     ansible_vars: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-
+    
     def __repr__(self) -> str:
         return f"<Platform {self.slug}>"
 
@@ -241,7 +240,7 @@ class Platforms(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
         return cls(platform=self)
 
 
-class CredentialProfiles(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
+class CredentialProfiles(DisableableMixin, UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     """
     CredentialProfiles
     ------------------
@@ -264,7 +263,9 @@ class CredentialProfiles(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     params : dict
         Provider/driver specific extras (region, kv_version, etc.).
     is_active : bool
-        Soft toggle to disable a profile without deleting it.
+        Derived active flag (False when ``disabled_at`` is set).
+    disabled_at : datetime | None
+        Timestamp when the profile was disabled.
     created_at : datetime
     updated_at : datetime
 
@@ -282,8 +283,7 @@ class CredentialProfiles(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     secret_ref: Mapped[str | None] = mapped_column(String)
     secret_metadata: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     params: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-
+    
     def __repr__(self) -> str:
         return f"<CredProfile {self.name}:{self.auth_type}>"
 
@@ -303,7 +303,7 @@ class CredentialProfiles(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
         return inst
 
 
-class InventoryGroups(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
+class InventoryGroups(DisableableMixin, UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     """
     InventoryGroups
     ---------------
@@ -320,7 +320,9 @@ class InventoryGroups(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     ansible_vars : dict
         Group-level Ansible vars (optional).
     is_active : bool
-        Soft enable/disable flag.
+        Derived active flag (False when ``disabled_at`` is set).
+    disabled_at : datetime | None
+        Timestamp when the group was disabled.
     created_at : datetime
     updated_at : datetime
 
@@ -337,7 +339,6 @@ class InventoryGroups(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     description: Mapped[str | None] = mapped_column(Text)
     nornir_data: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     ansible_vars: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_dynamic: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     definition: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     evaluation_scope: Mapped[str | None] = mapped_column(CITEXT)
@@ -348,7 +349,7 @@ class InventoryGroups(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
         return f"<InventoryGroup {self.slug}>"
 
     __table_args__ = (
-        Index("ix_inventory_groups_dynamic", "is_dynamic", "is_active"),
+        Index("ix_inventory_groups_dynamic", "is_dynamic", "disabled_at"),
     )
 
     def __init__(self, **kwargs: Any):
@@ -372,7 +373,7 @@ class InventoryGroups(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
         return value
 
 
-class DeviceInventoryGroups(BaseModel):
+class DeviceInventoryGroups(TimestampMixin, BaseModel):
     """
     DeviceInventoryGroups
     ---------------------

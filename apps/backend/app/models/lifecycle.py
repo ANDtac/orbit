@@ -10,10 +10,10 @@ from sqlalchemy.orm import Mapped
 from ..extensions import db
 from .annotations import CITEXT, mapped_column
 from .base import BaseModel
-from .mixins import IdPkMixin, UuidPkMixin
+from .mixins import IdPkMixin, TimestampMixin, UuidPkMixin
 
 
-class HardwareLifecycle(UuidPkMixin, IdPkMixin, BaseModel):
+class HardwareLifecycle(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     """
     HardwareLifecycle
     -----------------
@@ -55,7 +55,7 @@ class HardwareLifecycle(UuidPkMixin, IdPkMixin, BaseModel):
         return bool(dt and dt < as_of)
 
 
-class SoftwareLifecycle(UuidPkMixin, IdPkMixin, BaseModel):
+class SoftwareLifecycle(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     """End-of-life milestones for software releases."""
 
     __tablename__ = "software_lifecycle"

@@ -25,11 +25,11 @@ from sqlalchemy.orm import Mapped
 from ..extensions import db
 from .annotations import CITEXT, INET, JSONB, mapped_column, utcnow
 from .base import BaseModel
-from .mixins import IdPkMixin, TimestampMixin, UuidPkMixin
+from .mixins import DisableableMixin, IdPkMixin, TimestampMixin, UuidPkMixin
 from .inventory import DeviceInventoryGroups, Platforms
 
 
-class Devices(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
+class Devices(DisableableMixin, UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     """
     Devices
     -------
@@ -57,7 +57,10 @@ class Devices(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     created_at : datetime
     updated_at : datetime
     last_seen_at : datetime | None
-    active : bool
+    is_active : bool
+        Derived active flag (False when ``disabled_at`` is set).
+    disabled_at : datetime | None
+        Timestamp when the device was disabled.
     platform_id : int | None
         FK to Platforms.
     credential_profile_id : int | None
@@ -124,7 +127,6 @@ class Devices(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
 
     # Lifecycle
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
-    active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Automation links
     platform_id: Mapped[int | None] = mapped_column(
@@ -194,16 +196,6 @@ class Devices(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
         return f"<Device {self.name or self.fqdn or self.id}>"
 
     @property
-    def is_active(self) -> bool:
-        """Alias the `active` column to `is_active` for API compatibility."""
-
-        return bool(self.active)
-
-    @is_active.setter
-    def is_active(self, value: bool) -> None:
-        self.active = bool(value)
-
-    @property
     def inventory_group_id(self) -> int | None:
         """Return the first associated inventory group id if present."""
 
@@ -263,7 +255,7 @@ class Devices(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
         return cls.query.filter_by(mgmt_ipv4=ipv4).first()
 
 
-class PhysicalDeviceInfos(BaseModel):
+class PhysicalDeviceInfos(TimestampMixin, BaseModel):
     """
     PhysicalDeviceInfos
     -------------------
@@ -290,7 +282,7 @@ class PhysicalDeviceInfos(BaseModel):
     device = db.relationship("Devices", back_populates="physical_info")
 
 
-class VirtualInstanceInfos(BaseModel):
+class VirtualInstanceInfos(TimestampMixin, BaseModel):
     """
     VirtualInstanceInfos
     --------------------
@@ -435,7 +427,7 @@ class IPAddresses(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
         return inst
 
 
-class InterfaceIPAddresses(BaseModel):
+class InterfaceIPAddresses(TimestampMixin, BaseModel):
     """
     InterfaceIPAddresses
     --------------------
@@ -652,7 +644,7 @@ class DeviceConfigSnapshots(UuidPkMixin, TimestampMixin, BaseModel):
         return snap
 
 
-class DeviceConfigDiffs(BaseModel):
+class DeviceConfigDiffs(TimestampMixin, BaseModel):
     """
     DeviceConfigDiffs
     -----------------
@@ -679,7 +671,6 @@ class DeviceConfigDiffs(BaseModel):
         ForeignKey("device_config_snapshots.id", ondelete="CASCADE")
     )
     diff_text: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
 
     device = db.relationship("Devices")
     from_snapshot = db.relationship("DeviceConfigSnapshots", foreign_keys=[from_snapshot_id])
@@ -788,7 +779,7 @@ class DeviceHealthSnapshots(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     )
 
 
-class DeviceProbeTemplates(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
+class DeviceProbeTemplates(DisableableMixin, UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     """Reusable probe definitions for health checks and diagnostics."""
 
     __tablename__ = "device_probe_templates"
@@ -796,11 +787,14 @@ class DeviceProbeTemplates(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     slug: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     probe_type: Mapped[str] = mapped_column(CITEXT, nullable=False)
+    is_active : bool
+        Derived active flag (False when ``disabled_at`` is set).
+    disabled_at : datetime | None
+        Timestamp when the template was disabled.
     description: Mapped[str | None] = mapped_column(Text)
     timeout_seconds: Mapped[int] = mapped_column(Integer, default=30, nullable=False)
     config: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     expected_outcome: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     executions = db.relationship("DeviceProbeExecutions", back_populates="template")
 

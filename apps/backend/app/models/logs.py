@@ -13,7 +13,7 @@ from .base import BaseModel
 from .mixins import IdPkMixin, TimestampMixin, UuidPkMixin
 
 
-class RequestLogs(UuidPkMixin, IdPkMixin, BaseModel):
+class RequestLogs(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     """
     RequestLogs
     -----------
@@ -60,7 +60,7 @@ class RequestLogs(UuidPkMixin, IdPkMixin, BaseModel):
     )
 
 
-class ErrorLogs(UuidPkMixin, IdPkMixin, BaseModel):
+class ErrorLogs(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     """Application errors/exceptions."""
 
     __tablename__ = "error_logs"
@@ -80,7 +80,7 @@ class ErrorLogs(UuidPkMixin, IdPkMixin, BaseModel):
     context: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
 
-class AppEvents(UuidPkMixin, IdPkMixin, BaseModel):
+class AppEvents(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     """General runtime/system events (startup, config chosen, job notes)."""
 
     __tablename__ = "app_events"

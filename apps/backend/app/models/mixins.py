@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Integer
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .annotations import id_pk_column, utcnow, uuid_pk_column
@@ -32,6 +33,53 @@ class SoftDeleteMixin:
         """Return a SQL expression matching non-deleted rows."""
 
         return cls.deleted_at.is_(None)
+
+
+class DisableableMixin:
+    """Add ``disabled_at`` tracking with convenience accessors."""
+
+    disabled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=None, nullable=True, index=True
+    )
+
+    @hybrid_property
+    def is_disabled(self) -> bool:
+        """Return ``True`` when the row has been disabled."""
+
+        return self.disabled_at is not None
+
+    @is_disabled.expression
+    def is_disabled(cls):
+        return cls.disabled_at.is_not(None)
+
+    @hybrid_property
+    def is_active(self) -> bool:
+        """Return ``True`` when the row is currently active."""
+
+        return self.disabled_at is None
+
+    @is_active.expression
+    def is_active(cls):
+        return cls.disabled_at.is_(None)
+
+    @is_active.setter
+    def is_active(self, value: bool | None) -> None:
+        """Set the active flag; ``False`` stamps ``disabled_at``."""
+
+        if value in (None, True):
+            self.disabled_at = None
+        else:
+            self.disabled_at = self.disabled_at or utcnow()
+
+    def disable(self, *, at: datetime | None = None) -> None:
+        """Mark the row as disabled at ``at`` (or now)."""
+
+        self.disabled_at = at or utcnow()
+
+    def enable(self) -> None:
+        """Mark the row as active."""
+
+        self.disabled_at = None
 
 
 class TenantMixin:
@@ -71,6 +119,7 @@ class OwnedByUserMixin:
 
 
 __all__ = [
+    "DisableableMixin",
     "IdPkMixin",
     "OwnedByUserMixin",
     "SoftDeleteMixin",
