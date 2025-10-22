@@ -5,6 +5,8 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
+from typing import Any
+
 from sqlalchemy import DateTime, ForeignKey, Integer
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column
@@ -49,8 +51,8 @@ class DisableableMixin:
         return self.disabled_at is not None
 
     @is_disabled.expression
-    def is_disabled(cls):
-        return cls.disabled_at.is_not(None)
+    def _is_disabled_expression(cls) -> Any:
+        return cls.disabled_at.isnot(None)  # type: ignore[attr-defined]
 
     @hybrid_property
     def is_active(self) -> bool:
@@ -59,8 +61,8 @@ class DisableableMixin:
         return self.disabled_at is None
 
     @is_active.expression
-    def is_active(cls):
-        return cls.disabled_at.is_(None)
+    def _is_active_expression(cls) -> Any:
+        return cls.disabled_at.is_(None)  # type: ignore[attr-defined]
 
     @is_active.setter
     def is_active(self, value: bool | None) -> None:

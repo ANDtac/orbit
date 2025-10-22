@@ -34,7 +34,7 @@ class SessionContext:
         self._session = get_session()
         return self._session
 
-    def __exit__(self, exc_type, exc, tb) -> None:
+    def __exit__(self, _exc_type, exc, _tb) -> None:
         # Flask-SQLAlchemy manages session lifecycle; just flush/rollback.
         session = getattr(self, "_session", None)
         if session is None:

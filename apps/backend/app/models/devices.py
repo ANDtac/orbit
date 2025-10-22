@@ -275,9 +275,9 @@ class PhysicalDeviceInfos(TimestampMixin, BaseModel):
     device_id: Mapped[int] = mapped_column(
         ForeignKey("devices.id", ondelete="CASCADE"), primary_key=True
     )
-    site: Mapped[str | None] = mapped_column(CITEXT)
-    rack: Mapped[str | None] = mapped_column(String)
-    position_u: Mapped[int | None] = mapped_column(Integer)
+    site: Mapped[str | None] = mapped_column(CITEXT, default=None)
+    rack: Mapped[str | None] = mapped_column(String, default=None)
+    position_u: Mapped[int | None] = mapped_column(Integer, default=None)
 
     device = db.relationship("Devices", back_populates="physical_info")
 
@@ -301,11 +301,11 @@ class VirtualInstanceInfos(TimestampMixin, BaseModel):
     device_id: Mapped[int] = mapped_column(
         ForeignKey("devices.id", ondelete="CASCADE"), primary_key=True
     )
-    hypervisor: Mapped[str | None] = mapped_column(CITEXT)
+    hypervisor: Mapped[str | None] = mapped_column(CITEXT, default=None)
     host_device_id: Mapped[int | None] = mapped_column(
-        ForeignKey("devices.id", ondelete="SET NULL")
+        ForeignKey("devices.id", ondelete="SET NULL"), default=None
     )
-    vm_uuid: Mapped[str | None] = mapped_column(String, index=True)
+    vm_uuid: Mapped[str | None] = mapped_column(String, index=True, default=None)
 
     device = db.relationship("Devices", foreign_keys=[device_id], back_populates="virtual_info")
     host_device = db.relationship("Devices", foreign_keys=[host_device_id])
@@ -341,13 +341,13 @@ class Interfaces(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
 
     device_id: Mapped[int] = mapped_column(ForeignKey("devices.id", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
-    description: Mapped[str | None] = mapped_column(String)
-    mac_address: Mapped[str | None] = mapped_column(String, index=True)
-    type: Mapped[str | None] = mapped_column(CITEXT)
-    speed_mbps: Mapped[int | None] = mapped_column(Integer)
+    description: Mapped[str | None] = mapped_column(String, default=None)
+    mac_address: Mapped[str | None] = mapped_column(String, index=True, default=None)
+    type: Mapped[str | None] = mapped_column(CITEXT, default=None)
+    speed_mbps: Mapped[int | None] = mapped_column(Integer, default=None)
     is_up: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    mtu: Mapped[int | None] = mapped_column(Integer)
+    mtu: Mapped[int | None] = mapped_column(Integer, default=None)
     facts: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
     device = db.relationship("Devices", back_populates="interfaces")
@@ -395,16 +395,18 @@ class IPAddresses(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
 
     __tablename__ = "ip_addresses"
 
-    device_id: Mapped[int | None] = mapped_column(ForeignKey("devices.id", ondelete="SET NULL"), index=True)
+    device_id: Mapped[int | None] = mapped_column(
+        ForeignKey("devices.id", ondelete="SET NULL"), index=True, default=None
+    )
     interface_id: Mapped[int | None] = mapped_column(
-        ForeignKey("interfaces.id", ondelete="SET NULL"), index=True
+        ForeignKey("interfaces.id", ondelete="SET NULL"), index=True, default=None
     )
     address: Mapped[str] = mapped_column(INET, unique=True, nullable=False)
     prefix_length: Mapped[int] = mapped_column(Integer, nullable=False, default=32)
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    role: Mapped[str | None] = mapped_column(CITEXT)
-    vrf: Mapped[str | None] = mapped_column(CITEXT)
-    notes: Mapped[str | None] = mapped_column(Text)
+    role: Mapped[str | None] = mapped_column(CITEXT, default=None)
+    vrf: Mapped[str | None] = mapped_column(CITEXT, default=None)
+    notes: Mapped[str | None] = mapped_column(Text, default=None)
     meta: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
     device = db.relationship("Devices")
@@ -420,8 +422,7 @@ class IPAddresses(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
         inst = cls.query.filter_by(address=ipv4).first()
         if inst:
             return inst
-        inst = cls()
-        inst.address = ipv4
+        inst = cls(address=ipv4)
         db.session.add(inst)
         db.session.commit()
         return inst
@@ -452,8 +453,8 @@ class InterfaceIPAddresses(TimestampMixin, BaseModel):
         ForeignKey("ip_addresses.id", ondelete="CASCADE"), primary_key=True
     )
     primary: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    assigned_from: Mapped[datetime | None] = mapped_column(DateTime)
-    assigned_to: Mapped[datetime | None] = mapped_column(DateTime)
+    assigned_from: Mapped[datetime | None] = mapped_column(DateTime, default=None)
+    assigned_to: Mapped[datetime | None] = mapped_column(DateTime, default=None)
 
     interface = db.relationship("Interfaces", back_populates="ip_assignments")
     ip_address = db.relationship("IPAddresses")
@@ -501,23 +502,23 @@ class DeviceConfigSnapshots(UuidPkMixin, TimestampMixin, BaseModel):
     captured_at: Mapped[datetime] = mapped_column(
         DateTime, default=utcnow, index=True, nullable=False
     )
-    source: Mapped[str | None] = mapped_column(CITEXT)
+    source: Mapped[str | None] = mapped_column(CITEXT, default=None)
 
     content_sha256: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     storage_inline: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    content_inline_text: Mapped[str | None] = mapped_column(Text)
-    content_inline_bytes: Mapped[bytes | None] = mapped_column(LargeBinary)
-    object_url: Mapped[str | None] = mapped_column(String)
+    content_inline_text: Mapped[str | None] = mapped_column(Text, default=None)
+    content_inline_bytes: Mapped[bytes | None] = mapped_column(LargeBinary, default=None)
+    object_url: Mapped[str | None] = mapped_column(String, default=None)
 
     content_mime: Mapped[str] = mapped_column(String, default="text/plain", nullable=False)
-    content_encoding: Mapped[str | None] = mapped_column(String)
-    vendor_hint: Mapped[str | None] = mapped_column(CITEXT)
-    config_role: Mapped[str | None] = mapped_column(CITEXT)
+    content_encoding: Mapped[str | None] = mapped_column(String, default=None)
+    vendor_hint: Mapped[str | None] = mapped_column(CITEXT, default=None)
+    config_role: Mapped[str | None] = mapped_column(CITEXT, default=None)
 
     parsed_facts: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
-    notes: Mapped[str | None] = mapped_column(Text)
+    notes: Mapped[str | None] = mapped_column(Text, default=None)
 
     device = db.relationship("Devices", back_populates="config_snapshots")
     job = db.relationship("Jobs")
@@ -689,8 +690,8 @@ class DeviceTags(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
 
     slug: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    description: Mapped[str | None] = mapped_column(Text)
-    color: Mapped[str | None] = mapped_column(String(16))
+    description: Mapped[str | None] = mapped_column(Text, default=None)
+    color: Mapped[str | None] = mapped_column(String(16), default=None)
     attributes: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     is_protected: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
@@ -731,8 +732,8 @@ class DeviceTagAssignments(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     applied_by_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), index=True, default=None
     )
-    source: Mapped[str | None] = mapped_column(CITEXT)
-    notes: Mapped[str | None] = mapped_column(Text)
+    source: Mapped[str | None] = mapped_column(CITEXT, default=None)
+    notes: Mapped[str | None] = mapped_column(Text, default=None)
     attributes: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
     device = db.relationship("Devices", back_populates="tag_assignments", overlaps="tags,devices")
@@ -757,7 +758,7 @@ class DeviceHealthSnapshots(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
         DateTime(timezone=True), default=utcnow, index=True, nullable=False
     )
     status: Mapped[str] = mapped_column(CITEXT, default="unknown", index=True, nullable=False)
-    summary: Mapped[str | None] = mapped_column(Text)
+    summary: Mapped[str | None] = mapped_column(Text, default=None)
     metrics: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     checks: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     latency_ms: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
@@ -787,11 +788,7 @@ class DeviceProbeTemplates(DisableableMixin, UuidPkMixin, IdPkMixin, TimestampMi
     slug: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     probe_type: Mapped[str] = mapped_column(CITEXT, nullable=False)
-    is_active : bool
-        Derived active flag (False when ``disabled_at`` is set).
-    disabled_at : datetime | None
-        Timestamp when the template was disabled.
-    description: Mapped[str | None] = mapped_column(Text)
+    description: Mapped[str | None] = mapped_column(Text, default=None)
     timeout_seconds: Mapped[int] = mapped_column(Integer, default=30, nullable=False)
     config: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     expected_outcome: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)

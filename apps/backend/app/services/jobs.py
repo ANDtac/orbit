@@ -36,12 +36,10 @@ def ensure_internal_jobs_user() -> Users:
     if user:
         return user
 
-    user = Users(
-        username=INTERNAL_JOBS_USERNAME,
-        email=INTERNAL_JOBS_EMAIL,
-        jwt_auth_active=False,
-        is_active=True,
-    )
+    user = Users()
+    user.username = INTERNAL_JOBS_USERNAME
+    user.email = INTERNAL_JOBS_EMAIL
+    user.jwt_auth_active = False
     db.session.add(user)
     db.session.flush()
     current_app.logger.info("jobs_internal_user_created", extra={"extra": {"user_id": user.id}})
@@ -121,15 +119,16 @@ def create_job(
 
     owner = _coerce_owner(owner_id, run_as_internal)
 
-    job = Jobs(
-        job_type=job_type,
-        status=initial_status,
-        queue=queue,
-        priority=priority,
-        idempotency_key=idempotency_key,
-        parameters=parameters or {},
-        run_as_internal=bool(run_as_internal),
-    )
+    job = Jobs()
+    job.name = None
+    job.job_type = job_type
+    job.status_detail = None
+    job.status = initial_status
+    job.queue = queue
+    job.priority = priority
+    job.idempotency_key = idempotency_key
+    job.parameters = parameters or {}
+    job.run_as_internal = bool(run_as_internal)
     if owner is not None:
         job.owner_id = owner
 
@@ -140,28 +139,25 @@ def create_job(
     db.session.flush()
 
     for index, spec in enumerate(tasks or []):
-        task = JobTasks(
-            job_id=job.id,
-            sequence=spec.sequence if spec.sequence is not None else index,
-            task_type=spec.task_type,
-            status="pending",
-            target_type=spec.target_type,
-            target_id=spec.target_id,
-            device_id=spec.device_id,
-            group_id=spec.group_id,
-            parameters=spec.parameters or {},
-        )
+        task = JobTasks()
+        task.job_id = job.id
+        task.sequence = spec.sequence if spec.sequence is not None else index
+        task.task_type = spec.task_type
+        task.status = "pending"
+        task.target_type = spec.target_type
+        task.target_id = spec.target_id
+        task.device_id = spec.device_id
+        task.group_id = spec.group_id
+        task.parameters = spec.parameters or {}
         db.session.add(task)
 
-    db.session.add(
-        JobEvents(
-            job_id=job.id,
-            event_type=event_type,
-            message=event_message,
-            context=event_context or {},
-            occurred_at=utcnow(),
-        )
-    )
+    event = JobEvents()
+    event.job_id = job.id
+    event.event_type = event_type
+    event.message = event_message
+    event.context = event_context or {}
+    event.occurred_at = utcnow()
+    db.session.add(event)
 
     try:
         db.session.commit()

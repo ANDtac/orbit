@@ -46,8 +46,7 @@ class Manufacturers(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
         inst = cls.query.filter_by(name=name).first()
         if inst:
             return inst
-        inst = cls()
-        inst.name = name
+        inst = Manufacturers(name=name)
         db.session.add(inst)
         db.session.commit()
         return inst
@@ -69,7 +68,7 @@ class DeviceTypes(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     __tablename__ = "device_types"
 
     name: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False)
-    category: Mapped[str | None] = mapped_column(CITEXT)
+    category: Mapped[str | None] = mapped_column(CITEXT, default=None)
 
     def __repr__(self) -> str:
         return f"<DeviceType {self.name}>"
@@ -120,9 +119,7 @@ class ProductModels(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
         inst = cls.query.filter_by(manufacturer_id=mfg_id, name=name).first()
         if inst:
             return inst
-        inst = cls()
-        inst.manufacturer_id = mfg_id
-        inst.name = name
+        inst = ProductModels(manufacturer_id=mfg_id, name=name)
         db.session.add(inst)
         db.session.commit()
         return inst
@@ -196,7 +193,7 @@ class Platforms(DisableableMixin, UuidPkMixin, IdPkMixin, TimestampMixin, BaseMo
     ansible_network_os: Mapped[str | None] = mapped_column(CITEXT, default=None)
     ansible_connection: Mapped[str | None] = mapped_column(CITEXT, default=None)
     ansible_vars: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
-    notes: Mapped[str | None] = mapped_column(Text)
+    notes: Mapped[str | None] = mapped_column(Text, default=None)
     
     def __repr__(self) -> str:
         return f"<Platform {self.slug}>"
@@ -221,10 +218,7 @@ class Platforms(DisableableMixin, UuidPkMixin, IdPkMixin, TimestampMixin, BaseMo
             if changed:
                 db.session.commit()
             return inst
-        inst = cls()
-        inst.slug = slug
-        for k, v in kwargs.items():
-            setattr(inst, k, v)
+        inst = Platforms(slug=slug, **kwargs)
         db.session.add(inst)
         db.session.commit()
         return inst
@@ -279,8 +273,8 @@ class CredentialProfiles(DisableableMixin, UuidPkMixin, IdPkMixin, TimestampMixi
     name: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False, index=True)
     description: Mapped[str | None] = mapped_column(Text, default=None)
     auth_type: Mapped[str] = mapped_column(CITEXT, nullable=False, default="username_password")
-    username: Mapped[str | None] = mapped_column(CITEXT)
-    secret_ref: Mapped[str | None] = mapped_column(String)
+    username: Mapped[str | None] = mapped_column(CITEXT, default=None)
+    secret_ref: Mapped[str | None] = mapped_column(String, default=None)
     secret_metadata: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     params: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     
@@ -294,10 +288,7 @@ class CredentialProfiles(DisableableMixin, UuidPkMixin, IdPkMixin, TimestampMixi
         inst = cls.query.filter_by(name=name).first()
         if inst:
             return inst
-        inst = cls()
-        inst.name = name
-        for k, v in kwargs.items():
-            setattr(inst, k, v)
+        inst = CredentialProfiles(name=name, **kwargs)
         db.session.add(inst)
         db.session.commit()
         return inst
@@ -336,12 +327,12 @@ class InventoryGroups(DisableableMixin, UuidPkMixin, IdPkMixin, TimestampMixin, 
 
     slug: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False, index=True)
     name: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False)
-    description: Mapped[str | None] = mapped_column(Text)
+    description: Mapped[str | None] = mapped_column(Text, default=None)
     nornir_data: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     ansible_vars: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     is_dynamic: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     definition: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
-    evaluation_scope: Mapped[str | None] = mapped_column(CITEXT)
+    evaluation_scope: Mapped[str | None] = mapped_column(CITEXT, default=None)
     cached_device_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     last_evaluated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 

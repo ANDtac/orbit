@@ -5,6 +5,7 @@ from app.services import jobs as jobs_service
 
 
 def test_enqueue_job_creates_internal_user(db):
+    _ = db
     job, created = jobs_service.enqueue_job(
         job_type="maintenance.check",
         owner_id=None,
@@ -32,6 +33,7 @@ def test_enqueue_job_creates_internal_user(db):
 
 
 def test_enqueue_job_respects_idempotency(db, create_user):
+    _ = db
     user = create_user("jobber")
 
     task = jobs_service.JobTaskSpec(task_type="unit")
