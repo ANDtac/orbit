@@ -157,7 +157,6 @@ def _record_login_attempt(
         user_agent=_normalize_user_agent(),
         success=success,
         failure_reason=failure_reason if not success else None,
-        created_at=datetime.now(timezone.utc),
     )
     db.session.add(attempt)
     return attempt
@@ -340,7 +339,6 @@ def logout():
             JWTTokenBlocklist(
                 jwt_token=jti,
                 user_id=int(sub) if sub and str(sub).isdigit() else None,
-                created_at=datetime.now(timezone.utc),
                 reason="logout",
             )
         )

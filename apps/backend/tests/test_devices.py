@@ -12,8 +12,6 @@ Coverage
 
 from __future__ import annotations
 
-import itertools
-
 
 def test_devices_requires_auth(client):
     """

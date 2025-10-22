@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-import pytest
-
 from app.extensions import db
 from app.models import AuditLogEntries, DeviceHealthSnapshots, DeviceTagAssignments, Jobs, Users
 from app.services import jobs as jobs_service
@@ -70,6 +68,7 @@ def test_device_bulk_update_creates_job(client, auth_headers, create_device):
     assert resp.status_code == 202
     job_id = resp.get_json()["job"]["id"]
     job = Jobs.query.get(job_id)
+    assert job is not None
     assert job.job_type == "device.bulk_update"
     assert len(job.tasks) == 2
 

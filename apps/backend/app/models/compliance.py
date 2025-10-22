@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped
@@ -52,8 +52,8 @@ class ComplianceRules(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     )
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
-    severity: Mapped[str] = mapped_column(String(50), nullable=False, default="unknown")
     rule_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    severity: Mapped[str] = mapped_column(String(50), nullable=False, default="unknown")
     expression: Mapped[str] = mapped_column(Text, nullable=False)
     params: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
@@ -75,11 +75,15 @@ class ComplianceResults(BaseModel):
     rule_id: Mapped[int | None] = mapped_column(
         ForeignKey("compliance_rules.id", ondelete="SET NULL"), index=True
     )
+    is_compliant: Mapped[bool] = mapped_column(Boolean, nullable=False)
     evaluated_at: Mapped[datetime] = mapped_column(
-        "checked_at", DateTime, default=datetime.utcnow, index=True, nullable=False
+        "checked_at",
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        index=True,
+        nullable=False,
     )
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="unknown")
-    is_compliant: Mapped[bool] = mapped_column(Boolean, nullable=False)
     summary: Mapped[str | None] = mapped_column(Text)
     details: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     snapshot_id: Mapped[int | None] = mapped_column(

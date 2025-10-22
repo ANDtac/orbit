@@ -44,8 +44,10 @@ class CITEXT(TypeDecorator):
     cache_ok = True
 
     def load_dialect_impl(self, dialect):  # type: ignore[override]
-        if getattr(dialect, "name", None) == "postgresql" and PG_CITEXT is not None:
-            return dialect.type_descriptor(PG_CITEXT())
+        if getattr(dialect, "name", None) == "postgresql":
+            citext_type = PG_CITEXT
+            if citext_type is not None:
+                return dialect.type_descriptor(citext_type())
         return dialect.type_descriptor(String())
 
 
@@ -56,8 +58,10 @@ class INET(TypeDecorator):
     cache_ok = True
 
     def load_dialect_impl(self, dialect):  # type: ignore[override]
-        if getattr(dialect, "name", None) == "postgresql" and PG_INET is not None:
-            return dialect.type_descriptor(PG_INET())
+        if getattr(dialect, "name", None) == "postgresql":
+            inet_type = PG_INET
+            if inet_type is not None:
+                return dialect.type_descriptor(inet_type())
         return dialect.type_descriptor(String())
 
 
@@ -68,15 +72,20 @@ class JSONB(TypeDecorator):
     cache_ok = True
 
     def load_dialect_impl(self, dialect):  # type: ignore[override]
-        if getattr(dialect, "name", None) == "postgresql" and PG_JSONB is not None:
-            return dialect.type_descriptor(PG_JSONB())
+        if getattr(dialect, "name", None) == "postgresql":
+            jsonb_type = PG_JSONB
+            if jsonb_type is not None:
+                return dialect.type_descriptor(jsonb_type())
         return dialect.type_descriptor(JSON())
 
 
 if PG_UUID is not None:  # pragma: no cover - dependent on optional postgres extras
     def uuid_pk_column(**kwargs: Any) -> Any:
+        uuid_type = PG_UUID
+        if uuid_type is None:  # defensive guard for static analyzers
+            raise RuntimeError("PostgreSQL UUID type not available")
         return mapped_column(
-            PG_UUID(as_uuid=True), default=uuid.uuid4, nullable=False, unique=True, **kwargs
+            uuid_type(as_uuid=True), default=uuid.uuid4, nullable=False, unique=True, **kwargs
         )
 
 else:  # pragma: no cover - fallback for SQLite tests
