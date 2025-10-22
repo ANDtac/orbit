@@ -84,12 +84,14 @@ if PG_UUID is not None:  # pragma: no cover - dependent on optional postgres ext
         uuid_type = PG_UUID
         if uuid_type is None:  # defensive guard for static analyzers
             raise RuntimeError("PostgreSQL UUID type not available")
+        kwargs.setdefault("init", False)
         return mapped_column(
             uuid_type(as_uuid=True), default=uuid.uuid4, nullable=False, unique=True, **kwargs
         )
 
 else:  # pragma: no cover - fallback for SQLite tests
     def uuid_pk_column(**kwargs: Any) -> Any:
+        kwargs.setdefault("init", False)
         return mapped_column(
             String(36), default=lambda: str(uuid.uuid4()), nullable=False, unique=True, **kwargs
         )
