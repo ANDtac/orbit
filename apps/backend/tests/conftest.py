@@ -28,7 +28,7 @@ Import fixtures directly in your tests:
 from __future__ import annotations
 
 import os
-from collections.abc import Generator
+from collections.abc import Iterator
 from typing import Callable
 
 import pytest
@@ -85,7 +85,7 @@ class TestConfig:
 # App / DB fixtures
 # -----------------------------------------------------------------------------
 @pytest.fixture(scope="function")
-def app() -> Generator[Flask, None, None]:
+def app() -> Iterator[Flask]:
     """
     Create a Flask app instance for a single test function.
 
@@ -107,7 +107,7 @@ def app() -> Generator[Flask, None, None]:
 
 
 @pytest.fixture(scope="function")
-def db(app: Flask) -> Generator[SQLAlchemy, None, None]:
+def db(app: Flask) -> Iterator[SQLAlchemy]:
     """
     Provide a fresh database schema for each test function.
 
@@ -130,7 +130,7 @@ def db(app: Flask) -> Generator[SQLAlchemy, None, None]:
 
 
 @pytest.fixture(scope="function")
-def client(app: Flask, db) -> FlaskClient:
+def client(app: Flask, db: SQLAlchemy) -> FlaskClient:
     """
     HTTP test client bound to the application.
 
@@ -145,6 +145,7 @@ def client(app: Flask, db) -> FlaskClient:
     -------
     flask.testing.FlaskClient
     """
+    _ = db
     return app.test_client()
 
 
@@ -198,16 +199,17 @@ def create_user(db) -> Callable[[str, str | None, bool, list[str] | None], Users
 
     def _factory(
         username: str,
-        password: str | None = None,
+        _password: str | None = None,
         is_active: bool = True,
         roles: list[str] | None = None,
     ) -> Users:
         u = Users(
             username=username,
             email=f"{username}@local",
-            is_active=is_active,
             roles=roles or ["network_admin"],
         )
+        if not is_active:
+            u.is_active = False
         _db.session.add(u)
         _db.session.commit()
         return u
@@ -243,7 +245,7 @@ def create_platform(db) -> Callable[[str, str], Platforms]:
 
 
 @pytest.fixture(scope="function")
-def create_inventory_group(db) -> Callable[[str], InventoryGroups]:
+def create_inventory_group(db: SQLAlchemy) -> Callable[[str], InventoryGroups]:
     """
     Factory: create and persist an `InventoryGroups` row.
 
@@ -257,7 +259,8 @@ def create_inventory_group(db) -> Callable[[str], InventoryGroups]:
         existing = InventoryGroups.query.filter_by(name=name).first()
         if existing:
             return existing
-        g = InventoryGroups(name=name, is_active=True)
+        _ = db
+        g = InventoryGroups(name=name)
         _db.session.add(g)
         _db.session.commit()
         return g
@@ -266,7 +269,7 @@ def create_inventory_group(db) -> Callable[[str], InventoryGroups]:
 
 
 @pytest.fixture(scope="function")
-def create_device(db, create_platform, create_inventory_group) -> Callable[..., Devices]:
+def create_device(db: SQLAlchemy, create_platform, create_inventory_group) -> Callable[..., Devices]:
     """
     Factory: create and persist a `Devices` row.
 
@@ -280,6 +283,7 @@ def create_device(db, create_platform, create_inventory_group) -> Callable[..., 
         platform = overrides.pop("platform", None) or create_platform("cisco_xe", "ios")
         group = overrides.pop("group", None) or create_inventory_group("Default")
         inventory_group_id = overrides.pop("inventory_group_id", group.id)
+        is_active = overrides.pop("is_active", True)
         d = Devices(
             name=overrides.pop("name", "dev-1"),
             fqdn=overrides.pop("fqdn", "dev-1.local"),
@@ -288,9 +292,11 @@ def create_device(db, create_platform, create_inventory_group) -> Callable[..., 
             platform_id=overrides.pop("platform_id", platform.id),
             os_name=overrides.pop("os_name", "iosxe"),
             os_version=overrides.pop("os_version", "17.3.1"),
-            active=overrides.pop("is_active", True),
             **overrides,
         )
+        if not is_active:
+            d.is_active = False
+        _ = db
         _db.session.add(d)
         _db.session.commit()
         if inventory_group_id:

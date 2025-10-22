@@ -162,19 +162,19 @@ class Users(DisableableMixin, UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel)
         self.last_login_at = timestamp or datetime.now(timezone.utc)
 
     @classmethod
-    def get_by_id(cls, id: int) -> "Users" | None:
+    def get_by_id(cls, id: int) -> Users | None:
         """Return the user matching ``id`` if one exists."""
 
         return cls.query.get(id)
 
     @classmethod
-    def get_by_email(cls, email: str) -> "Users" | None:
+    def get_by_email(cls, email: str) -> Users | None:
         """Return the user matching ``email`` if one exists."""
 
         return cls.query.filter_by(email=email).one_or_none()
 
     @classmethod
-    def get_by_username(cls, username: str) -> "Users" | None:
+    def get_by_username(cls, username: str) -> Users | None:
         """Return the user matching ``username`` if one exists."""
 
         return cls.query.filter_by(username=username).one_or_none()
@@ -270,7 +270,7 @@ class LoginAttempts(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
     ip_address: Mapped[str | None] = mapped_column(INET)
     user_agent: Mapped[str | None] = mapped_column(Text)
     success: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    failure_reason: Mapped[str | None] = mapped_column(String(128))
+    failure_reason: Mapped[str | None] = mapped_column(String(128), default=None)
 
     def __repr__(self) -> str:  # pragma: no cover - debug helper
         status = "success" if self.success else "failure"

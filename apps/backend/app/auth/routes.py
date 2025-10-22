@@ -151,13 +151,12 @@ def _record_login_attempt(
 ) -> LoginAttempts:
     """Persist a login attempt for auditing purposes."""
 
-    attempt = LoginAttempts(
-        username=username,
-        ip_address=ip_address,
-        user_agent=_normalize_user_agent(),
-        success=success,
-        failure_reason=failure_reason if not success else None,
-    )
+    attempt = LoginAttempts()
+    attempt.username = username
+    attempt.ip_address = ip_address
+    attempt.user_agent = _normalize_user_agent()
+    attempt.success = success
+    attempt.failure_reason = failure_reason if not success else None
     db.session.add(attempt)
     return attempt
 
@@ -335,13 +334,11 @@ def logout():
     jti = get_jwt().get("jti")
     sub = get_jwt_identity()
     if jti:
-        db.session.add(
-            JWTTokenBlocklist(
-                jwt_token=jti,
-                user_id=int(sub) if sub and str(sub).isdigit() else None,
-                reason="logout",
-            )
-        )
+        entry = JWTTokenBlocklist()
+        entry.jwt_token = jti
+        entry.user_id = int(sub) if sub and str(sub).isdigit() else None
+        entry.reason = "logout"
+        db.session.add(entry)
         db.session.commit()
     return jsonify({"message": "logged out"}), 200
 
