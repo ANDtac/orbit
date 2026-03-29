@@ -1,330 +1,235 @@
-# Orbit Front-End Navigation Map and Scope Discovery
+# Orbit Front-End Navigation Reassessment and Cohesive Build-Out Plan
 
-## 1) What exists today in the front end
+## 1) Reassessment goal
 
-## Current route map (implemented)
+This document updates the original navigation report with a more implementation-ready plan focused on:
+
+- absorbing monitoring features into Orbit (not building a second product surface),
+- preventing duplicate workflows (especially duplicate device views),
+- aligning UI build-out with backend resources/models,
+- and tracking what appears to be implemented vs still missing.
+
+---
+
+## 2) Current implementation audit (as of this reassessment)
+
+## Front-end routes and shell actually present
 
 ```text
 Unauthenticated
 └── /login
-    └── Login form (username/password, remember username, lockout handling)
 
-Authenticated (ProtectedRoute)
+Authenticated
 ├── /
-│   └── Overview (Home)
-│       ├── Product positioning copy
-│       ├── "View devices" CTA
-│       └── Two static cards (Compliance snapshots / Operations guardrails)
 ├── /devices
-│   └── Devices list
-│       ├── Device table (hostname, platform, status, site, last seen)
-│       ├── Loading state
-│       ├── Error state
-│       └── Empty state
-└── /*
-    └── 404 page
+└── /* (404)
 ```
 
-## Global navigation/UI shell
+Header navigation currently includes only:
+- Home
+- Devices
 
-- Header nav links: **Home**, **Devices**.
-- Theme toggle available globally.
-- Auth-aware right action: **Logout** when authenticated, **Login** when not.
-- Mobile sidebar only mirrors the same two links.
-- No second-level navigation, no breadcrumbs, no global search, no command palette.
+### What appears implemented
 
----
+- Login flow with token cookies and lockout handling.
+- Protected routes for authenticated app areas.
+- Basic overview landing page.
+- Devices list page with loading/error/empty states.
+- Theme toggle + responsive header/sidebar.
 
-## 2) Front-end gaps and “does this make sense?” findings
+### What does NOT appear implemented yet (from code inspection)
 
-1. **Product promise vs available pages is mismatched.**
-   - Home copy promises compliance, operations, remediation workflows, and collaboration.
-   - UI currently exposes only Devices (list only), with no compliance/operations/log views.
+- No explicit Monitoring route/section in nav.
+- No jobs dashboard UI.
+- No compliance policies/results UI.
+- No lifecycle/EoX UI.
+- No operations/template run flow UI.
+- No audit/log views UI.
+- No device detail page.
+- No first-class bulk-action UX in the frontend.
 
-2. **Device list is read-only and shallow.**
-   - No device detail page.
-   - No create/edit/decommission action.
-   - No filters, sort, bulk selection, export, or saved views.
-
-3. **No way to manage foundational data models.**
-   - Models suggest users must maintain platforms, credential profiles, inventory groups, device tags, operation templates, compliance policies, etc.
-   - None are currently navigable from the front end.
-
-4. **No “run work” workflow despite async jobs model.**
-   - Backend has jobs/tasks/events modeling long-running and bulk operations.
-   - UI has no jobs inbox/queue/history, progress tracking, cancellation, retry, or details.
-
-5. **No lifecycle/EoX workflows in navigation.**
-   - Backend has hardware/software lifecycle and EoX resources.
-   - UI does not surface risk, nearing EoL, or remediation planning views.
-
-6. **Information architecture likely needs persona split.**
-   - Network operators need quick operations and health views.
-   - Platform admins need settings/configuration (platforms, credentials, templates, policies).
-   - Auditors need logs/compliance evidence.
-
-7. **No obvious “first-run” onboarding.**
-   - If there are no devices, empty state says to connect a controller, but there is no route or setup flow.
+> Note: If you implemented monitoring integration in another branch or local uncommitted state, this report reflects only what is currently visible in this repository snapshot.
 
 ---
 
-## 3) SQLAlchemy-informed object map: what users likely need to create (single + bulk)
+## 3) Backend capability vs frontend exposure (gap summary)
 
-Below is a practical object inventory inferred from backend models and API namespace shape.
+Backend namespaces indicate broad capability (devices, jobs, operations, compliance, inventory groups, platforms, credential profiles, logs, audit, hardware/software EoX queries), but frontend exposure is still mostly Home + Devices.
 
-## Core inventory objects
+### Highest-value cohesion gaps
 
-- **Devices** (single and bulk import are both critical)
-- **Interfaces** (primarily discovered/imported, sometimes manually corrected in bulk)
-- **IP addresses** (bulk import/edit often required)
-- **Manufacturers / Device types / Product models** (seed + occasional admin updates)
-- **Inventory groups** (manual and dynamic definitions, bulk assignment of devices)
-- **Device tags + tag assignments** (bulk tagging is essential)
-
-## Connectivity/automation objects
-
-- **Platforms** (admin-defined and reused)
-- **Credential profiles** (admin-defined and reused; possibly sensitive workflow)
-- **Platform operation templates** (single authoring + versioning + reuse)
-
-## Compliance and lifecycle objects
-
-- **Compliance policies + rules** (authored in structured editor, potentially cloned in bulk)
-- **Compliance results** (system-generated; browsed and filtered)
-- **Hardware lifecycle + software lifecycle records** (periodic bulk imports/refreshes)
-
-## Execution/operations objects
-
-- **Jobs + job tasks + events** (system-generated from user-triggered operations; user needs orchestration UX)
-- **Device config snapshots + diffs** (generated by jobs/probes; user browses/compares)
-- **Probe templates + executions + health snapshots** (template creation; execution mostly system-generated)
-
-## Security/audit objects
-
-- **Users / roles** (admin-managed)
-- **Audit logs / request logs / error logs / login attempts** (mostly browse/filter/export)
+1. **Monitoring capability is not represented in IA yet.**
+2. **Operational objects (jobs/tasks/events) exist without a UI control plane.**
+3. **Policy and lifecycle domains exist without visibility surfaces.**
+4. **Bulk workflows are modeled in backend patterns but absent in UX.**
 
 ---
 
-## 4) Suggested navigation architecture (v1.5 target)
+## 4) Cohesive target IA (Orbit-native, monitoring absorbed)
+
+Monitoring should be a first-class Orbit domain, not a separate mini-site.
 
 ```text
-Primary Nav
+Primary Navigation
 ├── Overview
 ├── Inventory
 │   ├── Devices
 │   ├── Groups
-│   ├── Tags
-│   ├── Interfaces
-│   └── IP Addresses
+│   └── Tags
+├── Monitoring
+│   ├── Health Dashboard
+│   ├── Probes
+│   ├── Alerts / Events
+│   └── Trends
 ├── Operations
-│   ├── Run Operation
+│   ├── Runbooks / Templates
 │   ├── Jobs
-│   ├── Templates
 │   └── Config Snapshots
 ├── Compliance
 │   ├── Policies
-│   ├── Results
-│   └── Drift / Exceptions
+│   └── Results
 ├── Lifecycle
 │   ├── Hardware EoX
 │   ├── Software EoX
-│   └── Risk Dashboard
-├── Observability
-│   ├── Health
-│   ├── Probe Templates
-│   └── Probe Executions
-├── Audit
-│   ├── Audit Log
-│   ├── Request Logs
-│   ├── Error Logs
-│   └── Login Attempts
+│   └── Risk View
 └── Admin
     ├── Platforms
     ├── Credential Profiles
-    ├── Users & Roles
-    └── System Settings
+    └── Access
 ```
 
-### Why this grouping
+### Non-overlap rule set (critical)
 
-- Keeps high-frequency operator workflows (Inventory/Operations/Health) near the top.
-- Separates sensitive/admin setup from day-to-day operations.
-- Gives compliance/audit personas dedicated places for evidence and governance.
-
----
-
-## 5) Bulk-create / bulk-update recommendations by object type
-
-1. **Devices**
-   - Provide CSV upload + API-based import wizard.
-   - Include “preview + validation + dry run + error row download”.
-   - Support idempotency key and upsert strategy.
-
-2. **Group membership and tag assignments**
-   - Support bulk selection from filtered grid and saved filters.
-   - Provide additive/remove/replace modes.
-
-3. **Credential profile assignment**
-   - Bulk apply by filter (platform, site, group, vendor).
-   - Preflight credential reachability test before commit.
-
-4. **Operation execution**
-   - Run against selected devices/groups.
-   - Always show blast radius summary and estimated task count before launch.
-
-5. **Compliance policies/rules**
-   - Enable clone/import/export JSON.
-   - Add simulation mode against recent snapshots before enabling.
-
-6. **Lifecycle records (EoX)**
-   - Bulk import from vendor feeds/CSV.
-   - Version imports and show impact delta (# affected devices changed).
-
-7. **Platform operation/probe templates**
-   - Provide draft/published states.
-   - Require test run on canary set before publish.
+- Keep **one canonical Devices experience** under Inventory.
+- Monitoring pages may link to device details but must not create a second device index.
+- Jobs execution belongs in Operations; Monitoring consumes job status context where relevant.
+- Compliance and Lifecycle are separate governance domains, but can reuse monitoring widgets.
 
 ---
 
-## 6) Recommended UX patterns for safety and scale
+## 5) Object-centric UI ownership map (to avoid duplicate screens)
 
-- **Universal table pattern:** filters, sort, column chooser, saved views, bulk select.
-- **Right-rail “bulk actions” panel:** show count, conflicts, and reversible actions.
-- **Job-centric async UX:** every long action creates job, with live status and deep links.
-- **Preflight checks:** permissions, credential presence, device reachability, template variables.
-- **Two-step confirmation for risky actions:** include typed confirmation and canary option.
-- **Change auditability:** attach reason/comment to bulk operations and policy changes.
-
----
-
-## 7) Scope questions (please answer with option a/b/c/d per item)
-
-1. **Who is the first target persona for Orbit UI?**
-   - a) Network operator (day-2 operations)
-   - b) Network automation/platform admin
-   - c) Security/compliance analyst
-   - d) Multi-persona from day one
-
-2. **How much of Admin should be in v1 scope?**
-   - a) Minimal (platforms + credential profiles only)
-   - b) Moderate (+ users/roles)
-   - c) Broad (+ full system settings)
-   - d) Admin entirely deferred
-
-3. **How should device onboarding work first?**
-   - a) Manual single-device form first
-   - b) CSV bulk import first
-   - c) Controller/discovery integration first
-   - d) Hybrid (manual + CSV in v1)
-
-4. **Should Devices get a detail page in first increment?**
-   - a) Yes, with read-only tabs
-   - b) Yes, with editable metadata
-   - c) No, keep list-only initially
-   - d) Detail page only for failed/compliance-risk devices
-
-5. **What is the preferred bulk action pattern?**
-   - a) Inline table bulk bar
-   - b) Dedicated bulk actions page
-   - c) Wizard modal launched from list views
-   - d) Command-palette driven bulk actions
-
-6. **How strict should risky action guardrails be?**
-   - a) Single confirm click
-   - b) Two-step confirm + typed phrase
-   - c) Mandatory preflight + canary + approval
-   - d) Policy-based, configurable per operation type
-
-7. **What should be the first Operations capability?**
-   - a) Config backup snapshots
-   - b) Standardized command execution
-   - c) Credential validation/reachability tests
-   - d) Password rotation/change template
-
-8. **How should jobs be surfaced initially?**
-   - a) Lightweight toasts + single jobs list
-   - b) Full jobs dashboard with task/event drill-down
-   - c) Per-feature embedded job widgets only
-   - d) Deferred until operations mature
-
-9. **How should compliance be introduced?**
-   - a) Read-only results first
-   - b) Simple policy builder first
-   - c) Policy import (JSON) + simulation first
-   - d) Full policy/rule CRUD in first release
-
-10. **What is the expected policy/rule authoring audience?**
-   - a) Power users writing expressions directly
-   - b) Guided form builder users
-   - c) Mixed mode (form + advanced editor)
-   - d) External policy source only (import)
-
-11. **How should lifecycle (EoX) start?**
-   - a) Read-only dashboard from imported data
-   - b) Manual record entry tools
-   - c) Automated vendor feed ingestion
-   - d) Deferred after inventory/compliance
-
-12. **Which object needs bulk workflows earliest (pick primary)?**
-   - a) Devices
-   - b) Group/tag assignments
-   - c) Operation executions
-   - d) Compliance policy rollouts
-
-13. **How do you want to manage credential profiles in UI?**
-   - a) Metadata only (external secret references)
-   - b) Metadata + secret test harness
-   - c) Full secret storage in Orbit (not recommended)
-   - d) No credential UI initially
-
-14. **How should RBAC be handled in first UI release?**
-   - a) Single admin role only
-   - b) Admin/operator split
-   - c) Fine-grained permission matrix
-   - d) RBAC deferred; auth only
-
-15. **What should be globally searchable first?**
-   - a) Devices only
-   - b) Devices + jobs
-   - c) Devices + jobs + policies + templates
-   - d) No global search initially
-
-16. **Which audit capabilities are mandatory at launch?**
-   - a) Basic audit log list
-   - b) Audit + request/error logs
-   - c) Audit + export/download evidence packs
-   - d) Audit views deferred
-
-17. **Preferred release strategy for navigation expansion?**
-   - a) Big-bang nav rollout
-   - b) Progressive: Inventory → Operations → Compliance
-   - c) Progressive: Admin foundations first, then operator flows
-   - d) Keep current nav; feature-flag everything else
-
-18. **What level of mobile support is required in near term?**
-   - a) Basic responsive viewing only
-   - b) Full CRUD on mobile
-   - c) Read-only mobile + desktop for actions
-   - d) Desktop-first only
-
-19. **How should empty states drive onboarding?**
-   - a) CTA to manual create forms
-   - b) CTA to import wizards
-   - c) CTA to integration setup/connectors
-   - d) Guided checklist that branches by persona
-
-20. **What should “Overview” become in scoped v1?**
-   - a) Executive KPI dashboard
-   - b) Operator action center (alerts + jobs)
-   - c) Personalized landing by persona/role
-   - d) Keep mostly marketing copy for now
+| Domain object | Primary UI home | Secondary references | Duplicate to avoid |
+|---|---|---|---|
+| Devices | Inventory > Devices | Monitoring, Operations, Compliance | Any second “device explorer” |
+| Device health snapshots / probe executions | Monitoring | Device detail, Operations job detail | Separate health app shell |
+| Jobs / tasks / events | Operations > Jobs | Monitoring action history | A parallel async-status panel framework |
+| Compliance policies/results | Compliance | Device detail, Overview KPIs | Policy controls inside Monitoring |
+| Lifecycle rows + EoX queries | Lifecycle | Device detail, Overview risk cards | A separate lifecycle dashboard outside Lifecycle |
+| Platforms / credential profiles | Admin | Used by Inventory/Operations flows | Inline ad-hoc config pages in feature areas |
 
 ---
 
-## 8) Suggested next step after your responses
+## 6) Build-out plan (frontend cohesive roadmap)
 
-After you answer with 20 selections (e.g., `1d, 2a, 3d, ...`), we can convert this into:
-- a locked MVP IA (information architecture),
-- route-by-route implementation backlog,
-- and a phased delivery plan (P0/P1/P2) tied directly to backend resources and models.
+## Phase 0 — Foundation and convergence
+
+1. **Navigation refactor**
+   - Expand nav groups (Inventory, Monitoring, Operations, Compliance, Lifecycle, Admin).
+   - Add route-level placeholders for all target domains.
+
+2. **Shared design primitives**
+   - Standardize table shell (filters, sorting, pagination, empty/error/loading states).
+   - Standardize KPI cards, status chips, timeline panels, and split layouts.
+
+3. **Entity detail framework**
+   - Introduce reusable detail page pattern with tabs:
+     - Summary
+     - Monitoring
+     - Operations
+     - Compliance
+     - Lifecycle
+
+4. **Decision traceability**
+   - Add a decisions artifact in `references/` that records final selected scope direction (including your single-option choice pattern if still applicable).
+
+## Phase 1 — Monitoring absorbed into Orbit
+
+1. **Monitoring section bootstrap**
+   - Health dashboard route with top-level KPIs and recent anomalies.
+   - Probe executions list with filtering by status, device, time.
+   - Alerts/events view from available data sources.
+
+2. **Device-centric monitoring integration**
+   - Device detail “Monitoring” tab consuming health snapshots/probe history.
+   - Deep links between Monitoring views and canonical device detail.
+
+3. **No-verbatim mockup translation**
+   - Apply Orbit spacing, tokens, typography, card/table components.
+   - Rebuild layouts semantically from reference mockups, not copy-paste HTML/CSS.
+
+## Phase 2 — Operations and async control plane
+
+1. **Jobs dashboard**
+   - Queue view, job status filters, task/event drill-down.
+
+2. **Execution UX**
+   - Launch operation template against selected devices/groups.
+   - Preflight summary + blast radius panel.
+
+3. **Snapshots integration**
+   - Snapshot list and compare flow anchored from Devices + Operations.
+
+## Phase 3 — Governance surfaces
+
+1. **Compliance**
+   - Policies list/editor + results explorer.
+
+2. **Lifecycle**
+   - Hardware/software lifecycle tables + risk scoring views.
+
+3. **Auditability hooks**
+   - Add user-intent notes for risky actions and expose audit-friendly history.
+
+---
+
+## 7) Implementation status tracker template
+
+Use this section to mark what has already been completed in future updates.
+
+| Capability | Planned phase | Status | Notes |
+|---|---:|---|---|
+| Expanded nav model | P0 | Not Started | |
+| Monitoring section routes | P1 | Not Started | |
+| Canonical device detail page | P0/P1 | Not Started | |
+| Health dashboard | P1 | Not Started | |
+| Probe executions UI | P1 | Not Started | |
+| Jobs dashboard | P2 | Not Started | |
+| Operation launch flow | P2 | Not Started | |
+| Compliance views | P3 | Not Started | |
+| Lifecycle views | P3 | Not Started | |
+| Audit/log views | P3 | Not Started | |
+
+---
+
+## 8) Practical acceptance criteria (frontend cohesion)
+
+1. A user can navigate every major domain from one coherent Orbit nav.
+2. Device data has exactly one canonical list/detail experience.
+3. Monitoring is visually and behaviorally Orbit-native.
+4. No imported monitoring mockup HTML is used verbatim.
+5. All long-running actions expose async status in one jobs model.
+6. Compliance/lifecycle insights can be reached contextually from device detail.
+7. Bulk actions follow one shared interaction model across domains.
+
+---
+
+## 9) Where to capture your scope answers and monitoring import context
+
+To make future implementation deterministic, keep these artifacts current:
+
+```text
+references/monitoring_site_import/
+├── html_mockups/
+├── reference_docs/
+└── decisions/
+    ├── scope_answers.md
+    ├── adopted_features.md
+    └── rejected_features.md
+```
+
+Recommended minimum in `scope_answers.md`:
+- whether one option was selected for all 20 questions,
+- the chosen option letter,
+- any overrides (if specific questions differ),
+- date + rationale.
