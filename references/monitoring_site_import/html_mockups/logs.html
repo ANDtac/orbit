@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Dashboard - Activity Logs</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">
+        :root {
+            --bg-primary:    #0d1117;
+            --bg-surface:    #161b22;
+            --bg-elevated:   #1f2937;
+            --bg-border:     #30363d;
+            --text-primary:  #e6edf3;
+            --text-secondary:#8b949e;
+            --text-muted:    #484f58;
+            --accent-blue:   #388bfd;
+            --accent-green:  #3fb950;
+            --accent-yellow: #d29922;
+            --accent-red:    #f85149;
+            --accent-purple: #a371f7;
+        }
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary); 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--bg-border); 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted); 
+        }
+        .tab-active {
+            border-bottom: 2px solid var(--accent-blue);
+            color: var(--text-primary);
+        }
+        .tab-inactive {
+            border-bottom: 2px solid transparent;
+            color: var(--text-secondary);
+        }
+        .tab-inactive:hover {
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--text-muted);
+        }
+        .status-dot {
+            height: 8px;
+            width: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .table-row-hover:hover {
+            background-color: var(--bg-elevated);
+        }
+        .text-xs-caps {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+<nav class="h-[52px] bg-[var(--bg-surface)] border-b border-[var(--bg-border)] flex items-center px-4 shrink-0 justify-between select-none">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[var(--accent-blue)]">hub</span>
+<span class="font-semibold text-[15px] tracking-tight">Network Monitoring Hub</span>
+</div>
+<div class="flex h-full gap-1">
+<a class="tab-inactive h-full px-4 flex items-center text-sm font-medium transition-colors" href="/dashboard">Overview</a>
+<a class="tab-inactive h-full px-4 flex items-center text-sm font-medium transition-colors" href="/devices">Devices</a>
+<a class="tab-inactive h-full px-4 flex items-center text-sm font-medium transition-colors" href="/rules">Rules</a>
+<a class="tab-active h-full px-4 flex items-center text-sm font-medium transition-colors" href="/logs">Logs</a>
+<a class="tab-inactive h-full px-4 flex items-center text-sm font-medium transition-colors" href="/settings">Settings</a>
+</div>
+<div class="flex items-center gap-4 text-sm text-[var(--text-secondary)]">
+<div class="flex items-center gap-2">
+<span class="status-dot bg-[var(--accent-green)]"></span>
+<span>ops_admin</span>
+</div>
+<a href="/logout" class="hover:text-[var(--text-primary)] transition-colors">
+<span class="material-symbols-outlined text-[18px]">logout</span>
+</a>
+</div>
+</nav>
+<main class="flex-1 overflow-auto p-6">
+<div class="max-w-7xl mx-auto flex flex-col gap-4 h-full" id="logs-section">
+<div class="flex justify-between items-center mb-2">
+<h2 class="text-lg font-semibold text-[var(--text-primary)]">Activity Logs</h2>
+<div class="flex gap-2">
+<button class="flex items-center gap-1 px-3 py-1.5 rounded-md border border-[var(--bg-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--text-muted)] text-sm transition-colors">
+<span class="material-symbols-outlined text-[16px]">refresh</span>
+                        Refresh
+                    </button>
+<button class="flex items-center gap-1 px-3 py-1.5 rounded-md border border-[var(--bg-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--text-muted)] text-sm transition-colors">
+<span class="material-symbols-outlined text-[16px]">download</span>
+                        Export CSV
+                    </button>
+</div>
+</div>
+<div class="bg-[var(--bg-surface)] border border-[var(--bg-border)] rounded-lg p-4 flex flex-wrap gap-4 items-center shadow-sm">
+<div class="flex flex-col gap-1">
+<label class="text-xs text-[var(--text-secondary)] font-medium ml-1">Rule</label>
+<select class="bg-[var(--bg-elevated)] border border-[var(--bg-border)] text-[var(--text-primary)] text-sm rounded px-3 py-1.5 focus:outline-none focus:border-[var(--accent-blue)] focus:ring-1 focus:ring-[var(--accent-blue)] min-w-[160px]">
+<option value="all">All Rules</option>
+<option value="bgp_check">BGP Neighbors Check</option>
+<option value="apic_fault">APIC Fault Monitor</option>
+<option value="int_errors">Interface Errors</option>
+<option value="ospf_state">OSPF State</option>
+</select>
+</div>
+<div class="flex flex-col gap-1">
+<label class="text-xs text-[var(--text-secondary)] font-medium ml-1">Device</label>
+<select class="bg-[var(--bg-elevated)] border border-[var(--bg-border)] text-[var(--text-primary)] text-sm rounded px-3 py-1.5 focus:outline-none focus:border-[var(--accent-blue)] focus:ring-1 focus:ring-[var(--accent-blue)] min-w-[160px]">
+<option value="all">All Devices</option>
+<option value="nx-core-01">NX-Core-01</option>
+<option value="nx-core-02">NX-Core-02</option>
+<option value="apic-01">APIC-01</option>
+<option value="wan-edge-01">WAN-Edge-01</option>
+</select>
+</div>
+<div class="flex flex-col gap-1">
+<label class="text-xs text-[var(--text-secondary)] font-medium ml-1">Status</label>
+<select class="bg-[var(--bg-elevated)] border border-[var(--bg-border)] text-[var(--text-primary)] text-sm rounded px-3 py-1.5 focus:outline-none focus:border-[var(--accent-blue)] focus:ring-1 focus:ring-[var(--accent-blue)] min-w-[140px]">
+<option value="all">All Statuses</option>
+<option value="match">Match (Warning)</option>
+<option value="ok">Success (OK)</option>
+<option value="error">Error (Critical)</option>
+</select>
+</div>
+<div class="flex flex-col gap-1 flex-1 min-w-[200px]">
+<label class="text-xs text-[var(--text-secondary)] font-medium ml-1">Search Output</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-2.5 top-1.5 text-[var(--text-muted)] text-[18px]">search</span>
+<input class="w-full bg-[var(--bg-elevated)] border border-[var(--bg-border)] text-[var(--text-primary)] text-sm rounded pl-9 pr-3 py-1.5 focus:outline-none focus:border-[var(--accent-blue)] focus:ring-1 focus:ring-[var(--accent-blue)]" placeholder="Search logs content..." type="text"/>
+</div>
+</div>
+<div class="flex flex-col justify-end h-full pt-6">
+<button class="text-[var(--accent-blue)] hover:text-blue-400 text-sm font-medium px-2 py-1 transition-colors">Clear</button>
+</div>
+</div>
+<div class="flex-1 bg-[var(--bg-surface)] border border-[var(--bg-border)] rounded-lg overflow-hidden flex flex-col shadow-sm">
+<div class="overflow-auto flex-1">
+<table class="w-full text-left border-collapse">
+<thead class="bg-[var(--bg-surface)] sticky top-0 z-10 shadow-[0_1px_0_var(--bg-border)]">
+<tr>
+<th class="py-3 px-4 text-xs-caps font-semibold text-[var(--text-secondary)] w-[120px]">Time</th>
+<th class="py-3 px-4 text-xs-caps font-semibold text-[var(--text-secondary)] w-[180px]">Rule</th>
+<th class="py-3 px-4 text-xs-caps font-semibold text-[var(--text-secondary)] w-[160px]">Device</th>
+<th class="py-3 px-4 text-xs-caps font-semibold text-[var(--text-secondary)] w-[140px]">Status</th>
+<th class="py-3 px-4 text-xs-caps font-semibold text-[var(--text-secondary)]">Output Preview</th>
+<th class="py-3 px-4 text-xs-caps font-semibold text-[var(--text-secondary)] w-[100px] text-right">Details</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-[var(--bg-border)] text-sm">
+<tr class="table-row-hover group transition-colors">
+<td class="py-3 px-4 font-mono text-[var(--text-secondary)] whitespace-nowrap">07:30:04</td>
+<td class="py-3 px-4 font-medium text-[var(--text-primary)]">BGP Neighbors Check</td>
+<td class="py-3 px-4 text-[var(--text-secondary)]">NX-Core-01</td>
+<td class="py-3 px-4">
+<div class="inline-flex items-center gap-2 px-2 py-0.5 rounded-full bg-[rgba(210,153,34,0.15)] border border-[rgba(210,153,34,0.3)]">
+<span class="status-dot bg-[var(--accent-yellow)]"></span>
+<span class="text-xs font-medium text-[var(--accent-yellow)]">match</span>
+</div>
+</td>
+<td class="py-3 px-4 font-mono text-xs text-[var(--text-muted)] truncate max-w-[300px]">
+<span class="text-[var(--text-secondary)]">10.0.0.1 4 65002 Established 200 100</span>
+</td>
+<td class="py-3 px-4 text-right">
+<a href="/logs/detail" class="text-[var(--accent-blue)] hover:text-white text-xs font-medium border border-[var(--bg-border)] hover:border-[var(--accent-blue)] hover:bg-[var(--accent-blue)] rounded px-3 py-1 transition-all no-underline">View</a>
+</td>
+</tr>
+<tr class="table-row-hover group transition-colors">
+<td class="py-3 px-4 font-mono text-[var(--text-secondary)] whitespace-nowrap">07:28:12</td>
+<td class="py-3 px-4 font-medium text-[var(--text-primary)]">APIC Fault Monitor</td>
+<td class="py-3 px-4 text-[var(--text-secondary)]">APIC-01</td>
+<td class="py-3 px-4">
+<div class="inline-flex items-center gap-2 px-2 py-0.5 rounded-full bg-[rgba(63,185,80,0.15)] border border-[rgba(63,185,80,0.3)]">
+<span class="material-symbols-outlined text-[14px] text-[var(--accent-green)]">check</span>
+<span class="text-xs font-medium text-[var(--accent-green)]">ok</span>
+</div>
+</td>
+<td class="py-3 px-4 font-mono text-xs text-[var(--text-muted)] truncate max-w-[300px]">
+                                    total_faults: 0, critical: 0, major: 0
+                                </td>
+<td class="py-3 px-4 text-right">
+<a href="/logs/detail" class="text-[var(--accent-blue)] hover:text-white text-xs font-medium border border-[var(--bg-border)] hover:border-[var(--accent-blue)] hover:bg-[var(--accent-blue)] rounded px-3 py-1 transition-all no-underline">View</a>
+</td>
+</tr>
+<tr class="table-row-hover group transition-colors">
+<td class="py-3 px-4 font-mono text-[var(--text-secondary)] whitespace-nowrap">07:25:00</td>
+<td class="py-3 px-4 font-medium text-[var(--text-primary)]">Interface Errors</td>
+<td class="py-3 px-4 text-[var(--text-secondary)]">WAN-Edge-01</td>
+<td class="py-3 px-4">
+<div class="inline-flex items-center gap-2 px-2 py-0.5 rounded-full bg-[rgba(63,185,80,0.15)] border border-[rgba(63,185,80,0.3)]">
+<span class="material-symbols-outlined text-[14px] text-[var(--accent-green)]">check</span>
+<span class="text-xs font-medium text-[var(--accent-green)]">ok</span>
+</div>
+</td>
+<td class="py-3 px-4 font-mono text-xs text-[var(--text-muted)] truncate max-w-[300px]">
+                                    GigabitEthernet1 is up, line protocol is up
+                                </td>
+<td class="py-3 px-4 text-right">
+<a href="/logs/detail" class="text-[var(--accent-blue)] hover:text-white text-xs font-medium border border-[var(--bg-border)] hover:border-[var(--accent-blue)] hover:bg-[var(--accent-blue)] rounded px-3 py-1 transition-all no-underline">View</a>
+</td>
+</tr>
+<tr class="table-row-hover group transition-colors">
+<td class="py-3 px-4 font-mono text-[var(--text-secondary)] whitespace-nowrap">07:15:33</td>
+<td class="py-3 px-4 font-medium text-[var(--text-primary)]">OSPF State</td>
+<td class="py-3 px-4 text-[var(--text-secondary)]">NX-Core-02</td>
+<td class="py-3 px-4">
+<div class="inline-flex items-center gap-2 px-2 py-0.5 rounded-full bg-[rgba(248,81,73,0.15)] border border-[rgba(248,81,73,0.3)]">
+<span class="material-symbols-outlined text-[14px] text-[var(--accent-red)]">close</span>
+<span class="text-xs font-medium text-[var(--accent-red)]">error</span>
+</div>
+</td>
+<td class="py-3 px-4 font-mono text-xs text-[var(--text-muted)] truncate max-w-[300px]">
+                                    Connection timed out (NetmikoTimeoutException)
+                                </td>
+<td class="py-3 px-4 text-right">
+<a href="/logs/detail" class="text-[var(--accent-blue)] hover:text-white text-xs font-medium border border-[var(--bg-border)] hover:border-[var(--accent-blue)] hover:bg-[var(--accent-blue)] rounded px-3 py-1 transition-all no-underline">View</a>
+</td>
+</tr>
+<tr class="table-row-hover group transition-colors">
+<td class="py-3 px-4 font-mono text-[var(--text-secondary)] whitespace-nowrap">07:10:01</td>
+<td class="py-3 px-4 font-medium text-[var(--text-primary)]">BGP Neighbors Check</td>
+<td class="py-3 px-4 text-[var(--text-secondary)]">NX-Core-01</td>
+<td class="py-3 px-4">
+<div class="inline-flex items-center gap-2 px-2 py-0.5 rounded-full bg-[rgba(210,153,34,0.15)] border border-[rgba(210,153,34,0.3)]">
+<span class="status-dot bg-[var(--accent-yellow)]"></span>
+<span class="text-xs font-medium text-[var(--accent-yellow)]">match</span>
+</div>
+</td>
+<td class="py-3 px-4 font-mono text-xs text-[var(--text-muted)] truncate max-w-[300px]">
+<span class="text-[var(--text-secondary)]">10.0.0.1 4 65002 Established 200 100</span>
+</td>
+<td class="py-3 px-4 text-right">
+<a href="/logs/detail" class="text-[var(--accent-blue)] hover:text-white text-xs font-medium border border-[var(--bg-border)] hover:border-[var(--accent-blue)] hover:bg-[var(--accent-blue)] rounded px-3 py-1 transition-all no-underline">View</a>
+</td>
+</tr>
+<tr class="table-row-hover group transition-colors">
+<td class="py-3 px-4 font-mono text-[var(--text-secondary)] whitespace-nowrap">06:55:18</td>
+<td class="py-3 px-4 font-medium text-[var(--text-primary)]">Config Backup</td>
+<td class="py-3 px-4 text-[var(--text-secondary)]">NX-Dist-01</td>
+<td class="py-3 px-4">
+<div class="inline-flex items-center gap-2 px-2 py-0.5 rounded-full bg-[rgba(139,148,158,0.15)] border border-[rgba(139,148,158,0.3)]">
+<span class="material-symbols-outlined text-[14px] text-[var(--text-secondary)]">remove</span>
+<span class="text-xs font-medium text-[var(--text-secondary)]">no_match</span>
+</div>
+</td>
+<td class="py-3 px-4 font-mono text-xs text-[var(--text-muted)] truncate max-w-[300px]">
+                                    Regex filter did not match output.
+                                </td>
+<td class="py-3 px-4 text-right">
+<a href="/logs/detail" class="text-[var(--accent-blue)] hover:text-white text-xs font-medium border border-[var(--bg-border)] hover:border-[var(--accent-blue)] hover:bg-[var(--accent-blue)] rounded px-3 py-1 transition-all no-underline">View</a>
+</td>
+</tr>
+<tr class="table-row-hover group transition-colors">
+<td class="py-3 px-4 font-mono text-[var(--text-secondary)] whitespace-nowrap">06:50:00</td>
+<td class="py-3 px-4 font-medium text-[var(--text-primary)]">Interface Errors</td>
+<td class="py-3 px-4 text-[var(--text-secondary)]">WAN-Edge-02</td>
+<td class="py-3 px-4">
+<div class="inline-flex items-center gap-2 px-2 py-0.5 rounded-full bg-[rgba(63,185,80,0.15)] border border-[rgba(63,185,80,0.3)]">
+<span class="material-symbols-outlined text-[14px] text-[var(--accent-green)]">check</span>
+<span class="text-xs font-medium text-[var(--accent-green)]">ok</span>
+</div>
+</td>
+<td class="py-3 px-4 font-mono text-xs text-[var(--text-muted)] truncate max-w-[300px]">
+                                    GigabitEthernet1 is up, line protocol is up
+                                </td>
+<td class="py-3 px-4 text-right">
+<a href="/logs/detail" class="text-[var(--accent-blue)] hover:text-white text-xs font-medium border border-[var(--bg-border)] hover:border-[var(--accent-blue)] hover:bg-[var(--accent-blue)] rounded px-3 py-1 transition-all no-underline">View</a>
+</td>
+</tr>
+<tr class="table-row-hover group transition-colors">
+<td class="py-3 px-4 font-mono text-[var(--text-secondary)] whitespace-nowrap">06:45:00</td>
+<td class="py-3 px-4 font-medium text-[var(--text-primary)]">Interface Errors</td>
+<td class="py-3 px-4 text-[var(--text-secondary)]">WAN-Edge-01</td>
+<td class="py-3 px-4">
+<div class="inline-flex items-center gap-2 px-2 py-0.5 rounded-full bg-[rgba(63,185,80,0.15)] border border-[rgba(63,185,80,0.3)]">
+<span class="material-symbols-outlined text-[14px] text-[var(--accent-green)]">check</span>
+<span class="text-xs font-medium text-[var(--accent-green)]">ok</span>
+</div>
+</td>
+<td class="py-3 px-4 font-mono text-xs text-[var(--text-muted)] truncate max-w-[300px]">
+                                    GigabitEthernet1 is up, line protocol is up
+                                </td>
+<td class="py-3 px-4 text-right">
+<a href="/logs/detail" class="text-[var(--accent-blue)] hover:text-white text-xs font-medium border border-[var(--bg-border)] hover:border-[var(--accent-blue)] hover:bg-[var(--accent-blue)] rounded px-3 py-1 transition-all no-underline">View</a>
+</td>
+</tr>
+<tr class="table-row-hover group transition-colors">
+<td class="py-3 px-4 font-mono text-[var(--text-secondary)] whitespace-nowrap">06:40:04</td>
+<td class="py-3 px-4 font-medium text-[var(--text-primary)]">BGP Neighbors Check</td>
+<td class="py-3 px-4 text-[var(--text-secondary)]">NX-Core-01</td>
+<td class="py-3 px-4">
+<div class="inline-flex items-center gap-2 px-2 py-0.5 rounded-full bg-[rgba(210,153,34,0.15)] border border-[rgba(210,153,34,0.3)]">
+<span class="status-dot bg-[var(--accent-yellow)]"></span>
+<span class="text-xs font-medium text-[var(--accent-yellow)]">match</span>
+</div>
+</td>
+<td class="py-3 px-4 font-mono text-xs text-[var(--text-muted)] truncate max-w-[300px]">
+<span class="text-[var(--text-secondary)]">10.0.0.1 4 65002 Established 200 100</span>
+</td>
+<td class="py-3 px-4 text-right">
+<a href="/logs/detail" class="text-[var(--accent-blue)] hover:text-white text-xs font-medium border border-[var(--bg-border)] hover:border-[var(--accent-blue)] hover:bg-[var(--accent-blue)] rounded px-3 py-1 transition-all no-underline">View</a>
+</td>
+</tr>
+<tr class="table-row-hover group transition-colors">
+<td class="py-3 px-4 font-mono text-[var(--text-secondary)] whitespace-nowrap">06:10:04</td>
+<td class="py-3 px-4 font-medium text-[var(--text-primary)]">BGP Neighbors Check</td>
+<td class="py-3 px-4 text-[var(--text-secondary)]">NX-Core-01</td>
+<td class="py-3 px-4">
+<div class="inline-flex items-center gap-2 px-2 py-0.5 rounded-full bg-[rgba(210,153,34,0.15)] border border-[rgba(210,153,34,0.3)]">
+<span class="status-dot bg-[var(--accent-yellow)]"></span>
+<span class="text-xs font-medium text-[var(--accent-yellow)]">match</span>
+</div>
+</td>
+<td class="py-3 px-4 font-mono text-xs text-[var(--text-muted)] truncate max-w-[300px]">
+<span class="text-[var(--text-secondary)]">10.0.0.1 4 65002 Established 200 100</span>
+</td>
+<td class="py-3 px-4 text-right">
+<a href="/logs/detail" class="text-[var(--accent-blue)] hover:text-white text-xs font-medium border border-[var(--bg-border)] hover:border-[var(--accent-blue)] hover:bg-[var(--accent-blue)] rounded px-3 py-1 transition-all no-underline">View</a>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-3 border-t border-[var(--bg-border)] flex justify-between items-center bg-[var(--bg-surface)]">
+<span class="text-xs text-[var(--text-secondary)]">Showing 1-10 of 1,284 logs</span>
+<div class="flex gap-2">
+<button class="px-3 py-1 rounded border border-[var(--bg-border)] text-[var(--text-muted)] text-sm cursor-not-allowed opacity-50">Previous</button>
+<button class="px-3 py-1 rounded border border-[var(--bg-border)] text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] text-sm transition-colors">Next</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

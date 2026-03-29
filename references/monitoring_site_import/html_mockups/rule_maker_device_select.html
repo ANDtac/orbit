@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Network Monitoring Hub - Rule Builder Step 1</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">
+        :root {
+            --bg-primary:    #0d1117;
+            --bg-surface:    #161b22;
+            --bg-elevated:   #1f2937;
+            --bg-border:     #30363d;
+            --text-primary:  #e6edf3;
+            --text-secondary:#8b949e;
+            --text-muted:    #484f58;
+            --accent-blue:   #388bfd;
+            --accent-green:  #3fb950;
+            --accent-yellow: #d29922;
+            --accent-red:    #f85149;
+            --accent-purple: #a371f7;
+            --radius-sm:     4px;
+            --radius-md:     8px;
+            --radius-lg:     12px;
+        }
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        }
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary); 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--bg-border); 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted); 
+        }
+        input[type="text"], input[type="number"], select, textarea {
+            background-color: var(--bg-elevated);
+            border-color: var(--bg-border);
+            color: var(--text-primary);
+        }
+        input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
+            border-color: var(--accent-blue);
+            --tw-ring-color: var(--accent-blue);
+        }
+        input[type="checkbox"], input[type="radio"] {
+            background-color: var(--bg-elevated);
+            border-color: var(--bg-border);
+            color: var(--accent-blue);
+        }
+        input[type="checkbox"]:focus, input[type="radio"]:focus {
+            --tw-ring-color: var(--accent-blue);
+        }
+    </style>
+</head>
+<body class="h-screen overflow-hidden flex flex-col">
+<header class="h-[52px] border-b border-[var(--bg-border)] bg-[var(--bg-surface)] flex items-center px-4 justify-between shrink-0">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2 text-[var(--text-primary)] font-semibold">
+<span class="material-symbols-outlined text-[var(--accent-blue)]">hub</span>
+<span>Network Monitoring Hub</span>
+</div>
+<nav class="flex gap-1 h-full items-end">
+<a href="/devices" class="px-3 py-3 text-[14px] text-[var(--text-secondary)] border-b-2 border-transparent hover:text-[var(--text-primary)] no-underline">Devices</a>
+<a href="/rules" class="px-3 py-3 text-[14px] text-[var(--text-primary)] border-b-2 border-[var(--accent-blue)] font-medium no-underline">Rules</a>
+<a href="/logs" class="px-3 py-3 text-[14px] text-[var(--text-secondary)] border-b-2 border-transparent hover:text-[var(--text-primary)] no-underline">Logs</a>
+<a href="/settings" class="px-3 py-3 text-[14px] text-[var(--text-secondary)] border-b-2 border-transparent hover:text-[var(--text-primary)] no-underline">Settings</a>
+</nav>
+</div>
+<div class="flex items-center gap-4 text-[13px]">
+<span class="flex items-center gap-1.5 text-[var(--text-secondary)]">
+<span class="w-2 h-2 rounded-full bg-[var(--accent-green)]"></span>
+                jdoe_ops
+            </span>
+<a href="/logout" class="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+<span class="material-symbols-outlined text-[18px]">logout</span>
+</a>
+</div>
+</header>
+<main class="flex-1 p-6 overflow-auto relative">
+<div class="max-w-7xl mx-auto space-y-4 opacity-30 pointer-events-none filter blur-[2px]">
+<div class="flex justify-between items-center">
+<h2 class="text-[16px] font-semibold text-[var(--text-primary)]">Monitoring Rules</h2>
+<button class="bg-[var(--accent-blue)] text-white px-3 py-1.5 rounded text-sm font-medium hover:brightness-110 flex items-center gap-1">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                    New Rule
+                </button>
+</div>
+<div class="overflow-hidden rounded-lg border border-[var(--bg-border)]">
+<table class="w-full text-left text-sm">
+<thead class="bg-[var(--bg-surface)] text-[var(--text-secondary)] border-b border-[var(--bg-border)] uppercase text-[11px] tracking-wider font-semibold">
+<tr>
+<th class="px-4 py-3">Name</th>
+<th class="px-4 py-3">Schedule</th>
+<th class="px-4 py-3">Devices</th>
+<th class="px-4 py-3">Output Mode</th>
+<th class="px-4 py-3">Active</th>
+<th class="px-4 py-3 text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-[var(--bg-border)] bg-[var(--bg-primary)]">
+<tr class="hover:bg-[var(--bg-elevated)] group">
+<td class="px-4 py-3 font-medium text-[var(--text-primary)]">BGP Check</td>
+<td class="px-4 py-3 text-[var(--text-secondary)]">Every 30m</td>
+<td class="px-4 py-3 text-[var(--text-secondary)]">1 device</td>
+<td class="px-4 py-3 font-mono text-xs text-[var(--accent-purple)]">regex</td>
+<td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--accent-green)]/10 text-[var(--accent-green)]">● ON</span></td>
+<td class="px-4 py-3 text-right text-[var(--text-secondary)]">...</td>
+</tr>
+<tr class="hover:bg-[var(--bg-elevated)] group">
+<td class="px-4 py-3 font-medium text-[var(--text-primary)]">APIC Faults</td>
+<td class="px-4 py-3 text-[var(--text-secondary)]">0 6 * * *</td>
+<td class="px-4 py-3 text-[var(--text-secondary)]">2 devices</td>
+<td class="px-4 py-3 font-mono text-xs text-[var(--text-secondary)]">full</td>
+<td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--accent-green)]/10 text-[var(--accent-green)]">● ON</span></td>
+<td class="px-4 py-3 text-right text-[var(--text-secondary)]">...</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+<div class="w-full max-w-[800px] bg-[var(--bg-surface)] border border-[var(--bg-border)] rounded-xl shadow-2xl flex flex-col h-[85vh]">
+<div class="px-6 py-4 border-b border-[var(--bg-border)] shrink-0 space-y-4">
+<div class="flex items-center justify-between">
+<h3 class="text-[16px] font-semibold text-[var(--text-primary)]">Rule Builder</h3>
+<a href="/rules" class="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</a>
+</div>
+<div class="flex items-center justify-between max-w-sm mx-auto w-full">
+<div class="flex flex-col items-center relative z-10">
+<div class="w-8 h-8 rounded-full bg-[var(--accent-blue)] flex items-center justify-center text-white text-sm font-bold shadow-[0_0_0_4px_var(--bg-surface)]">1</div>
+<span class="text-[11px] font-medium text-[var(--accent-blue)] mt-1">Select Devices</span>
+</div>
+<div class="flex-1 h-[2px] bg-[var(--bg-border)] -mx-4 mb-4"></div>
+<div class="flex flex-col items-center relative z-10">
+<div class="w-8 h-8 rounded-full bg-[var(--bg-elevated)] border border-[var(--bg-border)] flex items-center justify-center text-[var(--text-secondary)] text-sm font-bold shadow-[0_0_0_4px_var(--bg-surface)]">2</div>
+<span class="text-[11px] font-medium text-[var(--text-secondary)] mt-1">Rule Config</span>
+</div>
+<div class="flex-1 h-[2px] bg-[var(--bg-border)] -mx-4 mb-4"></div>
+<div class="flex flex-col items-center relative z-10">
+<div class="w-8 h-8 rounded-full bg-[var(--bg-elevated)] border border-[var(--bg-border)] flex items-center justify-center text-[var(--text-secondary)] text-sm font-bold shadow-[0_0_0_4px_var(--bg-surface)]">3</div>
+<span class="text-[11px] font-medium text-[var(--text-secondary)] mt-1">Review</span>
+</div>
+</div>
+</div>
+<div class="px-6 py-3 bg-[var(--bg-elevated)]/30 border-b border-[var(--bg-border)] flex items-center justify-between shrink-0">
+<div class="text-xs text-[var(--text-secondary)] flex gap-4">
+<span>Selected: <span class="text-[var(--text-primary)] font-medium">3 Devices</span></span>
+<span>(2 <span class="text-[var(--accent-blue)]">NX-OS</span>, 1 <span class="text-[var(--accent-purple)]">IOS-XE</span>)</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-2 top-1.5 text-[18px] text-[var(--text-secondary)]">search</span>
+<input class="block w-64 rounded-md text-xs py-1.5 pl-8 pr-3 bg-[var(--bg-primary)] focus:ring-1" placeholder="Search devices..." type="text"/>
+</div>
+</div>
+</div>
+<div class="flex-1 overflow-hidden flex flex-col">
+<div class="overflow-y-auto custom-scrollbar flex-1">
+<table class="w-full text-left text-sm border-collapse">
+<thead class="bg-[var(--bg-surface)] text-[var(--text-secondary)] border-b border-[var(--bg-border)] uppercase text-[11px] tracking-wider font-semibold sticky top-0 z-10">
+<tr>
+<th class="px-6 py-3 w-10 bg-[var(--bg-surface)]">
+<input class="rounded bg-[var(--bg-elevated)] border-gray-600 focus:ring-offset-0" type="checkbox"/>
+</th>
+<th class="px-6 py-3 bg-[var(--bg-surface)] cursor-pointer hover:text-[var(--text-primary)] group select-none">
+                                    Name
+                                    <span class="material-symbols-outlined text-[14px] align-middle ml-1 opacity-0 group-hover:opacity-100">arrow_downward</span>
+</th>
+<th class="px-6 py-3 bg-[var(--bg-surface)] cursor-pointer hover:text-[var(--text-primary)] group select-none">
+                                    IP Address
+                                    <span class="material-symbols-outlined text-[14px] align-middle ml-1 opacity-0 group-hover:opacity-100">arrow_downward</span>
+</th>
+<th class="px-6 py-3 bg-[var(--bg-surface)] cursor-pointer hover:text-[var(--text-primary)] group select-none">
+                                    Device Type
+                                    <span class="material-symbols-outlined text-[14px] align-middle ml-1 opacity-0 group-hover:opacity-100">arrow_downward</span>
+</th>
+<th class="px-6 py-3 text-right bg-[var(--bg-surface)]">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-[var(--bg-border)] bg-[var(--bg-primary)]">
+<tr class="hover:bg-[var(--bg-elevated)] group bg-[var(--accent-blue)]/5">
+<td class="px-6 py-3">
+<input checked="" class="rounded bg-[var(--bg-elevated)] border-gray-600 focus:ring-offset-0" type="checkbox"/>
+</td>
+<td class="px-6 py-3 font-medium text-[var(--text-primary)]">NX-Core-01</td>
+<td class="px-6 py-3 font-mono text-xs text-[var(--text-secondary)]">10.1.10.1</td>
+<td class="px-6 py-3">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-elevated)] text-[var(--accent-blue)] border border-[var(--bg-border)]">NX-OS</span>
+</td>
+<td class="px-6 py-3 text-right">
+<span class="w-2 h-2 rounded-full bg-[var(--accent-green)] inline-block" title="Reachable"></span>
+</td>
+</tr>
+<tr class="hover:bg-[var(--bg-elevated)] group bg-[var(--accent-blue)]/5">
+<td class="px-6 py-3">
+<input checked="" class="rounded bg-[var(--bg-elevated)] border-gray-600 focus:ring-offset-0" type="checkbox"/>
+</td>
+<td class="px-6 py-3 font-medium text-[var(--text-primary)]">NX-Core-02</td>
+<td class="px-6 py-3 font-mono text-xs text-[var(--text-secondary)]">10.1.10.2</td>
+<td class="px-6 py-3">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-elevated)] text-[var(--accent-blue)] border border-[var(--bg-border)]">NX-OS</span>
+</td>
+<td class="px-6 py-3 text-right">
+<span class="w-2 h-2 rounded-full bg-[var(--accent-green)] inline-block" title="Reachable"></span>
+</td>
+</tr>
+<tr class="hover:bg-[var(--bg-elevated)] group">
+<td class="px-6 py-3">
+<input class="rounded bg-[var(--bg-elevated)] border-gray-600 focus:ring-offset-0" type="checkbox"/>
+</td>
+<td class="px-6 py-3 font-medium text-[var(--text-primary)]">Dist-Switch-01</td>
+<td class="px-6 py-3 font-mono text-xs text-[var(--text-secondary)]">10.2.20.5</td>
+<td class="px-6 py-3">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-elevated)] text-[var(--accent-purple)] border border-[var(--bg-border)]">IOS-XE</span>
+</td>
+<td class="px-6 py-3 text-right">
+<span class="w-2 h-2 rounded-full bg-[var(--accent-red)] inline-block" title="Unreachable"></span>
+</td>
+</tr>
+<tr class="hover:bg-[var(--bg-elevated)] group bg-[var(--accent-blue)]/5">
+<td class="px-6 py-3">
+<input checked="" class="rounded bg-[var(--bg-elevated)] border-gray-600 focus:ring-offset-0" type="checkbox"/>
+</td>
+<td class="px-6 py-3 font-medium text-[var(--text-primary)]">Edge-Rtr-01</td>
+<td class="px-6 py-3 font-mono text-xs text-[var(--text-secondary)]">192.168.1.1</td>
+<td class="px-6 py-3">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-elevated)] text-[var(--accent-purple)] border border-[var(--bg-border)]">IOS-XE</span>
+</td>
+<td class="px-6 py-3 text-right">
+<span class="w-2 h-2 rounded-full bg-[var(--accent-green)] inline-block" title="Reachable"></span>
+</td>
+</tr>
+<tr class="hover:bg-[var(--bg-elevated)] group">
+<td class="px-6 py-3">
+<input class="rounded bg-[var(--bg-elevated)] border-gray-600 focus:ring-offset-0" type="checkbox"/>
+</td>
+<td class="px-6 py-3 font-medium text-[var(--text-primary)]">APIC-Cluster-01</td>
+<td class="px-6 py-3 font-mono text-xs text-[var(--text-secondary)]">10.0.0.10</td>
+<td class="px-6 py-3">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-elevated)] text-[var(--accent-yellow)] border border-[var(--bg-border)]">ACI</span>
+</td>
+<td class="px-6 py-3 text-right">
+<span class="w-2 h-2 rounded-full bg-[var(--accent-green)] inline-block" title="Reachable"></span>
+</td>
+</tr>
+<tr class="hover:bg-[var(--bg-elevated)] group">
+<td class="px-6 py-3">
+<input class="rounded bg-[var(--bg-elevated)] border-gray-600 focus:ring-offset-0" type="checkbox"/>
+</td>
+<td class="px-6 py-3 font-medium text-[var(--text-primary)]">FW-Primary-ASA</td>
+<td class="px-6 py-3 font-mono text-xs text-[var(--text-secondary)]">172.16.0.1</td>
+<td class="px-6 py-3">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--bg-border)]">ASA</span>
+</td>
+<td class="px-6 py-3 text-right">
+<span class="w-2 h-2 rounded-full bg-[var(--accent-green)] inline-block" title="Reachable"></span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="px-6 py-4 border-t border-[var(--bg-border)] bg-[var(--bg-surface)] rounded-b-xl flex justify-between items-center shrink-0">
+<div class="text-xs text-[var(--text-secondary)]">
+                    Showing 6 of 42 devices
+                </div>
+<div class="flex gap-3">
+<a href="/rules" class="px-4 py-2 text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] rounded-md transition-colors border border-transparent hover:border-[var(--bg-border)] no-underline">
+                        Cancel
+                    </a>
+<a href="/rules/new/config" class="px-4 py-2 text-sm font-medium text-white bg-[var(--accent-blue)] hover:bg-blue-600 rounded-md shadow-sm transition-colors flex items-center gap-1 no-underline">
+                        Next
+                        <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</a>
+</div>
+</div>
+</div>
+</div>
+</main>
+
+</body></html>

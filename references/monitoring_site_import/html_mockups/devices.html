@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Network Monitoring Hub - Devices</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">
+        :root {
+            --bg-primary:    #0d1117;
+            --bg-surface:    #161b22;
+            --bg-elevated:   #1f2937;
+            --bg-border:     #30363d;
+            --text-primary:  #e6edf3;
+            --text-secondary:#8b949e;
+            --text-muted:    #484f58;
+            --accent-blue:   #388bfd;
+            --accent-green:  #3fb950;
+            --accent-yellow: #d29922;
+            --accent-red:    #f85149;
+            --accent-purple: #a371f7;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .btn-primary {
+            @apply bg-[var(--accent-blue)] text-white px-3 py-1.5 rounded text-sm font-medium hover:brightness-110 transition-all;
+        }
+        .btn-ghost {
+            @apply bg-transparent border border-[var(--bg-border)] text-[var(--text-primary)] px-3 py-1.5 rounded text-sm font-medium hover:bg-[var(--bg-elevated)] transition-all;
+        }
+        .icon-btn {
+            @apply p-1 rounded hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors;
+        }
+        .tab-active {
+            @apply border-b-2 border-[var(--accent-blue)] text-[var(--text-primary)];
+        }
+        .tab-inactive {
+            @apply border-b-2 border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)];
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+<nav class="h-[52px] bg-[var(--bg-surface)] border-b border-[var(--bg-border)] flex items-center justify-between px-4 shrink-0 z-10">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[var(--accent-blue)]">hub</span>
+<span class="font-semibold text-[15px] tracking-tight">Network Monitoring Hub</span>
+</div>
+<div class="flex items-center h-full">
+<a class="tab-inactive h-full flex items-center px-4 text-sm font-medium" href="/dashboard">Overview</a>
+<a class="tab-active h-full flex items-center px-4 text-sm font-medium" href="/devices">Devices</a>
+<a class="tab-inactive h-full flex items-center px-4 text-sm font-medium" href="/rules">Rules</a>
+<a class="tab-inactive h-full flex items-center px-4 text-sm font-medium" href="/logs">Logs</a>
+<a class="tab-inactive h-full flex items-center px-4 text-sm font-medium" href="/settings">Settings</a>
+</div>
+<div class="flex items-center gap-4 text-sm">
+<div class="flex items-center gap-2 text-[var(--text-secondary)]">
+<span class="w-2 h-2 rounded-full bg-[var(--accent-green)]"></span>
+<span class="font-mono text-xs">admin_usr</span>
+</div>
+<a href="/logout" class="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+<span class="material-symbols-outlined text-[18px]">logout</span>
+</a>
+</div>
+</nav>
+<main class="flex-1 overflow-auto p-6">
+<div class="flex justify-between items-center mb-6">
+<div class="flex items-center gap-4">
+<h1 class="text-xl font-semibold">Devices</h1>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-2 top-1.5 text-[18px] text-[var(--text-secondary)]">search</span>
+<input class="bg-[var(--bg-surface)] border border-[var(--bg-border)] rounded pl-8 pr-3 py-1 text-sm text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--accent-blue)] focus:border-[var(--accent-blue)] placeholder-[var(--text-muted)] w-64" placeholder="Search devices..." type="text"/>
+</div>
+</div>
+<button onclick="document.getElementById('add-device-dialog').style.display='flex'" class="btn-primary flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                Add Device
+            </button>
+</div>
+<div class="bg-[var(--bg-surface)] border border-[var(--bg-border)] rounded-lg overflow-hidden">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-[var(--bg-border)] bg-[var(--bg-surface)]">
+<th class="px-4 py-3 text-[13px] uppercase tracking-wider font-semibold text-[var(--text-secondary)]">Name</th>
+<th class="px-4 py-3 text-[13px] uppercase tracking-wider font-semibold text-[var(--text-secondary)]">IP Address</th>
+<th class="px-4 py-3 text-[13px] uppercase tracking-wider font-semibold text-[var(--text-secondary)]">Type</th>
+<th class="px-4 py-3 text-[13px] uppercase tracking-wider font-semibold text-[var(--text-secondary)]">Port</th>
+<th class="px-4 py-3 text-[13px] uppercase tracking-wider font-semibold text-[var(--text-secondary)]">Status</th>
+<th class="px-4 py-3 text-[13px] uppercase tracking-wider font-semibold text-[var(--text-secondary)] text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-[var(--bg-border)] text-sm">
+<tr class="hover:bg-[var(--bg-elevated)] group transition-colors" data-name="NX-Core-01" data-ip="192.168.1.10" data-type="cisco_nxos" data-port="22" data-notes="Core switch">
+<td class="px-4 py-3 font-medium text-[var(--text-primary)]">NX-Core-01</td>
+<td class="px-4 py-3 font-mono text-[var(--text-secondary)]">192.168.1.10</td>
+<td class="px-4 py-3 text-[var(--text-secondary)]">
+<span class="bg-[var(--bg-border)] px-2 py-0.5 rounded text-xs font-mono text-[var(--text-primary)]">cisco_nxos</span>
+</td>
+<td class="px-4 py-3 text-[var(--text-secondary)] font-mono">22</td>
+<td class="px-4 py-3">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-[var(--accent-green)] shadow-[0_0_8px_rgba(63,185,80,0.4)]"></span>
+<span class="text-[var(--accent-green)] text-xs font-medium">Live</span>
+</div>
+</td>
+<td class="px-4 py-3 text-right">
+<div class="flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+<button onclick="openEditModal(this.closest('tr'))" class="btn-ghost text-xs px-2 py-1 h-7 flex items-center gap-1" title="Edit">Edit</button>
+<button onclick="this.closest('tr').style.display='none'" class="btn-ghost text-xs px-2 py-1 h-7 flex items-center gap-1 text-[var(--accent-red)] border-[var(--accent-red)] bg-opacity-10 hover:bg-[var(--accent-red)] hover:text-white hover:bg-opacity-20" title="Delete">Delete</button>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-[var(--bg-elevated)] group transition-colors" data-name="APIC-01" data-ip="192.168.1.20" data-type="cisco_apic" data-port="443" data-notes="APIC controller">
+<td class="px-4 py-3 font-medium text-[var(--text-primary)]">APIC-01</td>
+<td class="px-4 py-3 font-mono text-[var(--text-secondary)]">192.168.1.20</td>
+<td class="px-4 py-3 text-[var(--text-secondary)]">
+<span class="bg-[var(--bg-border)] px-2 py-0.5 rounded text-xs font-mono text-[var(--text-primary)]">cisco_apic</span>
+</td>
+<td class="px-4 py-3 text-[var(--text-secondary)] font-mono">443</td>
+<td class="px-4 py-3">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-[var(--accent-green)] shadow-[0_0_8px_rgba(63,185,80,0.4)]"></span>
+<span class="text-[var(--accent-green)] text-xs font-medium">Live</span>
+</div>
+</td>
+<td class="px-4 py-3 text-right">
+<div class="flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+<button onclick="openEditModal(this.closest('tr'))" class="btn-ghost text-xs px-2 py-1 h-7 flex items-center gap-1" title="Edit">Edit</button>
+<button onclick="this.closest('tr').style.display='none'" class="btn-ghost text-xs px-2 py-1 h-7 flex items-center gap-1 text-[var(--accent-red)] border-[var(--accent-red)] bg-opacity-10 hover:bg-[var(--accent-red)] hover:text-white hover:bg-opacity-20" title="Delete">Delete</button>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-[var(--bg-elevated)] group transition-colors" data-name="NX-Access-02" data-ip="192.168.2.5" data-type="cisco_nxos" data-port="22" data-notes="Access switch">
+<td class="px-4 py-3 font-medium text-[var(--text-primary)]">NX-Access-02</td>
+<td class="px-4 py-3 font-mono text-[var(--text-secondary)]">192.168.2.5</td>
+<td class="px-4 py-3 text-[var(--text-secondary)]">
+<span class="bg-[var(--bg-border)] px-2 py-0.5 rounded text-xs font-mono text-[var(--text-primary)]">cisco_nxos</span>
+</td>
+<td class="px-4 py-3 text-[var(--text-secondary)] font-mono">22</td>
+<td class="px-4 py-3">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-[var(--accent-red)] shadow-[0_0_8px_rgba(248,81,73,0.4)]"></span>
+<span class="text-[var(--accent-red)] text-xs font-medium">Down</span>
+</div>
+</td>
+<td class="px-4 py-3 text-right">
+<div class="flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+<button onclick="openEditModal(this.closest('tr'))" class="btn-ghost text-xs px-2 py-1 h-7 flex items-center gap-1" title="Edit">Edit</button>
+<button onclick="this.closest('tr').style.display='none'" class="btn-ghost text-xs px-2 py-1 h-7 flex items-center gap-1 text-[var(--accent-red)] border-[var(--accent-red)] bg-opacity-10 hover:bg-[var(--accent-red)] hover:text-white hover:bg-opacity-20" title="Delete">Delete</button>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-[var(--bg-elevated)] group transition-colors" data-name="WAN-Edge-01" data-ip="10.0.50.1" data-type="juniper_junos" data-port="22" data-notes="">
+<td class="px-4 py-3 font-medium text-[var(--text-primary)]">WAN-Edge-01</td>
+<td class="px-4 py-3 font-mono text-[var(--text-secondary)]">10.0.50.1</td>
+<td class="px-4 py-3 text-[var(--text-secondary)]">
+<span class="bg-[var(--bg-border)] px-2 py-0.5 rounded text-xs font-mono text-[var(--text-primary)]">juniper_junos</span>
+</td>
+<td class="px-4 py-3 text-[var(--text-secondary)] font-mono">22</td>
+<td class="px-4 py-3">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-[var(--accent-yellow)]"></span>
+<span class="text-[var(--accent-yellow)] text-xs font-medium">Unreachable</span>
+</div>
+</td>
+<td class="px-4 py-3 text-right">
+<div class="flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+<button onclick="openEditModal(this.closest('tr'))" class="btn-ghost text-xs px-2 py-1 h-7 flex items-center gap-1" title="Edit">Edit</button>
+<button onclick="this.closest('tr').style.display='none'" class="btn-ghost text-xs px-2 py-1 h-7 flex items-center gap-1 text-[var(--accent-red)] border-[var(--accent-red)] bg-opacity-10 hover:bg-[var(--accent-red)] hover:text-white hover:bg-opacity-20" title="Delete">Delete</button>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-[var(--bg-elevated)] group transition-colors" data-name="Core-Agg-A" data-ip="172.16.0.1" data-type="arista_eos" data-port="22" data-notes="">
+<td class="px-4 py-3 font-medium text-[var(--text-primary)]">Core-Agg-A</td>
+<td class="px-4 py-3 font-mono text-[var(--text-secondary)]">172.16.0.1</td>
+<td class="px-4 py-3 text-[var(--text-secondary)]">
+<span class="bg-[var(--bg-border)] px-2 py-0.5 rounded text-xs font-mono text-[var(--text-primary)]">arista_eos</span>
+</td>
+<td class="px-4 py-3 text-[var(--text-secondary)] font-mono">22</td>
+<td class="px-4 py-3">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-[var(--text-secondary)] opacity-50"></span>
+<span class="text-[var(--text-secondary)] text-xs font-medium">Unknown</span>
+</div>
+</td>
+<td class="px-4 py-3 text-right">
+<div class="flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+<button onclick="openEditModal(this.closest('tr'))" class="btn-ghost text-xs px-2 py-1 h-7 flex items-center gap-1" title="Edit">Edit</button>
+<button onclick="this.closest('tr').style.display='none'" class="btn-ghost text-xs px-2 py-1 h-7 flex items-center gap-1 text-[var(--accent-red)] border-[var(--accent-red)] bg-opacity-10 hover:bg-[var(--accent-red)] hover:text-white hover:bg-opacity-20" title="Delete">Delete</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="border-t border-[var(--bg-border)] px-4 py-3 flex items-center justify-between text-xs text-[var(--text-secondary)]">
+<div>Showing 5 of 23 devices</div>
+<div class="flex gap-2">
+<button class="px-2 py-1 rounded border border-[var(--bg-border)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] disabled:opacity-50" disabled="">Previous</button>
+<button class="px-2 py-1 rounded border border-[var(--bg-border)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]">Next</button>
+</div>
+</div>
+</div>
+</main>
+<dialog id="add-device-dialog" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm w-full h-full" style="display:none;">
+<div class="bg-[var(--bg-surface)] border border-[var(--bg-border)] rounded-lg shadow-2xl w-full max-w-md">
+<div class="flex justify-between items-center p-4 border-b border-[var(--bg-border)]">
+<h3 class="font-semibold text-[var(--text-primary)]">Add Device</h3>
+<button onclick="document.getElementById('add-device-dialog').style.display='none'" class="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<div class="p-6 space-y-4">
+<div class="grid gap-1">
+<label class="text-xs font-medium text-[var(--text-secondary)]">Name</label>
+<input class="w-full bg-[var(--bg-elevated)] border border-[var(--bg-border)] rounded px-3 py-2 text-sm text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--accent-blue)] focus:outline-none focus:border-[var(--accent-blue)]" type="text"/>
+</div>
+<div class="grid grid-cols-3 gap-4">
+<div class="col-span-2 grid gap-1">
+<label class="text-xs font-medium text-[var(--text-secondary)]">IP Address</label>
+<input class="w-full bg-[var(--bg-elevated)] border border-[var(--bg-border)] rounded px-3 py-2 text-sm text-[var(--text-primary)] font-mono focus:ring-1 focus:ring-[var(--accent-blue)] focus:outline-none focus:border-[var(--accent-blue)]" type="text"/>
+</div>
+<div class="grid gap-1">
+<label class="text-xs font-medium text-[var(--text-secondary)]">Port</label>
+<input class="w-full bg-[var(--bg-elevated)] border border-[var(--bg-border)] rounded px-3 py-2 text-sm text-[var(--text-primary)] font-mono focus:ring-1 focus:ring-[var(--accent-blue)] focus:outline-none focus:border-[var(--accent-blue)]" type="number" value="22"/>
+</div>
+</div>
+<div class="grid gap-1">
+<label class="text-xs font-medium text-[var(--text-secondary)]">Device Type</label>
+<select class="w-full bg-[var(--bg-elevated)] border border-[var(--bg-border)] rounded px-3 py-2 text-sm text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--accent-blue)] focus:outline-none focus:border-[var(--accent-blue)] appearance-none">
+<option>cisco_nxos</option>
+<option>cisco_ios</option>
+<option>cisco_xr</option>
+<option>juniper_junos</option>
+<option>arista_eos</option>
+</select>
+</div>
+<div class="grid gap-1">
+<label class="text-xs font-medium text-[var(--text-secondary)]">Notes (Optional)</label>
+<textarea class="w-full bg-[var(--bg-elevated)] border border-[var(--bg-border)] rounded px-3 py-2 text-sm text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--accent-blue)] focus:outline-none focus:border-[var(--accent-blue)] h-20 resize-none"></textarea>
+</div>
+</div>
+<div class="p-4 border-t border-[var(--bg-border)] flex justify-between items-center bg-[var(--bg-surface)] rounded-b-lg">
+<button class="btn-ghost text-xs">Test Connection</button>
+<div class="flex gap-2">
+<button onclick="document.getElementById('add-device-dialog').style.display='none'" class="btn-ghost">Cancel</button>
+<button class="btn-primary">Save Device</button>
+</div>
+</div>
+</div>
+</dialog>
+
+<!-- Edit Device Modal -->
+<div id="edit-device-dialog" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm w-full h-full" style="display:none;">
+<div class="bg-[var(--bg-surface)] border border-[var(--bg-border)] rounded-lg shadow-2xl w-full max-w-md">
+<div class="flex justify-between items-center p-4 border-b border-[var(--bg-border)]">
+<h3 class="font-semibold text-[var(--text-primary)]">Edit Device</h3>
+<button onclick="document.getElementById('edit-device-dialog').style.display='none'" class="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<div class="p-6 space-y-4">
+<div class="grid gap-1">
+<label class="text-xs font-medium text-[var(--text-secondary)]">Name</label>
+<input id="edit-name" class="w-full bg-[var(--bg-elevated)] border border-[var(--bg-border)] rounded px-3 py-2 text-sm text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--accent-blue)] focus:outline-none focus:border-[var(--accent-blue)]" type="text"/>
+</div>
+<div class="grid grid-cols-3 gap-4">
+<div class="col-span-2 grid gap-1">
+<label class="text-xs font-medium text-[var(--text-secondary)]">IP Address</label>
+<input id="edit-ip" class="w-full bg-[var(--bg-elevated)] border border-[var(--bg-border)] rounded px-3 py-2 text-sm text-[var(--text-primary)] font-mono focus:ring-1 focus:ring-[var(--accent-blue)] focus:outline-none focus:border-[var(--accent-blue)]" type="text"/>
+</div>
+<div class="grid gap-1">
+<label class="text-xs font-medium text-[var(--text-secondary)]">Port</label>
+<input id="edit-port" class="w-full bg-[var(--bg-elevated)] border border-[var(--bg-border)] rounded px-3 py-2 text-sm text-[var(--text-primary)] font-mono focus:ring-1 focus:ring-[var(--accent-blue)] focus:outline-none focus:border-[var(--accent-blue)]" type="number"/>
+</div>
+</div>
+<div class="grid gap-1">
+<label class="text-xs font-medium text-[var(--text-secondary)]">Device Type</label>
+<select id="edit-type" class="w-full bg-[var(--bg-elevated)] border border-[var(--bg-border)] rounded px-3 py-2 text-sm text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--accent-blue)] focus:outline-none focus:border-[var(--accent-blue)] appearance-none">
+<option>cisco_nxos</option>
+<option>cisco_apic</option>
+<option>cisco_ios</option>
+<option>cisco_xr</option>
+<option>juniper_junos</option>
+<option>arista_eos</option>
+</select>
+</div>
+<div class="grid gap-1">
+<label class="text-xs font-medium text-[var(--text-secondary)]">Notes (Optional)</label>
+<textarea id="edit-notes" class="w-full bg-[var(--bg-elevated)] border border-[var(--bg-border)] rounded px-3 py-2 text-sm text-[var(--text-primary)] focus:ring-1 focus:ring-[var(--accent-blue)] focus:outline-none focus:border-[var(--accent-blue)] h-20 resize-none"></textarea>
+</div>
+</div>
+<div class="p-4 border-t border-[var(--bg-border)] flex justify-between items-center bg-[var(--bg-surface)] rounded-b-lg">
+<button class="btn-ghost text-xs">Test Connection</button>
+<div class="flex gap-2">
+<button onclick="document.getElementById('edit-device-dialog').style.display='none'" class="btn-ghost">Cancel</button>
+<button onclick="document.getElementById('edit-device-dialog').style.display='none'" class="btn-primary">Save Changes</button>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+function openEditModal(row) {
+  document.getElementById('edit-name').value  = row.dataset.name  || '';
+  document.getElementById('edit-ip').value    = row.dataset.ip    || '';
+  document.getElementById('edit-port').value  = row.dataset.port  || '22';
+  document.getElementById('edit-notes').value = row.dataset.notes || '';
+  const sel = document.getElementById('edit-type');
+  for (let i = 0; i < sel.options.length; i++) {
+    sel.options[i].selected = sel.options[i].value === row.dataset.type;
+  }
+  document.getElementById('edit-device-dialog').style.display = 'flex';
+}
+</script>
+
+</body></html>

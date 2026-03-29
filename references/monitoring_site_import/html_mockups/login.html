@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Network Monitoring Hub - Login</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">
+        :root {
+            --bg-primary: #0d1117;
+            --bg-surface: #161b22;
+            --bg-elevated: #1f2937;
+            --bg-border: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #484f58;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --radius-md: 8px;
+        }
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        .input-field {
+            background-color: var(--bg-primary);
+            border: 1px solid var(--bg-border);
+            color: var(--text-primary);
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+        .input-field:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(56, 139, 253, 0.3);
+            outline: none;
+        }
+        .btn-primary {
+            background-color: var(--accent-blue);
+            color: white;
+            transition: background-color 0.2s;
+        }
+        .btn-primary:hover {
+            background-color: #1f6feb;
+        }.material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col items-center justify-center p-4">
+<div class="w-full max-w-[340px] flex flex-col items-center gap-6">
+<div class="flex flex-col items-center gap-3">
+<div class="w-12 h-12 flex items-center justify-center rounded-full bg-[var(--bg-surface)] border border-[var(--bg-border)] text-[var(--text-primary)]">
+<span class="material-symbols-outlined !text-[28px]">hub</span>
+</div>
+<h1 class="text-[20px] font-semibold text-[var(--text-primary)] tracking-tight">Network Monitoring Hub</h1>
+</div>
+<div class="w-full bg-[var(--bg-surface)] border border-[var(--bg-border)] rounded-[var(--radius-md)] p-6 shadow-xl">
+<form action="/login" class="flex flex-col gap-4" method="POST">
+<div class="flex flex-col gap-1.5">
+<label class="text-[14px] font-medium text-[var(--text-primary)]" for="username">Username</label>
+<input class="input-field w-full px-3 py-1.5 rounded-[6px] text-[14px] placeholder-[var(--text-muted)] focus:ring-0" id="username" name="username" placeholder="Enter your username" required="" type="text"/>
+</div>
+<div class="flex flex-col gap-1.5">
+<div class="flex justify-between items-center">
+<label class="text-[14px] font-medium text-[var(--text-primary)]" for="password">Password</label>
+</div>
+<input class="input-field w-full px-3 py-1.5 rounded-[6px] text-[14px] placeholder-[var(--text-muted)] focus:ring-0" id="password" name="password" placeholder="••••••••" required="" type="password"/>
+</div>
+<button class="btn-primary mt-4 w-full py-1.5 rounded-[6px] text-[14px] font-medium shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[var(--accent-blue)] focus:ring-offset-2 focus:ring-offset-[var(--bg-primary)]" type="submit">
+                    Sign In
+                </button>
+</form>
+</div>
+<p class="text-[12px] text-[var(--text-muted)] text-center">
+            Internal Network Team Tool • v0.0.1
+        </p>
+</div>
+
+</body></html>

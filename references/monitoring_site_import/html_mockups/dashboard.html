@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Network Monitoring Hub Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">
+        :root {
+            --bg-primary: #0d1117;
+            --bg-surface: #161b22;
+            --bg-elevated: #1f2937;
+            --bg-border: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #484f58;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-yellow: #d29922;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--bg-border);
+            border-radius: 8px;
+        }
+        .nav-link {
+            color: var(--text-secondary);
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .nav-link:hover {
+            color: var(--text-primary);
+        }
+        .nav-link.active {
+            color: var(--text-primary);
+            border-bottom-color: var(--accent-blue);
+        }
+        .status-dot {
+            height: 8px;
+            width: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-dot.green { background-color: var(--accent-green); }
+        .status-dot.orange { background-color: var(--accent-yellow); }
+        .status-dot.red { background-color: var(--accent-red); }
+        .status-dot.purple { background-color: var(--accent-purple); }::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary); 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--bg-border); 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted); 
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-sm">
+<nav class="h-[52px] border-b border-[var(--bg-border)] bg-[var(--bg-primary)] fixed w-full top-0 z-50 flex items-center justify-between px-6">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[var(--accent-blue)]">hub</span>
+<span class="font-semibold text-[15px] tracking-tight">Network Monitoring Hub</span>
+</div>
+<div class="flex h-full gap-8">
+<a href="/dashboard" class="nav-link active h-full px-2 font-medium flex items-center">Overview</a>
+<a href="/devices" class="nav-link h-full px-2 font-medium flex items-center">Devices</a>
+<a href="/rules" class="nav-link h-full px-2 font-medium flex items-center">Rules</a>
+<a href="/logs" class="nav-link h-full px-2 font-medium flex items-center">Logs</a>
+<a href="/settings" class="nav-link h-full px-2 font-medium flex items-center">Settings</a>
+</div>
+<div class="flex items-center gap-4 text-[var(--text-secondary)]">
+<div class="flex items-center gap-2 text-xs">
+<span class="status-dot green"></span>
+<span>Connected</span>
+</div>
+<div class="h-4 w-[1px] bg-[var(--bg-border)]"></div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">account_circle</span>
+<span class="text-xs font-medium">netops_admin</span>
+</div>
+<a href="/logout" class="hover:text-[var(--text-primary)] transition-colors">
+<span class="material-symbols-outlined text-[18px]">logout</span>
+</a>
+</div>
+</nav>
+<main class="flex-1 mt-[52px] p-8 max-w-[1200px] mx-auto w-full">
+<div class="space-y-6" id="overview-section">
+<div class="grid grid-cols-4 gap-6">
+<div class="card p-5 flex flex-col justify-between h-32">
+<span class="text-[var(--text-secondary)] text-xs font-medium uppercase tracking-wider">Devices</span>
+<div class="flex items-end justify-between">
+<span class="text-4xl font-light text-[var(--text-primary)]">3</span>
+<span class="material-symbols-outlined text-[var(--bg-border)] text-4xl">router</span>
+</div>
+</div>
+<div class="card p-5 flex flex-col justify-between h-32">
+<span class="text-[var(--text-secondary)] text-xs font-medium uppercase tracking-wider">Active Rules</span>
+<div class="flex items-end justify-between">
+<span class="text-4xl font-light text-[var(--text-primary)]">4</span>
+<span class="material-symbols-outlined text-[var(--bg-border)] text-4xl">rule</span>
+</div>
+</div>
+<div class="card p-5 flex flex-col justify-between h-32">
+<span class="text-[var(--text-secondary)] text-xs font-medium uppercase tracking-wider">Runs Today</span>
+<div class="flex items-end justify-between">
+<span class="text-4xl font-light text-[var(--text-primary)]">28</span>
+<span class="material-symbols-outlined text-[var(--bg-border)] text-4xl">history</span>
+</div>
+</div>
+<div class="card p-5 flex flex-col justify-between h-32">
+<span class="text-[var(--text-secondary)] text-xs font-medium uppercase tracking-wider">Errors Today</span>
+<div class="flex items-end justify-between">
+<span class="text-4xl font-light text-[var(--accent-red)]">1</span>
+<span class="material-symbols-outlined text-[var(--bg-border)] text-4xl">error_outline</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+<div class="card flex flex-col">
+<div class="p-4 border-b border-[var(--bg-border)] flex justify-between items-center bg-[var(--bg-surface)] rounded-t-lg">
+<h2 class="font-semibold text-[var(--text-primary)]">Recent Activity</h2>
+<span class="text-xs text-[var(--text-secondary)] mono">Last update: 2s ago</span>
+</div>
+<div class="p-0">
+<div class="flex items-center justify-between p-4 border-b border-[var(--bg-border)] hover:bg-[var(--bg-elevated)] transition-colors cursor-default">
+<div class="flex items-center gap-4">
+<span class="status-dot orange mt-1"></span>
+<div>
+<div class="font-medium text-[var(--text-primary)]">BGP Check</div>
+<div class="text-xs text-[var(--text-secondary)]">NX-Core-01</div>
+</div>
+</div>
+<div class="text-right">
+<div class="text-xs font-medium text-[var(--accent-yellow)] uppercase tracking-wide">Match</div>
+<div class="text-xs text-[var(--text-secondary)] mt-0.5">2m ago</div>
+</div>
+</div>
+<div class="flex items-center justify-between p-4 border-b border-[var(--bg-border)] hover:bg-[var(--bg-elevated)] transition-colors cursor-default">
+<div class="flex items-center gap-4">
+<span class="status-dot green mt-1"></span>
+<div>
+<div class="font-medium text-[var(--text-primary)]">APIC Fault Check</div>
+<div class="text-xs text-[var(--text-secondary)]">APIC-01</div>
+</div>
+</div>
+<div class="text-right">
+<div class="text-xs font-medium text-[var(--accent-green)] uppercase tracking-wide">OK</div>
+<div class="text-xs text-[var(--text-secondary)] mt-0.5">5m ago</div>
+</div>
+</div>
+<div class="flex items-center justify-between p-4 border-b border-[var(--bg-border)] hover:bg-[var(--bg-elevated)] transition-colors cursor-default">
+<div class="flex items-center gap-4">
+<span class="status-dot green mt-1"></span>
+<div>
+<div class="font-medium text-[var(--text-primary)]">Interface Status</div>
+<div class="text-xs text-[var(--text-secondary)]">NX-Access</div>
+</div>
+</div>
+<div class="text-right">
+<div class="text-xs font-medium text-[var(--accent-green)] uppercase tracking-wide">OK</div>
+<div class="text-xs text-[var(--text-secondary)] mt-0.5">8m ago</div>
+</div>
+</div>
+<div class="flex items-center justify-between p-4 hover:bg-[var(--bg-elevated)] transition-colors cursor-default">
+<div class="flex items-center gap-4">
+<span class="status-dot red mt-1"></span>
+<div>
+<div class="font-medium text-[var(--text-primary)]">SSH Connection</div>
+<div class="text-xs text-[var(--text-secondary)]">Legacy-Rtr-02</div>
+</div>
+</div>
+<div class="text-right">
+<div class="text-xs font-medium text-[var(--accent-red)] uppercase tracking-wide">Error</div>
+<div class="text-xs text-[var(--text-secondary)] mt-0.5">15m ago</div>
+</div>
+</div>
+</div>
+</div>
+<div class="card flex flex-col h-full">
+<div class="p-4 border-b border-[var(--bg-border)] bg-[var(--bg-surface)] rounded-t-lg">
+<h2 class="font-semibold text-[var(--text-primary)]">Next Scheduled Runs</h2>
+</div>
+<div class="p-0 flex-1">
+<div class="flex items-center justify-between p-4 border-b border-[var(--bg-border)] hover:bg-[var(--bg-elevated)] transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[var(--text-secondary)] text-[20px]">schedule</span>
+<span class="text-[var(--text-primary)]">Interface Check</span>
+</div>
+<div class="text-xs font-mono text-[var(--accent-blue)] bg-[rgba(56,139,253,0.1)] px-2 py-1 rounded">
+                                in 4 min
+                            </div>
+</div>
+<div class="flex items-center justify-between p-4 border-b border-[var(--bg-border)] hover:bg-[var(--bg-elevated)] transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[var(--text-secondary)] text-[20px]">schedule</span>
+<span class="text-[var(--text-primary)]">BGP Neighbor Check</span>
+</div>
+<div class="text-xs font-mono text-[var(--accent-blue)] bg-[rgba(56,139,253,0.1)] px-2 py-1 rounded">
+                                in 28 min
+                            </div>
+</div>
+<div class="flex items-center justify-between p-4 hover:bg-[var(--bg-elevated)] transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[var(--text-secondary)] text-[20px]">schedule</span>
+<span class="text-[var(--text-primary)]">APIC Fault Check</span>
+</div>
+<div class="text-xs font-mono text-[var(--accent-blue)] bg-[rgba(56,139,253,0.1)] px-2 py-1 rounded">
+                                in 1h 2m
+                            </div>
+</div>
+</div>
+<div class="p-3 border-t border-[var(--bg-border)] bg-[var(--bg-surface)] rounded-b-lg">
+<button class="w-full py-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--accent-blue)] transition-colors flex items-center justify-center gap-1">
+<span>View Calendar</span>
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<div class="fixed bottom-6 right-6 flex flex-col gap-3 pointer-events-none z-[100]">
+</div>
+
+</body></html>
