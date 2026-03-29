@@ -27,7 +27,7 @@ import traceback
 import uuid
 import re
 
-from flask import Flask, jsonify, g, request, render_template_string, url_for
+from flask import Flask, jsonify, g, request
 from werkzeug.exceptions import HTTPException
 try:
     from flask_jwt_extended import get_jwt, verify_jwt_in_request, JWTDecodeError
@@ -45,6 +45,7 @@ except ImportError:  # pragma: no cover - compatibility with older flask-jwt-ext
 from .config import BaseConfig, select_config
 from .extensions import db, migrate, jwt
 from .api import api_bp
+from .api.docs import register_docs_routes
 from .auth.routes import auth_bp
 from .logging import setup_logging
 from .models import RequestLogs, ErrorLogs, AppEvents, JWTTokenBlocklist
@@ -351,53 +352,7 @@ def create_app(config_object: type[BaseConfig] | BaseConfig | None = None) -> Fl
     app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
     app.register_blueprint(api_bp)
 
-    swagger_template = """
-    <!DOCTYPE html>
-    <html lang=\"en\">
-      <head>
-        <meta charset=\"utf-8\" />
-        <title>Orbit API Reference</title>
-        <link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css\" />
-      </head>
-      <body>
-        <div id=\"swagger-ui\"></div>
-        <script src=\"https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js\"></script>
-        <script>
-          window.onload = () => {
-            window.ui = SwaggerUIBundle({
-              url: '{{ openapi_url }}',
-              dom_id: '#swagger-ui',
-              displayRequestDuration: true,
-              docExpansion: 'none'
-            });
-          };
-        </script>
-      </body>
-    </html>
-    """
-
-    redoc_template = """
-    <!DOCTYPE html>
-    <html lang=\"en\">
-      <head>
-        <meta charset=\"utf-8\" />
-        <title>Orbit API Reference</title>
-        <style>body{margin:0;padding:0;}redoc{height:100vh;}</style>
-        <script src=\"https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js\"></script>
-      </head>
-      <body>
-        <redoc spec-url=\"{{ openapi_url }}\"></redoc>
-      </body>
-    </html>
-    """
-
-    @app.get("/docs")
-    def swagger_docs():
-        return render_template_string(swagger_template, openapi_url=url_for("api_v1.specs"))
-
-    @app.get("/redoc")
-    def redoc_docs():
-        return render_template_string(redoc_template, openapi_url=url_for("api_v1.specs"))
+    register_docs_routes(app)
 
     @app.get("/healthz")
     def healthz():

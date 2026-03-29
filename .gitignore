@@ -1,6 +1,7 @@
 # Node
 node_modules/
 apps/frontend/node_modules/
+*.tsbuildinfo
 dist/
 build/
 *.log
