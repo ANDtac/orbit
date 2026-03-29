@@ -25,4 +25,8 @@ export const THEME_FONT_BODY = "'Inter', system-ui, -apple-system, BlinkMacSyste
 
 export const QUERY_KEYS = {
   devices: "devices",
+  jobs: "jobs",
+  compliancePolicies: "compliancePolicies",
+  requestLogs: "requestLogs",
+  errorLogs: "errorLogs",
 };
