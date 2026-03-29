@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Global System Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">
+        :root {
+            --bg-primary: #0d1117;
+            --bg-surface: #161b22;
+            --bg-elevated: #1f2937;
+            --bg-border: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #484f58;
+            --accent-blue: #388bfd;
+            --accent-green: #3fb950;
+            --accent-yellow: #d29922;
+            --accent-red: #f85149;
+            --accent-purple: #a371f7;
+        }
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+        }
+        .card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--bg-border);
+            border-radius: 8px;
+            padding: 24px;
+        }
+        .input-dark {
+            background-color: var(--bg-elevated);
+            border: 1px solid var(--bg-border);
+            color: var(--text-primary);
+            border-radius: 4px;
+            font-size: 14px;
+            padding: 8px 12px;
+            width: 100%;
+            transition: border-color 0.15s ease-in-out;
+        }
+        .input-dark:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 1px var(--accent-blue);
+        }
+        .label-text {
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 6px;
+            display: block;
+        }
+        .btn-primary {
+            background-color: var(--accent-blue);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 14px;
+            transition: opacity 0.2s;
+            border: none;
+        }
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+        .btn-ghost {
+            background-color: transparent;
+            border: 1px solid var(--bg-border);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        .btn-ghost:hover {
+            background-color: var(--bg-elevated);
+        }
+        .nav-tab {
+            padding: 12px 16px;
+            color: var(--text-secondary);
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: color 0.2s, border-color 0.2s;
+        }
+        .nav-tab.active {
+            color: var(--text-primary);
+            border-bottom-color: var(--accent-blue);
+        }
+        .nav-tab:hover:not(.active) {
+            color: var(--text-primary);
+        }
+        .section-header {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--bg-border);
+        }
+        .mono-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+<header class="h-[52px] border-b border-[var(--bg-border)] bg-[var(--bg-surface)] flex items-center justify-between px-4 sticky top-0 z-50">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[var(--accent-blue)]">hub</span>
+<span class="font-semibold text-[15px] tracking-tight">Network Monitoring Hub</span>
+</div>
+<nav class="flex h-full items-end gap-1">
+<a href="/dashboard" class="nav-tab h-full flex items-center no-underline">Dashboard</a>
+<a href="/devices" class="nav-tab h-full flex items-center no-underline">Devices</a>
+<a href="/rules" class="nav-tab h-full flex items-center no-underline">Rules</a>
+<a href="/logs" class="nav-tab h-full flex items-center no-underline">Logs</a>
+<a href="/settings" class="nav-tab active h-full flex items-center no-underline">Settings</a>
+</nav>
+<div class="flex items-center gap-4 text-[var(--text-secondary)]">
+<div class="flex items-center gap-2 text-[13px]">
+<span class="w-2 h-2 rounded-full bg-[var(--accent-green)]"></span>
+<span>Connected</span>
+</div>
+<div class="h-4 w-[1px] bg-[var(--bg-border)]"></div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">account_circle</span>
+<span class="text-[13px]">ops_admin</span>
+</div>
+<a href="/logout" class="hover:text-[var(--text-primary)] transition-colors">
+<span class="material-symbols-outlined text-[18px]">logout</span>
+</a>
+</div>
+</header>
+<main class="flex-1 p-6 max-w-7xl mx-auto w-full">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<div class="lg:col-span-2 space-y-6">
+<div class="card">
+<h2 class="section-header">Logging Configuration</h2>
+<div class="grid grid-cols-1 gap-5">
+<div>
+<label class="label-text" for="base_dir">Base Directory</label>
+<input class="input-dark mono-font" id="base_dir" type="text" value="./logs"/>
+<p class="text-[12px] text-[var(--text-secondary)] mt-1.5">Root path for storing log files on the local filesystem.</p>
+</div>
+</div>
+</div>
+<div class="card">
+<h2 class="section-header">Email &amp; SMTP Infrastructure</h2>
+<div class="space-y-6">
+<div class="bg-[var(--bg-elevated)] border border-[var(--bg-border)] rounded-md p-4">
+<div class="flex items-start gap-4">
+<span class="material-symbols-outlined text-[var(--accent-blue)] mt-1">dns</span>
+<div class="flex-1">
+<h3 class="font-medium text-[var(--text-primary)] mb-1">SMTP Gateway</h3>
+<p class="text-[13px] text-[var(--text-secondary)] mb-3">
+                                        Email delivery is managed via the central infrastructure gateway. Rule-specific sender and recipient logic is configured within individual Rule definitions.
+                                    </p>
+<div class="flex items-center gap-4 text-[13px] mono-font text-[var(--text-secondary)]">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">computer</span>
+<span>localhost</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">lan</span>
+<span>Port: 25</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col items-end gap-2">
+<span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-[rgba(63,185,80,0.15)] text-[var(--accent-green)] text-[12px] font-medium border border-[rgba(63,185,80,0.2)]">
+<span class="w-1.5 h-1.5 rounded-full bg-current"></span>
+                                        Active
+                                    </span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between border-t border-[var(--bg-border)] pt-5">
+<div class="text-[13px] text-[var(--text-secondary)]">
+<p>Verify connectivity to the upstream MTA.</p>
+</div>
+<button class="btn-ghost flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">wifi_tethering</span>
+                                Test SMTP Connection
+                            </button>
+</div>
+</div>
+</div>
+<div class="card">
+<h2 class="section-header">Daily Digest</h2>
+<div class="flex items-start gap-8">
+<div class="w-full md:w-1/3">
+<label class="label-text" for="digest_time">Send Time (HH:MM)</label>
+<div class="relative">
+<input class="input-dark mono-font" id="digest_time" type="time" value="07:00"/>
+<span class="material-symbols-outlined absolute right-3 top-2 text-[var(--text-secondary)] pointer-events-none text-[18px]">schedule</span>
+</div>
+</div>
+<div class="flex-1 pt-6 text-[var(--text-secondary)] text-sm">
+<p>Digest includes a summary of all rules run in the last 24 hours, including error rates and match statistics.</p>
+</div>
+</div>
+</div>
+<div class="flex justify-end pt-2">
+<button class="btn-primary flex items-center gap-2 px-6">
+<span class="material-symbols-outlined text-[18px]">save</span>
+                        Save Settings
+                    </button>
+</div>
+</div>
+<div class="lg:col-span-1 space-y-6">
+<div class="card sticky top-20">
+<div class="flex items-center gap-2 mb-4 text-[var(--text-primary)] font-semibold border-b border-[var(--bg-border)] pb-3">
+<span class="material-symbols-outlined text-[var(--accent-blue)]">mail</span>
+<h3>Email Actions</h3>
+</div>
+<div class="space-y-4">
+<div class="space-y-2">
+<button class="w-full btn-ghost flex items-center justify-center gap-2 border-[var(--bg-border)] hover:bg-[var(--bg-elevated)]">
+<span class="material-symbols-outlined text-[18px]">send</span>
+                                Send Test Email
+                            </button>
+<p class="text-[12px] text-[var(--text-secondary)] text-center">Sends a test payload to the currently logged-in admin.</p>
+</div>
+<hr class="border-[var(--bg-border)]"/>
+<div class="space-y-2">
+<button class="w-full btn-ghost flex items-center justify-center gap-2 border-[var(--bg-border)] hover:bg-[var(--bg-elevated)]">
+<span class="material-symbols-outlined text-[18px]">summarize</span>
+                                Send Digest Now
+                            </button>
+<p class="text-[12px] text-[var(--text-secondary)] text-center">Triggers the daily digest generation immediately.</p>
+</div>
+</div>
+<div class="mt-6 pt-4 border-t border-[var(--bg-border)]">
+<div class="flex items-start gap-2 text-[12px] text-[var(--text-secondary)]">
+<span class="material-symbols-outlined text-[16px] mt-0.5">history</span>
+<span>Last digest sent:<br/><span class="text-[var(--text-primary)] mono-font">Jan 15, 2025 07:00</span></span>
+</div>
+</div>
+</div>
+<div class="card">
+<div class="flex items-center gap-2 mb-4 text-[var(--text-primary)] font-semibold border-b border-[var(--bg-border)] pb-3">
+<span class="material-symbols-outlined text-[var(--accent-purple)]">info</span>
+<h3>System Status</h3>
+</div>
+<div class="space-y-3 text-[13px]">
+<div class="flex justify-between items-center">
+<span class="text-[var(--text-secondary)]">Version</span>
+<span class="mono-font text-[var(--text-primary)]">v0.0.1</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-[var(--text-secondary)]">Uptime</span>
+<span class="mono-font text-[var(--text-primary)]">14d 2h 12m</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-[var(--text-secondary)]">Database</span>
+<span class="text-[var(--accent-green)] flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-current"></span> Connected
+                            </span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-[var(--text-secondary)]">SSH Workers</span>
+<span class="mono-font text-[var(--text-primary)]">4 / 8 Active</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<div class="fixed bottom-6 right-6 flex flex-col gap-3 z-50 pointer-events-none">
+<div class="bg-[var(--bg-surface)] border border-[var(--bg-border)] shadow-lg rounded-md p-3 flex items-center gap-3 min-w-[300px] pointer-events-auto transform translate-y-0 opacity-100 transition-all">
+<span class="material-symbols-outlined text-[var(--accent-green)]">check_circle</span>
+<span class="text-[13px] font-medium text-[var(--text-primary)]">Settings loaded successfully</span>
+</div>
+</div>
+
+</body></html>

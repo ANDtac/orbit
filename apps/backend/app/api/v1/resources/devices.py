@@ -48,7 +48,7 @@ from flask import jsonify, request
 from flask_restx import Namespace, Resource, fields
 from flask_restx._http import HTTPStatus
 from flask_jwt_extended import get_jwt_identity, jwt_required
-from sqlalchemy import func
+from sqlalchemy import func, inspect
 
 from app.extensions import db
 from app.models import (
@@ -85,7 +85,11 @@ ns = Namespace("devices", description="Devices inventory")
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-DEVICE_COLUMN_KEYS = {column.key for column in Devices.__table__.columns}
+
+mapper = inspect(Devices)
+
+if mapper is not None:
+    DEVICE_COLUMN_KEYS = {column.key for column in mapper.columns}
 
 
 # ---------------------------------------------------------------------------

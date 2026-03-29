@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Network Monitoring Hub - Rules</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">
+        :root {
+            --bg-primary:    #0d1117;--bg-surface:    #161b22;--bg-elevated:   #1f2937;--bg-border:     #30363d;--text-primary:  #e6edf3;--text-secondary:#8b949e;--text-muted:    #484f58;--accent-blue:   #388bfd;--accent-green:  #3fb950;--accent-yellow: #d29922;--accent-red:    #f85149;--accent-purple: #a371f7;--radius-sm:     4px;
+            --radius-md:     8px;
+            --radius-lg:     12px;
+        }
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        }
+        .material-symbols-outlined {
+            font-size: 20px;
+            vertical-align: middle;
+        }.toggle-checkbox:checked {
+            right: 0;
+            border-color: var(--accent-green);
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: var(--accent-green);
+        }
+        .nav-item.active {
+            border-bottom: 2px solid var(--accent-blue);
+            color: var(--text-primary);
+        }
+        .nav-item {
+            color: var(--text-secondary);
+            border-bottom: 2px solid transparent;
+        }
+        .nav-item:hover {
+            color: var(--text-primary);
+        }
+        .btn-primary {
+            background-color: var(--accent-blue);
+            color: white;
+            border-radius: var(--radius-md);
+            transition: opacity 0.2s;
+        }
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+        .btn-ghost {
+            background-color: transparent;
+            color: var(--accent-blue);
+            border: 1px solid transparent;
+            border-radius: var(--radius-md);
+        }
+        .btn-ghost:hover {
+            background-color: rgba(56, 139, 253, 0.1);
+        }
+        .table-row:hover {
+            background-color: var(--bg-elevated);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+<nav class="h-[52px] w-full border-b border-[var(--bg-border)] bg-[var(--bg-primary)] flex items-center justify-between px-6 fixed top-0 z-50">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[var(--accent-blue)]">hub</span>
+<span class="font-semibold text-[16px]">Network Monitoring Hub</span>
+</div>
+<div class="flex h-full items-end gap-6 text-[14px]">
+<a class="nav-item h-full flex items-center px-1 pb-1" href="/dashboard">Dashboard</a>
+<a class="nav-item h-full flex items-center px-1 pb-1" href="/devices">Devices</a>
+<a class="nav-item h-full flex items-center px-1 pb-1 active" href="/rules">Rules</a>
+<a class="nav-item h-full flex items-center px-1 pb-1" href="/logs">Logs</a>
+<a class="nav-item h-full flex items-center px-1 pb-1" href="/settings">Settings</a>
+</div>
+<div class="flex items-center gap-4 text-[13px] text-[var(--text-secondary)]">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-[var(--accent-green)]"></span>
+<span>j.doe@ops</span>
+</div>
+<a href="/logout" class="hover:text-[var(--text-primary)] transition-colors">
+<span class="material-symbols-outlined text-[18px]">logout</span>
+</a>
+</div>
+</nav>
+<main class="flex-1 mt-[52px] p-6 max-w-7xl mx-auto w-full">
+<div class="flex justify-between items-center mb-6">
+<div class="flex items-center gap-3">
+<h1 class="text-[20px] font-semibold text-[var(--text-primary)]">Monitoring Rules</h1>
+<span class="px-2 py-0.5 rounded-full bg-[var(--bg-elevated)] border border-[var(--bg-border)] text-[12px] text-[var(--text-secondary)]">
+                    4 Active
+                </span>
+</div>
+<a href="/rules/new" class="btn-primary flex items-center gap-2 px-4 py-2 text-[14px] font-medium no-underline">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                New Rule
+            </a>
+</div>
+<div class="bg-[var(--bg-surface)] border border-[var(--bg-border)] rounded-[var(--radius-md)] overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-[var(--bg-border)]">
+<th class="px-6 py-4 text-[13px] uppercase tracking-wider font-medium text-[var(--text-secondary)]">Name</th>
+<th class="px-6 py-4 text-[13px] uppercase tracking-wider font-medium text-[var(--text-secondary)]">Schedule</th>
+<th class="px-6 py-4 text-[13px] uppercase tracking-wider font-medium text-[var(--text-secondary)]">Devices</th>
+<th class="px-6 py-4 text-[13px] uppercase tracking-wider font-medium text-[var(--text-secondary)]">Output Mode</th>
+<th class="px-6 py-4 text-[13px] uppercase tracking-wider font-medium text-[var(--text-secondary)] w-24">Active</th>
+<th class="px-6 py-4 text-[13px] uppercase tracking-wider font-medium text-[var(--text-secondary)] text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="text-[14px]">
+<tr class="table-row border-b border-[var(--bg-border)] last:border-0 transition-colors">
+<td class="px-6 py-4 font-medium text-[var(--text-primary)]">
+<div class="flex flex-col">
+<span>BGP Neighbor Check</span>
+<span class="text-[12px] text-[var(--text-secondary)] font-normal">Verifies established state</span>
+</div>
+</td>
+<td class="px-6 py-4 text-[var(--text-secondary)]">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+                                    Every 30m
+                                </div>
+</td>
+<td class="px-6 py-4">
+<div class="flex -space-x-2">
+<div class="w-6 h-6 rounded-full bg-[var(--bg-elevated)] border border-[var(--bg-surface)] flex items-center justify-center text-[10px] text-[var(--text-secondary)] z-10">NX</div>
+<div class="w-6 h-6 rounded-full bg-[var(--bg-elevated)] border border-[var(--bg-surface)] flex items-center justify-center text-[10px] text-[var(--text-secondary)] z-0">+2</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 rounded-[var(--radius-sm)] bg-[rgba(56,139,253,0.1)] text-[var(--accent-blue)] text-[12px] font-mono border border-[rgba(56,139,253,0.2)]">
+                                    regex
+                                </span>
+</td>
+<td class="px-6 py-4">
+<div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer checked:right-0 checked:border-[var(--accent-green)] transition-all duration-200" id="toggle1" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-5 rounded-full bg-[var(--bg-elevated)] cursor-pointer border border-[var(--bg-border)] checked:bg-[var(--accent-green)] transition-colors duration-200" for="toggle1"></label>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="btn-ghost p-1.5 hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition mr-2" title="Run Now">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+</button>
+<button class="btn-ghost p-1.5 hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--accent-blue)] transition" title="Edit Rule">
+<span class="material-symbols-outlined text-[18px]">edit</span>
+</button>
+</td>
+</tr>
+<tr class="table-row border-b border-[var(--bg-border)] last:border-0 transition-colors">
+<td class="px-6 py-4 font-medium text-[var(--text-primary)]">
+<div class="flex flex-col">
+<span>APIC Fault Monitor</span>
+<span class="text-[12px] text-[var(--text-secondary)] font-normal">Critical infrastructure faults</span>
+</div>
+</td>
+<td class="px-6 py-4 text-[var(--text-secondary)]">
+<div class="flex items-center gap-2" title="Cron: 0 6 * * *">
+<span class="material-symbols-outlined text-[16px]">update</span>
+                                    Daily at 06:00
+                                </div>
+</td>
+<td class="px-6 py-4">
+<div class="flex -space-x-2">
+<div class="w-6 h-6 rounded-full bg-[var(--bg-elevated)] border border-[var(--bg-surface)] flex items-center justify-center text-[10px] text-[var(--text-secondary)]">AP</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 rounded-[var(--radius-sm)] bg-[rgba(163,113,247,0.1)] text-[var(--accent-purple)] text-[12px] font-mono border border-[rgba(163,113,247,0.2)]">
+                                    full
+                                </span>
+</td>
+<td class="px-6 py-4">
+<div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer checked:right-0 checked:border-[var(--accent-green)] transition-all duration-200" id="toggle2" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-5 rounded-full bg-[var(--bg-elevated)] cursor-pointer border border-[var(--bg-border)] checked:bg-[var(--accent-green)] transition-colors duration-200" for="toggle2"></label>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="btn-ghost p-1.5 hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition mr-2" title="Run Now">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+</button>
+<button class="btn-ghost p-1.5 hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--accent-blue)] transition" title="Edit Rule">
+<span class="material-symbols-outlined text-[18px]">edit</span>
+</button>
+</td>
+</tr>
+<tr class="table-row border-b border-[var(--bg-border)] last:border-0 transition-colors">
+<td class="px-6 py-4 font-medium text-[var(--text-primary)]">
+<div class="flex flex-col">
+<span>Interface Errors</span>
+<span class="text-[12px] text-[var(--text-secondary)] font-normal"> CRC/Input errors on uplinks</span>
+</div>
+</td>
+<td class="px-6 py-4 text-[var(--text-secondary)]">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+                                    Every 1h
+                                </div>
+</td>
+<td class="px-6 py-4">
+<span class="text-[12px] text-[var(--text-secondary)]">All Devices (*)</span>
+</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 rounded-[var(--radius-sm)] bg-[rgba(56,139,253,0.1)] text-[var(--accent-blue)] text-[12px] font-mono border border-[rgba(56,139,253,0.2)]">
+                                    regex
+                                </span>
+</td>
+<td class="px-6 py-4">
+<div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+<input class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-[var(--text-muted)] border-4 border-[var(--text-muted)] appearance-none cursor-pointer left-0 transition-all duration-200" id="toggle3" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-5 rounded-full bg-[var(--bg-elevated)] cursor-pointer border border-[var(--bg-border)] transition-colors duration-200" for="toggle3"></label>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="btn-ghost p-1.5 hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition mr-2" title="Run Now">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+</button>
+<button class="btn-ghost p-1.5 hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--accent-blue)] transition" title="Edit Rule">
+<span class="material-symbols-outlined text-[18px]">edit</span>
+</button>
+</td>
+</tr>
+<tr class="table-row border-b border-[var(--bg-border)] last:border-0 transition-colors">
+<td class="px-6 py-4 font-medium text-[var(--text-primary)]">
+<div class="flex flex-col">
+<span>OS Version Compliance</span>
+<span class="text-[12px] text-[var(--text-secondary)] font-normal">Monthly audit</span>
+</div>
+</td>
+<td class="px-6 py-4 text-[var(--text-secondary)]">
+<div class="flex items-center gap-2" title="Cron: 0 0 1 * *">
+<span class="material-symbols-outlined text-[16px]">calendar_month</span>
+                                    Monthly
+                                </div>
+</td>
+<td class="px-6 py-4">
+<span class="text-[12px] text-[var(--text-secondary)]">All Devices (*)</span>
+</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 rounded-[var(--radius-sm)] bg-[rgba(163,113,247,0.1)] text-[var(--accent-purple)] text-[12px] font-mono border border-[rgba(163,113,247,0.2)]">
+                                    full
+                                </span>
+</td>
+<td class="px-6 py-4">
+<div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer checked:right-0 checked:border-[var(--accent-green)] transition-all duration-200" id="toggle4" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-5 rounded-full bg-[var(--bg-elevated)] cursor-pointer border border-[var(--bg-border)] checked:bg-[var(--accent-green)] transition-colors duration-200" for="toggle4"></label>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="btn-ghost p-1.5 hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition mr-2" title="Run Now">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+</button>
+<button class="btn-ghost p-1.5 hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--accent-blue)] transition" title="Edit Rule">
+<span class="material-symbols-outlined text-[18px]">edit</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-6 py-3 border-t border-[var(--bg-border)] bg-[var(--bg-surface)] flex justify-between items-center text-[12px] text-[var(--text-secondary)]">
+<span>Showing 4 rules</span>
+<div class="flex gap-2">
+<button class="hover:text-[var(--text-primary)] disabled:opacity-50" disabled="">Previous</button>
+<button class="hover:text-[var(--text-primary)] disabled:opacity-50" disabled="">Next</button>
+</div>
+</div>
+</div>
+</main>
+<div class="fixed bottom-6 right-6 flex flex-col gap-3 z-50">
+<div class="bg-[var(--bg-surface)] border border-[var(--bg-border)] rounded-[var(--radius-md)] p-4 shadow-lg flex items-center gap-3 animate-bounce-in min-w-[300px]">
+<span class="material-symbols-outlined text-[var(--accent-green)]">check_circle</span>
+<span class="text-[14px]">Dashboard data refreshed</span>
+</div>
+</div>
+
+</body></html>
