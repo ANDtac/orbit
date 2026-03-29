@@ -18,6 +18,12 @@ export function Home(): JSX.Element {
         >
           View devices
         </Link>
+        <Link
+          to="/monitoring"
+          className="inline-flex items-center justify-center rounded-full border border-primary px-6 py-3 text-base font-medium text-primary transition hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2"
+        >
+          Open monitoring
+        </Link>
       </div>
       <section className="grid gap-4 sm:grid-cols-2">
         <article className="rounded-2xl border border-primary/10 bg-surface p-6 shadow-sm">

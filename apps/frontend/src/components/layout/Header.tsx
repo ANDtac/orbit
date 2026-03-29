@@ -12,6 +12,10 @@ import orbitDarkStillFull from "@/assets/logos/orbit_dark_still_full.svg";
 const navLinks = [
   { to: "/", label: "Home" },
   { to: "/devices", label: "Devices" },
+  { to: "/monitoring", label: "Monitoring" },
+  { to: "/monitoring/jobs", label: "Jobs" },
+  { to: "/monitoring/policies", label: "Policies" },
+  { to: "/monitoring/logs", label: "Logs" },
 ];
 
 export function Header(): JSX.Element {
