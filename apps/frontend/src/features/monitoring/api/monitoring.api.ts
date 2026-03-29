@@ -1,15 +1,17 @@
 import apiClient from "@/lib/apiClient";
 import type { CompliancePolicy, ErrorLogEntry, Job, RequestLogEntry } from "@/lib/types";
 
-interface JobsResponse {
+export interface CursorPage {
+  cursor: string;
+  next?: string;
+  prev?: string;
+  size: number;
+  total: number;
+}
+
+export interface JobsResponse {
   data: Job[];
-  page: {
-    cursor: string;
-    next?: string;
-    prev?: string;
-    size: number;
-    total: number;
-  };
+  page: CursorPage;
 }
 
 interface QueueJobResponse {
@@ -28,9 +30,36 @@ interface CompliancePolicyInput {
   is_active?: boolean;
 }
 
-export async function fetchJobs(): Promise<Job[]> {
-  const { data } = await apiClient.get<JobsResponse>("/jobs");
-  return data.data;
+interface JobsQueryOptions {
+  cursor?: string;
+  "page[size]"?: number;
+  status?: string;
+  queue?: string;
+}
+
+interface OffsetPaginationOptions {
+  page?: number;
+  per_page?: number;
+}
+
+async function fetchLogs<T>(path: string, options?: OffsetPaginationOptions): Promise<T[]> {
+  const { data } = await apiClient.get<T[]>(path, {
+    params: {
+      per_page: options?.per_page ?? 25,
+      page: options?.page ?? 1,
+      sort: "-occurred_at",
+    },
+  });
+
+  return data;
+}
+
+export async function fetchJobs(options?: JobsQueryOptions): Promise<JobsResponse> {
+  const { data } = await apiClient.get<JobsResponse>("/jobs", {
+    params: options,
+  });
+
+  return data;
 }
 
 export async function queuePasswordRotation(input: QueuePasswordRotationInput): Promise<QueueJobResponse> {
@@ -64,22 +93,10 @@ export async function deletePolicy(policyId: number): Promise<void> {
   await apiClient.delete(`/compliance/policies/${policyId}`);
 }
 
-export async function fetchRequestLogs(): Promise<RequestLogEntry[]> {
-  const { data } = await apiClient.get<RequestLogEntry[]>("/logs/requests", {
-    params: {
-      per_page: 25,
-      sort: "-occurred_at",
-    },
-  });
-  return data;
+export function fetchRequestLogs(options?: OffsetPaginationOptions): Promise<RequestLogEntry[]> {
+  return fetchLogs<RequestLogEntry>("/logs/requests", options);
 }
 
-export async function fetchErrorLogs(): Promise<ErrorLogEntry[]> {
-  const { data } = await apiClient.get<ErrorLogEntry[]>("/logs/errors", {
-    params: {
-      per_page: 25,
-      sort: "-occurred_at",
-    },
-  });
-  return data;
+export function fetchErrorLogs(options?: OffsetPaginationOptions): Promise<ErrorLogEntry[]> {
+  return fetchLogs<ErrorLogEntry>("/logs/errors", options);
 }

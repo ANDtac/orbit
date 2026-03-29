@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/Button";
@@ -10,6 +10,14 @@ import type { CompliancePolicy } from "@/lib/types";
 
 const DELETE_CONFIRMATION = "DELETE";
 
+function toErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "Request failed. Please try again.";
+}
+
 export function MonitoringPoliciesPage(): JSX.Element {
   const queryClient = useQueryClient();
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -19,6 +27,8 @@ export function MonitoringPoliciesPage(): JSX.Element {
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const { data: policies = [], isLoading, isError } = useQuery({
     queryKey: [QUERY_KEYS.compliancePolicies],
@@ -31,6 +41,9 @@ export function MonitoringPoliciesPage(): JSX.Element {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.compliancePolicies] });
       closeForm();
     },
+    onError: (error: unknown) => {
+      setFormError(toErrorMessage(error));
+    },
   });
 
   const updateMutation = useMutation({
@@ -39,6 +52,9 @@ export function MonitoringPoliciesPage(): JSX.Element {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.compliancePolicies] });
       closeForm();
+    },
+    onError: (error: unknown) => {
+      setFormError(toErrorMessage(error));
     },
   });
 
@@ -49,19 +65,29 @@ export function MonitoringPoliciesPage(): JSX.Element {
       setIsDeleteOpen(false);
       setDeleteTarget(null);
       setDeleteConfirmation("");
+      setDeleteError(null);
+    },
+    onError: (error: unknown) => {
+      setDeleteError(toErrorMessage(error));
     },
   });
 
-  const canDelete = useMemo(
-    () => deleteConfirmation.trim().toUpperCase() === DELETE_CONFIRMATION,
-    [deleteConfirmation],
-  );
+  const canDelete = deleteConfirmation.trim().toUpperCase() === DELETE_CONFIRMATION;
 
   function closeForm() {
     setIsFormOpen(false);
     setEditingPolicy(null);
     setName("");
     setDescription("");
+    setFormError(null);
+  }
+
+  function openCreateForm() {
+    setEditingPolicy(null);
+    setName("");
+    setDescription("");
+    setFormError(null);
+    setIsFormOpen(true);
   }
 
   function onSubmit() {
@@ -73,6 +99,8 @@ export function MonitoringPoliciesPage(): JSX.Element {
     if (!payload.name) {
       return;
     }
+
+    setFormError(null);
 
     if (editingPolicy) {
       updateMutation.mutate({ policyId: editingPolicy.id, input: payload });
@@ -94,7 +122,7 @@ export function MonitoringPoliciesPage(): JSX.Element {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted">Author monitoring/compliance policies in Orbit-native workflows.</p>
-        <Button onClick={() => setIsFormOpen(true)}>New policy</Button>
+        <Button onClick={openCreateForm}>New policy</Button>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-primary/10">
@@ -108,39 +136,55 @@ export function MonitoringPoliciesPage(): JSX.Element {
             </tr>
           </thead>
           <tbody className="divide-y divide-primary/5 bg-surface">
-            {policies.map((policy) => (
-              <tr key={policy.id}>
-                <td className="px-4 py-3 text-sm font-medium text-text">{policy.name}</td>
-                <td className="px-4 py-3 text-sm uppercase text-text">{policy.is_active ? "active" : "inactive"}</td>
-                <td className="px-4 py-3 text-sm text-muted">{policy.description ?? "—"}</td>
-                <td className="px-4 py-3 text-sm">
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setEditingPolicy(policy);
-                        setName(policy.name);
-                        setDescription(policy.description ?? "");
-                        setIsFormOpen(true);
-                      }}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setDeleteTarget(policy);
-                        setIsDeleteOpen(true);
-                      }}
-                    >
-                      Delete
+            {policies.length ? (
+              policies.map((policy) => (
+                <tr key={policy.id}>
+                  <td className="px-4 py-3 text-sm font-medium text-text">{policy.name}</td>
+                  <td className="px-4 py-3 text-sm uppercase text-text">{policy.is_active ? "active" : "inactive"}</td>
+                  <td className="px-4 py-3 text-sm text-muted">{policy.description ?? "—"}</td>
+                  <td className="px-4 py-3 text-sm">
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setEditingPolicy(policy);
+                          setName(policy.name);
+                          setDescription(policy.description ?? "");
+                          setFormError(null);
+                          setIsFormOpen(true);
+                        }}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setDeleteTarget(policy);
+                          setDeleteError(null);
+                          setDeleteConfirmation("");
+                          setIsDeleteOpen(true);
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={4} className="px-4 py-6 text-center text-sm text-muted">
+                  <div className="flex flex-col items-center gap-3">
+                    <p>No policies yet.</p>
+                    <Button size="sm" onClick={openCreateForm}>
+                      Create first policy
                     </Button>
                   </div>
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
@@ -168,6 +212,7 @@ export function MonitoringPoliciesPage(): JSX.Element {
             value={description}
             onChange={(event) => setDescription(event.target.value)}
           />
+          {formError ? <p className="text-sm text-red-500">{formError}</p> : null}
         </div>
       </Modal>
 
@@ -177,6 +222,7 @@ export function MonitoringPoliciesPage(): JSX.Element {
           setIsDeleteOpen(false);
           setDeleteTarget(null);
           setDeleteConfirmation("");
+          setDeleteError(null);
         }}
         title="Confirm policy deletion"
         footer={
@@ -187,6 +233,7 @@ export function MonitoringPoliciesPage(): JSX.Element {
                 setIsDeleteOpen(false);
                 setDeleteTarget(null);
                 setDeleteConfirmation("");
+                setDeleteError(null);
               }}
             >
               Cancel
@@ -194,6 +241,7 @@ export function MonitoringPoliciesPage(): JSX.Element {
             <Button
               onClick={() => {
                 if (deleteTarget) {
+                  setDeleteError(null);
                   deleteMutation.mutate(deleteTarget.id);
                 }
               }}
@@ -215,6 +263,7 @@ export function MonitoringPoliciesPage(): JSX.Element {
             value={deleteConfirmation}
             onChange={(event) => setDeleteConfirmation(event.target.value)}
           />
+          {deleteError ? <p className="text-sm text-red-500">{deleteError}</p> : null}
         </div>
       </Modal>
     </div>

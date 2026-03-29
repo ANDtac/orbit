@@ -32,7 +32,7 @@ Decision source: `scope_answers.md` (all 20 answers applied).
 
 | Rejected Item | Reason |
 |---|---|
-| Standalone Monitoring Hub shell | Orbit requires integrated native section |
+| Standalone Monitoring Hub shell | Orbit requires an integrated native section |
 | Session-stored device credentials model | Conflicts with Orbit credential profile architecture |
 | Duplicate device CRUD workflow | Violates overlap constraint |
 | Verbatim imported HTML/CSS | Explicitly disallowed by requirements |

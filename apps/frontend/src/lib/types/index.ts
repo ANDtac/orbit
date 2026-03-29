@@ -28,11 +28,14 @@ export interface LoginResponse {
   user: UserProfile;
 }
 
+export type JobStatus = "queued" | "running" | "finished" | "failed" | "cancelled";
+export type JobTaskStatus = "pending" | "running" | "succeeded" | "failed" | "cancelled";
+
 export interface JobTask {
   id: number;
   sequence: number;
   task_type: string;
-  status: string;
+  status: JobTaskStatus;
   device_id?: number;
   target_type?: string;
   target_id?: number;
@@ -53,7 +56,7 @@ export interface Job {
   id: number;
   uuid: string;
   job_type: string;
-  status: string;
+  status: JobStatus;
   queue?: string;
   priority?: number;
   parameters?: Record<string, unknown>;

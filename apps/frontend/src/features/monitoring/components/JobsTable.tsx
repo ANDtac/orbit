@@ -33,7 +33,16 @@ export function JobsTable({ jobs }: JobsTableProps): JSX.Element {
                 <Fragment key={job.id}>
                   <tr
                     className="cursor-pointer transition hover:bg-primary/5"
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={isExpanded}
                     onClick={() => setExpandedId((current) => (current === job.id ? null : job.id))}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setExpandedId((current) => (current === job.id ? null : job.id));
+                      }
+                    }}
                   >
                     <td className="px-4 py-3 text-sm font-medium text-text">{job.job_type}</td>
                     <td className="px-4 py-3 text-sm uppercase text-text">{job.status}</td>

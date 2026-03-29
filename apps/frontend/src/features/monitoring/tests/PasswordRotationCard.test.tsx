@@ -10,7 +10,23 @@ vi.mock("@/features/monitoring/api/monitoring.api", () => ({
 }));
 
 describe("PasswordRotationCard", () => {
-  it("requires typed confirmation before queuing password rotation", async () => {
+  let queryClient: QueryClient;
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+  });
+
+  afterEach(() => {
+    queryClient.clear();
+    vi.clearAllMocks();
+  });
+
+  it("accepts case-variant confirmation token and queues rotation", async () => {
     const user = userEvent.setup();
     const mockedQueue = vi.mocked(queuePasswordRotation);
     mockedQueue.mockResolvedValue({
@@ -27,7 +43,7 @@ describe("PasswordRotationCard", () => {
     });
 
     render(
-      <QueryClientProvider client={new QueryClient()}>
+      <QueryClientProvider client={queryClient}>
         <PasswordRotationCard />
       </QueryClientProvider>,
     );
@@ -37,7 +53,9 @@ describe("PasswordRotationCard", () => {
     const confirmButton = screen.getByRole("button", { name: "Confirm and queue" });
     expect(confirmButton).toBeDisabled();
 
-    await user.type(screen.getByLabelText("Type ROTATE to confirm"), "ROTATE");
+    await user.type(screen.getByLabelText("Type ROTATE to confirm"), "rotate");
+    expect(confirmButton).toBeEnabled();
+
     await user.click(confirmButton);
 
     await waitFor(() => {
@@ -45,5 +63,24 @@ describe("PasswordRotationCard", () => {
     });
 
     expect(await screen.findByText("Password rotation job #42 queued successfully.")).toBeInTheDocument();
+  });
+
+  it("shows error feedback when queue request fails", async () => {
+    const user = userEvent.setup();
+    const mockedQueue = vi.mocked(queuePasswordRotation);
+    mockedQueue.mockRejectedValue(new Error("network down"));
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <PasswordRotationCard />
+      </QueryClientProvider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Queue password rotation" }));
+    await user.type(screen.getByLabelText("Type ROTATE to confirm"), "ROTATE");
+    await user.click(screen.getByRole("button", { name: "Confirm and queue" }));
+
+    expect(await screen.findByText("Unable to queue password rotation right now. Please try again.")).toBeInTheDocument();
+    expect(mockedQueue).toHaveBeenCalledTimes(1);
   });
 });

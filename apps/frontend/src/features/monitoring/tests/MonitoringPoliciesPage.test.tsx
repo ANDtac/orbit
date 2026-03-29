@@ -29,8 +29,15 @@ describe("MonitoringPoliciesPage", () => {
       },
     ]);
 
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+
     render(
-      <QueryClientProvider client={new QueryClient()}>
+      <QueryClientProvider client={queryClient}>
         <MonitoringPoliciesPage />
       </QueryClientProvider>,
     );
