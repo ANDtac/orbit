@@ -9,6 +9,7 @@ from flask_restx import Namespace, Resource, fields
 from flask_restx._http import HTTPStatus
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
+from app.extensions import db
 from app.models import JobEvents, JobTasks, Jobs
 from app.services import jobs as jobs_service
 from app.services.jobs import JobTaskSpec
@@ -155,6 +156,15 @@ def _job_response(job: Jobs, created: bool):
     return payload, HTTPStatus.ACCEPTED, headers
 
 
+def _apply_job_type_filter(query, job_type: str):
+    if "*" in job_type:
+        prefix = job_type.split("*", 1)[0]
+        if prefix:
+            return query.filter(Jobs.job_type.ilike(f"{prefix}%"))
+        return query
+    return query.filter(Jobs.job_type == job_type)
+
+
 def _parse_task_specs(tasks_payload: Iterable[dict[str, Any]]) -> list[JobTaskSpec]:
     specs: list[JobTaskSpec] = []
     for index, raw in enumerate(tasks_payload):
@@ -185,11 +195,19 @@ class JobCollectionResource(Resource):
     @require_roles("network_admin")
     @ns.marshal_with(JobCollection, code=HTTPStatus.OK)
     def get(self):
-        filters = get_filter_args({"job_type", "status", "owner_id", "queue"})
+        filters = get_filter_args(
+            {"job_type", "status", "owner_id", "queue"},
+            legacy={
+                "job_type": "job_type",
+                "status": "status",
+                "owner_id": "owner_id",
+                "queue": "queue",
+            },
+        )
         query = Jobs.query
 
         if job_type := filters.get("job_type"):
-            query = query.filter(Jobs.job_type == job_type)
+            query = _apply_job_type_filter(query, job_type)
         if status := filters.get("status"):
             query = query.filter(Jobs.status == status)
         if owner := filters.get("owner_id"):
@@ -264,7 +282,7 @@ class JobItemResource(Resource):
     @require_roles("network_admin")
     @ns.marshal_with(JobOut, code=HTTPStatus.OK)
     def get(self, job_id: int):
-        job = Jobs.query.get(job_id)
+        job = db.session.get(Jobs, job_id)
         if not job:
             return problem_response(HTTPStatus.NOT_FOUND, detail="Job not found")
         return _serialize_job(job, include_related=True)

@@ -17,7 +17,7 @@ Security Model
 - Access tokens: short-lived; used for API requests.
 - Refresh tokens: longer-lived; used only to obtain new access tokens.
 - Logout adds the current token's JTI to the `JWTTokenBlocklist` table.
-  The application checks this blocklist in `app/__init__.py` via
+  The application checks this blocklist in `app/auth/jwt_handlers.py` via
   `@jwt.token_in_blocklist_loader`.
 - Login attempts are persisted in `LoginAttempts` for auditing and
   throttle enforcement.
@@ -41,6 +41,8 @@ from sqlalchemy import func
 
 from ..extensions import db
 from ..models import Users, JWTTokenBlocklist, LoginAttempts
+from ..auth.roles import ROLE_ADMIN
+from ..utils.credential_crypto import decrypt_password, encrypt_password, get_fernet_key
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -89,6 +91,10 @@ def _normalize_user_agent() -> str | None:
 
 def _verify_device_credentials(username: str, password: str) -> Tuple[bool, str | None]:
     """Validate credentials by attempting a Netmiko SSH login or configured tester."""
+
+    if current_app.config.get("AUTH_DEV_BYPASS"):
+        user = Users.query.filter(func.lower(Users.username) == username.lower()).first()
+        return (True, None) if user else (False, "invalid credentials")
 
     tester: Callable[[str, str], Tuple[bool, str | None] | bool] | None = current_app.config.get(
         "AUTH_CREDENTIAL_TESTER"
@@ -159,6 +165,15 @@ def _record_login_attempt(
     attempt.failure_reason = failure_reason if not success else None
     db.session.add(attempt)
     return attempt
+
+
+def get_session_password() -> str | None:
+    """Return the current request's decrypted session password when present."""
+
+    encrypted_password = (get_jwt() or {}).get("ep")
+    if not encrypted_password:
+        return None
+    return decrypt_password(encrypted_password, get_fernet_key(current_app.config))
 
 
 @auth_bp.post("/login")
@@ -251,6 +266,8 @@ def login():
             user = Users(username=username)
             db.session.add(user)
             db.session.flush()
+        if cfg.get("AUTH_DEV_BYPASS") and not list(user.roles or []):
+            user.roles = [ROLE_ADMIN]
         if not getattr(user, "is_active", True) or not getattr(user, "jwt_auth_active", True):
             attempt.success = False
             attempt.failure_reason = "account disabled"
@@ -266,7 +283,12 @@ def login():
         return jsonify({"message": "authentication unavailable"}), 503
 
     identity = str(user.id)
-    claims = {"sub": identity, "username": user.username}
+    claims = {
+        "sub": identity,
+        "username": user.username,
+        "roles": list(user.roles or []),
+        "ep": encrypt_password(password, get_fernet_key(cfg)),
+    }
     access_token = create_access_token(identity=identity, additional_claims=claims)
     refresh_token = create_refresh_token(identity=identity, additional_claims=claims)
 
@@ -307,11 +329,17 @@ def refresh():
     """
     verify_jwt_in_request(refresh=True)
     identity = get_jwt_identity()
-    user = Users.query.get(int(identity)) if identity and str(identity).isdigit() else None
+    current_claims = get_jwt()
+    user = db.session.get(Users, int(identity)) if identity and str(identity).isdigit() else None
     if not user or not getattr(user, "is_active", True):
         return jsonify({"message": "user disabled"}), 401
 
-    claims = {"sub": str(user.id), "username": user.username}
+    claims = {
+        "sub": str(user.id),
+        "username": user.username,
+        "roles": list(user.roles or []),
+        "ep": current_claims.get("ep"),
+    }
     access_token = create_access_token(identity=str(user.id), additional_claims=claims)
     access_expires = current_app.config.get("JWT_ACCESS_TOKEN_EXPIRES")
     access_seconds = int(access_expires.total_seconds()) if hasattr(access_expires, "total_seconds") else 0
@@ -357,7 +385,7 @@ def me():
         { ...user fields... }
     """
     identity = get_jwt_identity()
-    user = Users.query.get(int(identity)) if identity and str(identity).isdigit() else None
+    user = db.session.get(Users, int(identity)) if identity and str(identity).isdigit() else None
     if not user:
         return jsonify({"message": "not found"}), 404
     return jsonify(_user_to_dict(user)), 200

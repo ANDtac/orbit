@@ -21,8 +21,9 @@ Implementation Notes
 This module intentionally contains scaffolding only. The concrete logic for
 parsing payloads, validating against duplicates, persisting to the database,
 and streaming exports is left to the implementer. Refer to
-``app/api/resources/devices.py`` for patterns around namespaces, schema
-definitions, and query helpers.
+``app/api/v1/resources/devices_shared.py`` and
+``app/api/v1/resources/devices_core.py`` for patterns around namespaces,
+schema definitions, and query helpers.
 """
 
 from __future__ import annotations
@@ -153,9 +154,9 @@ def _build_filtered_query() -> Sequence[Devices]:
 
     This helper should mirror the filter semantics exposed by the existing
     ``Devices`` collection endpoint (see ``_apply_device_filters`` in
-    ``devices.py``). Query parameters such as ``os_name=cisco_ios`` or
-    ``platform_id=123`` must be respected to let users export targeted
-    subsets of devices.
+    ``devices_shared.py``). Query parameters such as
+    ``os_name=cisco_ios`` or ``platform_id=123`` must be respected to let
+    users export targeted subsets of devices.
     """
 
     raise NotImplementedError
@@ -205,7 +206,7 @@ class DeviceExportResource(Resource):
         os_name : str, optional
             Filter devices by operating system family (e.g., ``cisco_ios``).
         Additional filters should mirror those supported by
-        ``app/api/resources/devices.py``.
+        ``app/api/v1/resources/devices_core.py``.
         """
 
         raise NotImplementedError

@@ -1,5 +1,3 @@
-import { formatDistanceToNow } from "date-fns";
-
 import type { Device } from "@/lib/types";
 
 interface DeviceTableProps {
@@ -17,38 +15,45 @@ export function DeviceTable({ devices }: DeviceTableProps): JSX.Element {
         <thead className="bg-primary/10">
           <tr>
             <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-primary">
-              Hostname
+              Device Name
             </th>
             <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-primary">
-              Platform
+              Management IP
+            </th>
+            <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-primary">
+              OS
             </th>
             <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-primary">
               Status
-            </th>
-            <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-primary">
-              Site
-            </th>
-            <th scope="col" className="px-4 py-3 text-left text-sm font-semibold text-primary">
-              Last seen
             </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-primary/5 bg-surface">
           {devices.map((device) => (
             <tr key={device.id} className="transition hover:bg-primary/5">
-              <td className="px-4 py-3 text-sm font-medium text-text">{device.hostname}</td>
-              <td className="px-4 py-3 text-sm text-text">{device.platform}</td>
+              <td className="px-4 py-3 text-sm font-medium text-text">
+                <div>{device.name}</div>
+                {device.fqdn && <div className="text-xs text-muted">{device.fqdn}</div>}
+              </td>
+              <td className="px-4 py-3 font-mono text-sm text-text">
+                {device.mgmt_ipv4 ?? "—"}
+              </td>
+              <td className="px-4 py-3 text-sm text-text">
+                {device.os_name ?? "—"}
+                {device.os_version && (
+                  <span className="ml-1 text-xs text-muted">{device.os_version}</span>
+                )}
+              </td>
               <td className="px-4 py-3 text-sm">
                 <span
-                  className="inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold uppercase tracking-wide"
-                  data-status={device.status}
+                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    device.is_active !== false
+                      ? "bg-green-500/10 text-green-600"
+                      : "bg-red-500/10 text-red-600"
+                  }`}
                 >
-                  {device.status}
+                  {device.is_active !== false ? "Active" : "Inactive"}
                 </span>
-              </td>
-              <td className="px-4 py-3 text-sm text-text">{device.site ?? "—"}</td>
-              <td className="px-4 py-3 text-sm text-text">
-                {formatDistanceToNow(new Date(device.lastSeen), { addSuffix: true })}
               </td>
             </tr>
           ))}

@@ -23,8 +23,6 @@ JWT_REFRESH_TOKEN_EXPIRES : int
     Refresh token lifetime in seconds. Default 1209600 (14d).
 RESTX_MASK_SWAGGER : bool
     Whether Flask-RESTX masks fields in Swagger (default False).
-ERROR_404_HELP : bool
-    Whether Flask-RESTX suggests alternatives for 404s (default False).
 
 Notes
 -----
@@ -117,6 +115,16 @@ def _json_env(name: str) -> dict[str, Any] | None:
         return None
 
 
+def _list_env(name: str, default: tuple[str, ...] = ()) -> list[str]:
+    """Read a comma-delimited list environment variable."""
+
+    raw = os.getenv(name)
+    if raw is None:
+        return list(default)
+    values = [item.strip() for item in raw.split(",")]
+    return [item for item in values if item]
+
+
 class BaseConfig:
     """
     BaseConfig
@@ -133,8 +141,6 @@ class BaseConfig:
         Bubble exceptions so our global error handler can format them.
     RESTX_MASK_SWAGGER : bool
         Disable field masking in Swagger for clarity.
-    ERROR_404_HELP : bool
-        Disable RESTX's 404 hinting noise.
 
     JWT_SECRET_KEY : str
         Key used to sign JWTs.
@@ -167,10 +173,10 @@ class BaseConfig:
     # Flask / RESTX behavior
     PROPAGATE_EXCEPTIONS: bool = True
     RESTX_MASK_SWAGGER: bool = _bool_env("RESTX_MASK_SWAGGER", False)
-    ERROR_404_HELP: bool = _bool_env("ERROR_404_HELP", False)
 
     # JWT
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "dev-secret-change-me")
+    CREDENTIAL_ENCRYPTION_KEY: str | None = os.getenv("CREDENTIAL_ENCRYPTION_KEY")
     JWT_ACCESS_TOKEN_EXPIRES: timedelta = timedelta(
         seconds=_int_env("JWT_ACCESS_TOKEN_EXPIRES", 30 * 60)
     )
@@ -184,6 +190,7 @@ class BaseConfig:
     AUTH_NETMIKO_PORT: int = _int_env("AUTH_NETMIKO_PORT", 22)
     AUTH_NETMIKO_TIMEOUT: int = _int_env("AUTH_NETMIKO_TIMEOUT", 10)
     AUTH_NETMIKO_EXTRA: dict[str, Any] | None = _json_env("AUTH_NETMIKO_EXTRA")
+    AUTH_DEV_BYPASS: bool = _bool_env("AUTH_DEV_BYPASS", False)
     AUTH_LOGIN_MAX_ATTEMPTS: int = _int_env("AUTH_LOGIN_MAX_ATTEMPTS", 5)
     AUTH_LOGIN_WINDOW_SECONDS: int = _int_env("AUTH_LOGIN_WINDOW_SECONDS", 15 * 60)
     AUTH_LOGIN_LOCKOUT_SECONDS: int = _int_env("AUTH_LOGIN_LOCKOUT_SECONDS", 15 * 60)
@@ -197,6 +204,25 @@ class BaseConfig:
     SMTP_STARTTLS: bool = _bool_env("SMTP_STARTTLS", False)
     MAIL_FROM: str = os.getenv("MAIL_FROM", "orbit@yourorg.local")
     MAIL_TO_CRITICAL: str | None = os.getenv("MAIL_TO_CRITICAL")
+
+    # CORS
+    CORS_ORIGINS: list[str] = _list_env(
+        "CORS_ORIGINS",
+        ("http://localhost:5173", "http://localhost:3000"),
+    )
+    CORS_ALLOW_CREDENTIALS: bool = _bool_env("CORS_ALLOW_CREDENTIALS", True)
+    CORS_ALLOW_HEADERS: list[str] = _list_env(
+        "CORS_ALLOW_HEADERS",
+        ("Authorization", "Content-Type", "X-Request-ID"),
+    )
+    CORS_ALLOW_METHODS: list[str] = _list_env(
+        "CORS_ALLOW_METHODS",
+        ("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"),
+    )
+    CORS_EXPOSE_HEADERS: list[str] = _list_env(
+        "CORS_EXPOSE_HEADERS",
+        ("X-Request-ID",),
+    )
 
 
 class DevConfig(BaseConfig):
@@ -216,6 +242,7 @@ class DevConfig(BaseConfig):
     """
 
     DEBUG: bool = True
+    AUTH_DEV_BYPASS: bool = _bool_env("AUTH_DEV_BYPASS", True)
     SQLALCHEMY_DATABASE_URI: str = os.getenv("DATABASE_URL", "sqlite:///dev.sqlite3")
 
 

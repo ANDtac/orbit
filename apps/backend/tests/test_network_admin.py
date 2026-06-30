@@ -49,7 +49,7 @@ def test_device_config_backup_job(client, auth_headers, create_device):
     assert resp.status_code == 202
     payload = resp.get_json()
     job_id = payload["job"]["id"]
-    job = Jobs.query.get(job_id)
+    job = db.session.get(Jobs, job_id)
     assert job is not None
     assert job.job_type == "device.config.backup"
     assert job.parameters.get("device_id") == device.id
@@ -67,7 +67,7 @@ def test_device_bulk_update_creates_job(client, auth_headers, create_device):
     )
     assert resp.status_code == 202
     job_id = resp.get_json()["job"]["id"]
-    job = Jobs.query.get(job_id)
+    job = db.session.get(Jobs, job_id)
     assert job is not None
     assert job.job_type == "device.bulk_update"
     assert len(job.tasks) == 2
@@ -127,7 +127,7 @@ def test_jobs_api_list_and_create(client, auth_headers, create_user):
     )
     assert resp.status_code == 202
     created_job_id = resp.get_json()["job"]["id"]
-    created_job = Jobs.query.get(created_job_id)
+    created_job = db.session.get(Jobs, created_job_id)
     assert created_job is not None
     assert created_job.job_type == "custom.job"
 
@@ -170,3 +170,36 @@ def test_audit_api_filters(client, auth_headers, create_user):
     assert resp.status_code == 200
     data = resp.get_json()
     assert any(row["id"] == entry.id for row in data["data"])
+
+
+def test_platform_and_credential_admin_list_include_device_counts(
+    client,
+    auth_headers,
+    create_platform,
+    create_credential_profile,
+    create_device,
+):
+    headers = _auth_headers(auth_headers)
+
+    platform = create_platform("cisco_nxos", "nxos")
+    platform.vendor_hint = "cisco"
+    platform.netmiko_type = "cisco_nxos"
+    profile = create_credential_profile(name="core-ssh", username="netadmin")
+    db.session.commit()
+
+    create_device(name="counted-1", platform_id=platform.id, credential_profile_id=profile.id)
+    create_device(name="counted-2", platform_id=platform.id, credential_profile_id=profile.id)
+
+    platform_resp = client.get("/api/v1/platforms", headers=headers)
+    assert platform_resp.status_code == 200
+    platform_payload = platform_resp.get_json()
+    listed_platform = next(item for item in platform_payload if item["id"] == platform.id)
+    assert listed_platform["vendor_hint"] == "cisco"
+    assert listed_platform["netmiko_type"] == "cisco_nxos"
+    assert listed_platform["device_count"] == 2
+
+    credential_resp = client.get("/api/v1/credential_profiles", headers=headers)
+    assert credential_resp.status_code == 200
+    credential_payload = credential_resp.get_json()
+    listed_profile = next(item for item in credential_payload if item["id"] == profile.id)
+    assert listed_profile["device_count"] == 2

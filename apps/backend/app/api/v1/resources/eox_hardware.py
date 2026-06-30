@@ -50,6 +50,7 @@ from flask_jwt_extended import jwt_required
 
 from app.extensions import db
 from app.models import HardwareLifecycle, ProductModels
+from app.observability.activity import record_model_change, serialize_model_state
 
 ns = Namespace("eox_hardware", description="Hardware lifecycle per product model")
 
@@ -62,7 +63,7 @@ HardwareIn = ns.model("HardwareLifecycleIn", {
     "source_url": fields.String,
     "notes": fields.String,
 })
-HardwareOut = HardwareIn.clone("HardwareLifecycleOut", {"id": fields.Integer})
+HardwareOut = ns.clone("HardwareLifecycleOut", HardwareIn, {"id": fields.Integer})
 
 
 _DATE_FIELDS = {
@@ -150,7 +151,7 @@ class HardwareList(Resource):
         rows = q.all()
 
         if past or due_in_days:
-            as_of = datetime.utcnow()
+            as_of = datetime.now(timezone.utc).replace(tzinfo=None)
             soon = as_of + timedelta(days=due_in_days or 0)
             out = []
             for r in rows:
@@ -191,6 +192,15 @@ class HardwareList(Resource):
         ProductModels.query.get_or_404(payload["product_model_id"])
         row = HardwareLifecycle(**payload)
         db.session.add(row)
+        db.session.flush()
+        record_model_change(
+            action="eox_hardware.create",
+            target_type="eox_hardware",
+            target=row,
+            before=None,
+            after=serialize_model_state(row),
+            message=f"Created hardware lifecycle {row.id}",
+        )
         db.session.commit()
         return row, HTTPStatus.CREATED
 
@@ -215,12 +225,21 @@ class HardwareItem(Resource):
     def patch(self, id: int):
         """Partially update a lifecycle row."""
         row = HardwareLifecycle.query.get_or_404(id)
+        before = serialize_model_state(row)
         updates = request.get_json(force=True) or {}
         updates, errors = _coerce_date_fields(updates)
         if errors:
             return {"message": "Invalid date value", "errors": errors}, HTTPStatus.BAD_REQUEST
         for k, v in updates.items():
             setattr(row, k, v)
+        record_model_change(
+            action="eox_hardware.update",
+            target_type="eox_hardware",
+            target=row,
+            before=before,
+            after=serialize_model_state(row),
+            message=f"Updated hardware lifecycle {row.id}",
+        )
         db.session.commit()
         return row, HTTPStatus.OK
 
@@ -228,6 +247,15 @@ class HardwareItem(Resource):
     def delete(self, id: int):
         """Delete a lifecycle row."""
         row = HardwareLifecycle.query.get_or_404(id)
+        before = serialize_model_state(row)
         db.session.delete(row)
+        record_model_change(
+            action="eox_hardware.delete",
+            target_type="eox_hardware",
+            target=row,
+            before=before,
+            after=None,
+            message=f"Deleted hardware lifecycle {row.id}",
+        )
         db.session.commit()
         return {"message": "deleted"}, HTTPStatus.OK

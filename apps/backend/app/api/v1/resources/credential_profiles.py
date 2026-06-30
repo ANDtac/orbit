@@ -58,9 +58,11 @@ from flask import request
 from flask_restx import Namespace, Resource, fields
 from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required
+from sqlalchemy import func
 
 from app.extensions import db
-from app.models import CredentialProfiles
+from app.models import CredentialProfiles, Devices
+from app.observability.activity import record_model_change, serialize_model_state
 from ..utils import get_pagination, apply_sorting, paginate_query
 
 # ---------------------------------------------------------------------------
@@ -101,6 +103,7 @@ CredProfileOut = ns.model(
         "secret_metadata": fields.Raw,
         "params": fields.Raw,
         "is_active": fields.Boolean,
+        "device_count": fields.Integer,
         "created_at": fields.DateTime,
         "updated_at": fields.DateTime,
     },
@@ -143,6 +146,23 @@ def _apply_filters(q):
     return q
 
 
+def _serialize_profile(row: CredentialProfiles, device_count: int = 0) -> dict:
+    return {
+        "id": row.id,
+        "name": row.name,
+        "description": row.description,
+        "auth_type": row.auth_type,
+        "username": row.username,
+        "secret_ref": row.secret_ref,
+        "secret_metadata": row.secret_metadata or {},
+        "params": row.params or {},
+        "is_active": row.is_active,
+        "device_count": device_count,
+        "created_at": row.created_at,
+        "updated_at": row.updated_at,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Resources
 # ---------------------------------------------------------------------------
@@ -183,7 +203,16 @@ class CredentialProfileList(Resource):
             allowed={"id", "name", "auth_type", "is_active", "created_at", "updated_at"},
         )
         rows = paginate_query(q, page=page, per_page=per_page).items
-        return rows, HTTPStatus.OK
+        profile_ids = [row.id for row in rows]
+        counts = {}
+        if profile_ids:
+            counts = dict(
+                db.session.query(Devices.credential_profile_id, func.count(Devices.id))
+                .filter(Devices.credential_profile_id.in_(profile_ids))
+                .group_by(Devices.credential_profile_id)
+                .all()
+            )
+        return [_serialize_profile(row, counts.get(row.id, 0)) for row in rows], HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(CredProfileCreate, validate=True)
@@ -203,8 +232,17 @@ class CredentialProfileList(Resource):
         payload = request.get_json(force=True) or {}
         row = CredentialProfiles(**payload)
         db.session.add(row)
+        db.session.flush()
+        record_model_change(
+            action="credential_profile.create",
+            target_type="credential_profile",
+            target=row,
+            before=None,
+            after=serialize_model_state(row),
+            message=f"Created credential profile {row.name}",
+        )
         db.session.commit()
-        return row, HTTPStatus.CREATED
+        return _serialize_profile(row, 0), HTTPStatus.CREATED
 
 
 @ns.route("/<int:id>")
@@ -229,7 +267,9 @@ class CredentialProfileItem(Resource):
         -------
         CredentialProfileOut
         """
-        return CredentialProfiles.query.get_or_404(id), HTTPStatus.OK
+        row = CredentialProfiles.query.get_or_404(id)
+        device_count = Devices.query.filter_by(credential_profile_id=row.id).count()
+        return _serialize_profile(row, device_count), HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(CredProfileUpdate, validate=False)
@@ -251,13 +291,23 @@ class CredentialProfileItem(Resource):
         CredentialProfileOut
         """
         row = CredentialProfiles.query.get_or_404(id)
+        before = serialize_model_state(row)
         data = request.get_json(force=True) or {}
         for k, v in data.items():
             if not hasattr(row, k):
                 continue
             setattr(row, k, v)
+        record_model_change(
+            action="credential_profile.update",
+            target_type="credential_profile",
+            target=row,
+            before=before,
+            after=serialize_model_state(row),
+            message=f"Updated credential profile {row.name}",
+        )
         db.session.commit()
-        return row, HTTPStatus.OK
+        device_count = Devices.query.filter_by(credential_profile_id=row.id).count()
+        return _serialize_profile(row, device_count), HTTPStatus.OK
 
     @jwt_required()
     def delete(self, id: int):
@@ -274,6 +324,15 @@ class CredentialProfileItem(Resource):
             Confirmation message.
         """
         row = CredentialProfiles.query.get_or_404(id)
+        before = serialize_model_state(row)
         db.session.delete(row)
+        record_model_change(
+            action="credential_profile.delete",
+            target_type="credential_profile",
+            target=row,
+            before=before,
+            after=None,
+            message=f"Deleted credential profile {row.name}",
+        )
         db.session.commit()
         return {"message": "deleted"}, HTTPStatus.OK

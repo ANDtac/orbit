@@ -58,7 +58,7 @@ Notes
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from flask import request
 from flask_restx import Namespace, Resource, fields
 from flask_restx._http import HTTPStatus
@@ -236,7 +236,10 @@ class SnapshotList(Resource):
         """
         payload = request.get_json(force=True) or {}
         # Default captured_at to now if not provided
-        payload.setdefault("captured_at", datetime.utcnow().isoformat() + "Z")
+        payload.setdefault(
+            "captured_at",
+            datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        )
         row = DeviceConfigSnapshots(**payload)
         db.session.add(row)
         db.session.commit()

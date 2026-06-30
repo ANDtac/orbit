@@ -77,6 +77,7 @@ from ..models import (
     PlatformOperationTemplates,
     CredentialProfiles,
 )
+from ..observability.activity import record_app_event, record_audit_log
 
 log = logging.getLogger(__name__)
 
@@ -189,7 +190,7 @@ def resolve_operation_template(
       If none exists, fall back to a generic built-in stub to keep development moving.
     """
     if template_id:
-        row = PlatformOperationTemplates.query.get(template_id)
+        row = db.session.get(PlatformOperationTemplates, template_id)
         if not row:
             raise ValueError(f"template_id {template_id} not found")
         return OperationTemplate(
@@ -280,7 +281,7 @@ def build_inventory_for_devices(device_ids: Iterable[int]) -> Dict[int, Dict[str
     rows: List[Devices] = Devices.query.filter(Devices.id.in_(list(device_ids))).all()
     out: Dict[int, Dict[str, Any]] = {}
     for d in rows:
-        platform: Optional[Platforms] = Platforms.query.get(d.platform_id) if d.platform_id else None
+        platform: Optional[Platforms] = db.session.get(Platforms, d.platform_id) if d.platform_id else None
         out[d.id] = {
             "host": d.fqdn or d.name or (d.mgmt_ipv4 and str(d.mgmt_ipv4)) or f"device-{d.id}",
             "address": (d.mgmt_ipv4 and str(d.mgmt_ipv4)) or None,
@@ -486,5 +487,39 @@ def execute_operation_sync(
     )
 
     # Delegate to executor (currently stubbed)
+    record_app_event(
+        "operation.execute",
+        message="operation execution started",
+        extra={
+            "device_count": len(hosts),
+            "op_type": tmpl.op_type,
+            "template_id": tmpl.id,
+            "dry_run": bool(dry_run),
+            "sync": True,
+            "requested_by": requested_by,
+        },
+    )
     summary, per_host = run_with_nornir(hosts=hosts, operation_text=rendered, params=params)
+    if not dry_run:
+        for result in per_host:
+            if not result.get("changed") or not result.get("device_id"):
+                continue
+            host = hosts.get(int(result["device_id"]))
+            if host is None:
+                continue
+            record_audit_log(
+                action="operation.execute",
+                target_type="device",
+                target=host.get("device"),
+                payload={
+                    "operation": {
+                        "op_type": tmpl.op_type,
+                        "template_id": tmpl.id,
+                        "variables": variables or {},
+                    },
+                    "result": result,
+                },
+                message=f"Executed {tmpl.op_type or 'operation'} on device {result['device_id']}",
+            )
+    db.session.commit()
     return summary, per_host

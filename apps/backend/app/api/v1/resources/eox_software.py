@@ -47,6 +47,7 @@ from flask_jwt_extended import jwt_required
 
 from app.extensions import db
 from app.models import SoftwareLifecycle, Platforms
+from app.observability.activity import record_model_change, serialize_model_state
 
 ns = Namespace("eox_software", description="Software lifecycle per OS/version matcher")
 
@@ -62,7 +63,7 @@ SoftwareIn = ns.model("SoftwareLifecycleIn", {
     "source_url": fields.String,
     "notes": fields.String,
 })
-SoftwareOut = SoftwareIn.clone("SoftwareLifecycleOut", {"id": fields.Integer})
+SoftwareOut = ns.clone("SoftwareLifecycleOut", SoftwareIn, {"id": fields.Integer})
 
 
 _DATE_FIELDS = {
@@ -167,6 +168,15 @@ class SoftwareList(Resource):
             Platforms.query.get_or_404(pid)
         row = SoftwareLifecycle(**payload)
         db.session.add(row)
+        db.session.flush()
+        record_model_change(
+            action="eox_software.create",
+            target_type="eox_software",
+            target=row,
+            before=None,
+            after=serialize_model_state(row),
+            message=f"Created software lifecycle {row.id}",
+        )
         db.session.commit()
         return row, HTTPStatus.CREATED
 
@@ -191,12 +201,21 @@ class SoftwareItem(Resource):
     def patch(self, id: int):
         """Partially update a lifecycle row."""
         row = SoftwareLifecycle.query.get_or_404(id)
+        before = serialize_model_state(row)
         updates = request.get_json(force=True) or {}
         updates, errors = _coerce_date_fields(updates)
         if errors:
             return {"message": "Invalid date value", "errors": errors}, HTTPStatus.BAD_REQUEST
         for k, v in updates.items():
             setattr(row, k, v)
+        record_model_change(
+            action="eox_software.update",
+            target_type="eox_software",
+            target=row,
+            before=before,
+            after=serialize_model_state(row),
+            message=f"Updated software lifecycle {row.id}",
+        )
         db.session.commit()
         return row, HTTPStatus.OK
 
@@ -204,6 +223,15 @@ class SoftwareItem(Resource):
     def delete(self, id: int):
         """Delete a lifecycle row."""
         row = SoftwareLifecycle.query.get_or_404(id)
+        before = serialize_model_state(row)
         db.session.delete(row)
+        record_model_change(
+            action="eox_software.delete",
+            target_type="eox_software",
+            target=row,
+            before=before,
+            after=None,
+            message=f"Deleted software lifecycle {row.id}",
+        )
         db.session.commit()
         return {"message": "deleted"}, HTTPStatus.OK

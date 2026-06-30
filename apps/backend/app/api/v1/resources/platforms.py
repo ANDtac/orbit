@@ -39,9 +39,11 @@ from flask import request
 from flask_restx import Namespace, Resource, fields
 from flask_restx._http import HTTPStatus
 from flask_jwt_extended import jwt_required
+from sqlalchemy import func
 
 from app.extensions import db
-from app.models import Platforms
+from app.models import Devices, Platforms
+from app.observability.activity import record_model_change, serialize_model_state
 from ..utils import get_pagination, apply_sorting, paginate_query
 
 # ---------------------------------------------------------------------------
@@ -58,8 +60,10 @@ PlatformBase = ns.model(
     {
         "slug": fields.String(required=True, description="Stable platform key (e.g., 'cisco_xe','cisco_nxos')"),
         "display_name": fields.String(required=False, description="Human-readable name"),
+        "vendor_hint": fields.String(required=False, description="Vendor hint (e.g., 'cisco','juniper')"),
         "napalm_driver": fields.String(required=False, description="NAPALM driver name (e.g., 'ios','nxos','junos')"),
         "napalm_optional_args": fields.Raw(required=False, description="NAPALM optional_args JSON"),
+        "netmiko_type": fields.String(required=False, description="Netmiko device_type hint"),
         "handler_entrypoint": fields.String(required=False, description="Python path to custom handler class (e.g., 'orbit.handlers.xe:XeHandler')"),
         # Future-ready: Ansible
         "ansible_network_os": fields.String(required=False, description="Ansible network_os (e.g., 'cisco.ios.ios')"),
@@ -79,14 +83,17 @@ PlatformOut = ns.model(
         "id": fields.Integer(required=True),
         "slug": fields.String(required=True),
         "display_name": fields.String,
+        "vendor_hint": fields.String,
         "napalm_driver": fields.String,
         "napalm_optional_args": fields.Raw,
+        "netmiko_type": fields.String,
         "handler_entrypoint": fields.String,
         "ansible_network_os": fields.String,
         "ansible_connection": fields.String,
         "ansible_vars": fields.Raw,
         "notes": fields.String,
         "is_active": fields.Boolean,
+        "device_count": fields.Integer,
         "created_at": fields.DateTime,
         "updated_at": fields.DateTime,
     },
@@ -133,6 +140,27 @@ def _apply_platform_filters(q):
     return q
 
 
+def _serialize_platform(row: Platforms, device_count: int = 0) -> dict:
+    return {
+        "id": row.id,
+        "slug": row.slug,
+        "display_name": row.display_name,
+        "vendor_hint": row.vendor_hint,
+        "napalm_driver": row.napalm_driver,
+        "napalm_optional_args": row.napalm_optional_args or {},
+        "netmiko_type": row.netmiko_type,
+        "handler_entrypoint": row.handler_entrypoint,
+        "ansible_network_os": row.ansible_network_os,
+        "ansible_connection": row.ansible_connection,
+        "ansible_vars": row.ansible_vars or {},
+        "notes": row.notes,
+        "is_active": row.is_active,
+        "device_count": device_count,
+        "created_at": row.created_at,
+        "updated_at": row.updated_at,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Resources
 # ---------------------------------------------------------------------------
@@ -174,7 +202,16 @@ class PlatformList(Resource):
             allowed={"id", "slug", "display_name", "napalm_driver", "is_active", "created_at", "updated_at"},
         )
         rows = paginate_query(q, page=page, per_page=per_page).items
-        return rows, HTTPStatus.OK
+        platform_ids = [row.id for row in rows]
+        counts = {}
+        if platform_ids:
+            counts = dict(
+                db.session.query(Devices.platform_id, func.count(Devices.id))
+                .filter(Devices.platform_id.in_(platform_ids))
+                .group_by(Devices.platform_id)
+                .all()
+            )
+        return [_serialize_platform(row, counts.get(row.id, 0)) for row in rows], HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(PlatformCreate, validate=True)
@@ -194,8 +231,17 @@ class PlatformList(Resource):
         payload = request.get_json(force=True) or {}
         row = Platforms(**payload)
         db.session.add(row)
+        db.session.flush()
+        record_model_change(
+            action="platform.create",
+            target_type="platform",
+            target=row,
+            before=None,
+            after=serialize_model_state(row),
+            message=f"Created platform {row.slug}",
+        )
         db.session.commit()
-        return row, HTTPStatus.CREATED
+        return _serialize_platform(row, 0), HTTPStatus.CREATED
 
 
 @ns.route("/<int:id>")
@@ -221,7 +267,9 @@ class PlatformItem(Resource):
         -------
         PlatformOut
         """
-        return Platforms.query.get_or_404(id), HTTPStatus.OK
+        row = Platforms.query.get_or_404(id)
+        device_count = Devices.query.filter_by(platform_id=row.id).count()
+        return _serialize_platform(row, device_count), HTTPStatus.OK
 
     @jwt_required()
     @ns.expect(PlatformUpdate, validate=False)
@@ -244,13 +292,23 @@ class PlatformItem(Resource):
         PlatformOut
         """
         row = Platforms.query.get_or_404(id)
+        before = serialize_model_state(row)
         data = request.get_json(force=True) or {}
         for k, v in data.items():
             if not hasattr(row, k):
                 continue
             setattr(row, k, v)
+        record_model_change(
+            action="platform.update",
+            target_type="platform",
+            target=row,
+            before=before,
+            after=serialize_model_state(row),
+            message=f"Updated platform {row.slug}",
+        )
         db.session.commit()
-        return row, HTTPStatus.OK
+        device_count = Devices.query.filter_by(platform_id=row.id).count()
+        return _serialize_platform(row, device_count), HTTPStatus.OK
 
     @jwt_required()
     def delete(self, id: int):
@@ -268,6 +326,15 @@ class PlatformItem(Resource):
             Confirmation message.
         """
         row = Platforms.query.get_or_404(id)
+        before = serialize_model_state(row)
         db.session.delete(row)
+        record_model_change(
+            action="platform.delete",
+            target_type="platform",
+            target=row,
+            before=before,
+            after=None,
+            message=f"Deleted platform {row.slug}",
+        )
         db.session.commit()
         return {"message": "deleted"}, HTTPStatus.OK

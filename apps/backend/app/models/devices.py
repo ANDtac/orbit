@@ -240,7 +240,7 @@ class Devices(DisableableMixin, UuidPkMixin, IdPkMixin, TimestampMixin, BaseMode
     def get_by_id(cls, id: int) -> "Devices | None":
         """Fetch by id."""
 
-        return cls.query.get(id)
+        return db.session.get(cls, id)
 
     @classmethod
     def get_by_name(cls, name: str) -> "Devices | None":

@@ -8,6 +8,8 @@ type OrbitJwtPayload = {
   exp?: number;
   sub?: string;
   username?: string;
+  roles?: string[];
+  ep?: string;
 };
 
 export function useAuth() {
@@ -51,6 +53,7 @@ export function useAuth() {
     accessToken,
     payload,
     isAuthenticated,
+    hasSessionPassword: Boolean(payload?.ep),
     logout,
   } as const;
 }

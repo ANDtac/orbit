@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/Button";
+import { DataTable } from "@/components/ui/DataTable";
+import type { ColumnDef } from "@/components/ui/DataTable";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { createPolicy, deletePolicy, fetchPolicies, updatePolicy } from "@/features/monitoring/api/monitoring.api";
@@ -30,7 +33,7 @@ export function MonitoringPoliciesPage(): JSX.Element {
   const [formError, setFormError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const { data: policies = [], isLoading, isError } = useQuery({
+  const { data: policies = [], isLoading, isError, refetch } = useQuery({
     queryKey: [QUERY_KEYS.compliancePolicies],
     queryFn: fetchPolicies,
   });
@@ -110,84 +113,97 @@ export function MonitoringPoliciesPage(): JSX.Element {
     createMutation.mutate(payload);
   }
 
-  if (isLoading) {
-    return <p className="text-muted">Loading policies…</p>;
-  }
-
-  if (isError) {
-    return <p className="text-red-500">Unable to load policies right now.</p>;
-  }
+  const columns: ColumnDef<CompliancePolicy>[] = [
+    {
+      key: "name",
+      header: "Name",
+      accessor: (policy) => <span className="font-medium text-text">{policy.name}</span>,
+    },
+    {
+      key: "status",
+      header: "Status",
+      accessor: (policy) => (
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium uppercase tracking-[0.14em] ${
+            policy.is_active
+              ? "bg-emerald-500/10 text-emerald-600"
+              : "bg-slate-500/10 text-slate-500"
+          }`}
+        >
+          <span className={`h-1.5 w-1.5 rounded-full ${policy.is_active ? "bg-emerald-500" : "bg-slate-400"}`} />
+          {policy.is_active ? "Active" : "Inactive"}
+        </span>
+      ),
+    },
+    {
+      key: "description",
+      header: "Description",
+      accessor: (policy) => <span className="text-muted">{policy.description ?? "—"}</span>,
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      accessor: (policy) => (
+        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setEditingPolicy(policy);
+              setName(policy.name);
+              setDescription(policy.description ?? "");
+              setFormError(null);
+              setIsFormOpen(true);
+            }}
+          >
+            Edit
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setDeleteTarget(policy);
+              setDeleteError(null);
+              setDeleteConfirmation("");
+              setIsDeleteOpen(true);
+            }}
+          >
+            Delete
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted">Author monitoring/compliance policies in Orbit-native workflows.</p>
+        <div className="space-y-1">
+          <p className="text-sm text-muted">Monitoring keeps a contextual view of policy posture, but the primary authoring home now lives under Compliance.</p>
+          <Link to="/compliance/policies" className="text-sm font-medium text-primary hover:underline">
+            Open Compliance Policies
+          </Link>
+        </div>
         <Button onClick={openCreateForm}>New policy</Button>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-primary/10">
-        <table className="min-w-full divide-y divide-primary/10">
-          <thead className="bg-primary/10">
-            <tr>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-primary">Name</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-primary">Status</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-primary">Description</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-primary">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-primary/5 bg-surface">
-            {policies.length ? (
-              policies.map((policy) => (
-                <tr key={policy.id}>
-                  <td className="px-4 py-3 text-sm font-medium text-text">{policy.name}</td>
-                  <td className="px-4 py-3 text-sm uppercase text-text">{policy.is_active ? "active" : "inactive"}</td>
-                  <td className="px-4 py-3 text-sm text-muted">{policy.description ?? "—"}</td>
-                  <td className="px-4 py-3 text-sm">
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setEditingPolicy(policy);
-                          setName(policy.name);
-                          setDescription(policy.description ?? "");
-                          setFormError(null);
-                          setIsFormOpen(true);
-                        }}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setDeleteTarget(policy);
-                          setDeleteError(null);
-                          setDeleteConfirmation("");
-                          setIsDeleteOpen(true);
-                        }}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-sm text-muted">
-                  <div className="flex flex-col items-center gap-3">
-                    <p>No policies yet.</p>
-                    <Button size="sm" onClick={openCreateForm}>
-                      Create first policy
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        columns={columns}
+        data={policies}
+        keyExtractor={(policy) => policy.id}
+        isLoading={isLoading}
+        isError={isError}
+        onRetry={() => refetch()}
+        errorMessage="Unable to load policies right now."
+        emptyState={
+          <div className="flex flex-col items-center gap-3">
+            <p className="text-sm text-muted">No policies yet.</p>
+            <Button size="sm" onClick={openCreateForm}>
+              Create first policy
+            </Button>
+          </div>
+        }
+      />
 
       <Modal
         isOpen={isFormOpen}
@@ -205,13 +221,31 @@ export function MonitoringPoliciesPage(): JSX.Element {
         }
       >
         <div className="space-y-4">
-          <Input name="policy_name" label="Policy name" value={name} onChange={(event) => setName(event.target.value)} />
-          <Input
-            name="policy_description"
-            label="Description"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-          />
+          <p className="mt-1 text-xs text-muted">
+            Fields marked <span className="text-red-500">*</span> are required.
+          </p>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-text">
+              Policy name<span className="ml-0.5 text-red-500" aria-hidden="true">*</span>
+            </label>
+            <input
+              name="policy_name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="e.g., NTP Configuration Check"
+              className="w-full rounded-xl border border-primary/30 bg-background px-3 py-2 text-sm text-text"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-text">Description</label>
+            <input
+              name="policy_description"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="e.g., Ensures all devices have NTP servers configured per company standard."
+              className="w-full rounded-xl border border-primary/30 bg-background px-3 py-2 text-sm text-text"
+            />
+          </div>
           {formError ? <p className="text-sm text-red-500">{formError}</p> : null}
         </div>
       </Modal>

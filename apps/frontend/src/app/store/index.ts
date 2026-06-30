@@ -7,6 +7,8 @@ export interface AppPreferences {
   setSavedUsername: (username: string | null) => void;
   isSidebarOpen: boolean;
   toggleSidebar: () => void;
+  isSidebarCollapsed: boolean;
+  toggleSidebarCollapsed: () => void;
 }
 
 const fallbackStorage: StateStorage = {
@@ -22,11 +24,17 @@ export const useAppStore = create<AppPreferences>()(
       setSavedUsername: (username) => set({ savedUsername: username }),
       isSidebarOpen: false,
       toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+      isSidebarCollapsed: false,
+      toggleSidebarCollapsed: () =>
+        set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
     }),
     {
       name: "orbit-app-store",
       storage: createJSONStorage(() => (typeof window === "undefined" ? fallbackStorage : window.localStorage)),
-      partialize: (state) => ({ savedUsername: state.savedUsername }),
+      partialize: (state) => ({
+        savedUsername: state.savedUsername,
+        isSidebarCollapsed: state.isSidebarCollapsed,
+      }),
     },
   ),
 );

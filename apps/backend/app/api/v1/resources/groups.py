@@ -151,7 +151,7 @@ class GroupItemResource(Resource):
     @require_roles("network_admin")
     @ns.marshal_with(GroupOut, code=HTTPStatus.OK)
     def get(self, group_id: int):
-        group = InventoryGroups.query.get(group_id)
+        group = db.session.get(InventoryGroups, group_id)
         if not group:
             return problem_response(HTTPStatus.NOT_FOUND, detail="Group not found")
         return _serialize_group(group)

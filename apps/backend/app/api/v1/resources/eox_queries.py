@@ -31,7 +31,7 @@ All endpoints require a valid JWT.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import request
 from flask_restx import Namespace, Resource, fields
 from flask_restx._http import HTTPStatus
@@ -78,7 +78,7 @@ class DevicesEox(Resource):
         past = (request.args.get("past", "true").lower() == "true")
         within_days = request.args.get("within_days", default=0, type=int)
 
-        as_of = datetime.utcnow()
+        as_of = datetime.now(timezone.utc).replace(tzinfo=None)
         soon = as_of + timedelta(days=max(0, within_days))
 
         devices = Devices.query.all()

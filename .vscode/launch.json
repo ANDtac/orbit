@@ -2,6 +2,35 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Flask Run",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "flask",
+      "cwd": "${workspaceFolder}/apps/backend",
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "APP_ENV": "development",
+        "FLASK_APP": "app:create_app"
+      },
+      "args": ["run", "--host", "0.0.0.0", "--port", "5000"],
+      "jinja": true,
+      "justMyCode": true
+    },
+    {
+      "name": "Frontend Dev",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}/apps/frontend"
+    },
+    {
+      "name": "localhost:5173",
+      "type": "pwa-chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/apps/frontend"
+    },
+    {
       "name": "Attach: Backend (Flask in Docker)",
       "type": "debugpy",
       "request": "attach",
@@ -26,9 +55,21 @@
       "cwd": "${workspaceFolder}/apps/frontend",
       "localRoot": "${workspaceFolder}/apps/frontend",
       "remoteRoot": "/web/apps/frontend"
+    },
+    {
+      "name": "Browser: Frontend (Docker)",
+      "type": "pwa-chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/apps/frontend"
     }
   ],
   "compounds": [
+    {
+      "name": "Orbit: Local (JetBrains parity)",
+      "configurations": ["Flask Run", "Frontend Dev", "localhost:5173"],
+      "stopAll": true
+    },
     {
       "name": "Orbit: Dev (frontend + backend)",
       "configurations": [
@@ -37,6 +78,16 @@
       ],
       "preLaunchTask": "docker: up dev-debug",
       "postDebugTask": "docker: down dev-debug"
+    },
+    {
+      "name": "Orbit: Docker (backend + browser)",
+      "configurations": [
+        "Attach: Backend (Flask in Docker)",
+        "Browser: Frontend (Docker)"
+      ],
+      "preLaunchTask": "docker: up dev-debug",
+      "postDebugTask": "docker: down dev-debug",
+      "stopAll": true
     }
   ]
 }

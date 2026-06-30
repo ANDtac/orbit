@@ -1,10 +1,31 @@
 import apiClient from "@/lib/apiClient";
-import type { CompliancePolicy, ErrorLogEntry, Job, RequestLogEntry } from "@/lib/types";
+import {
+  demoFetchAppEvents,
+  demoCreatePolicy,
+  demoDeletePolicy,
+  demoFetchErrorLogs,
+  demoFetchHealthSummary,
+  demoFetchJobs,
+  demoFetchPolicies,
+  demoQueueProbe,
+  demoFetchRequestLogs,
+  demoQueuePasswordRotation,
+  demoUpdatePolicy,
+  isDemoApiEnabled,
+} from "@/lib/demo/api";
+import type {
+  AppEventEntry,
+  CompliancePolicy,
+  DeviceHealthSummary,
+  ErrorLogEntry,
+  Job,
+  RequestLogEntry,
+} from "@/lib/types";
 
 export interface CursorPage {
   cursor: string;
-  next?: string;
-  prev?: string;
+  next?: string | null;
+  prev?: string | null;
   size: number;
   total: number;
 }
@@ -23,6 +44,12 @@ interface QueuePasswordRotationInput {
   reason: string;
 }
 
+interface QueueProbeInput {
+  device_ids: number[];
+  probe_type: string;
+  variables?: Record<string, unknown>;
+}
+
 interface CompliancePolicyInput {
   name: string;
   description?: string;
@@ -33,6 +60,7 @@ interface CompliancePolicyInput {
 interface JobsQueryOptions {
   cursor?: string;
   "page[size]"?: number;
+  job_type?: string;
   status?: string;
   queue?: string;
 }
@@ -42,12 +70,21 @@ interface OffsetPaginationOptions {
   per_page?: number;
 }
 
-async function fetchLogs<T>(path: string, options?: OffsetPaginationOptions): Promise<T[]> {
+interface EventLogQueryOptions extends OffsetPaginationOptions {
+  event?: string;
+  level?: string;
+}
+
+async function fetchLogs<T>(
+  path: string,
+  options?: OffsetPaginationOptions & Record<string, string | number | undefined>,
+): Promise<T[]> {
   const { data } = await apiClient.get<T[]>(path, {
     params: {
       per_page: options?.per_page ?? 25,
       page: options?.page ?? 1,
       sort: "-occurred_at",
+      ...options,
     },
   });
 
@@ -55,6 +92,9 @@ async function fetchLogs<T>(path: string, options?: OffsetPaginationOptions): Pr
 }
 
 export async function fetchJobs(options?: JobsQueryOptions): Promise<JobsResponse> {
+  if (isDemoApiEnabled()) {
+    return demoFetchJobs(options);
+  }
   const { data } = await apiClient.get<JobsResponse>("/jobs", {
     params: options,
   });
@@ -63,6 +103,9 @@ export async function fetchJobs(options?: JobsQueryOptions): Promise<JobsRespons
 }
 
 export async function queuePasswordRotation(input: QueuePasswordRotationInput): Promise<QueueJobResponse> {
+  if (isDemoApiEnabled()) {
+    return demoQueuePasswordRotation(input.reason);
+  }
   const { data } = await apiClient.post<QueueJobResponse>("/jobs", {
     job_type: "password_change",
     parameters: {
@@ -75,28 +118,70 @@ export async function queuePasswordRotation(input: QueuePasswordRotationInput): 
 }
 
 export async function fetchPolicies(): Promise<CompliancePolicy[]> {
+  if (isDemoApiEnabled()) {
+    return demoFetchPolicies();
+  }
   const { data } = await apiClient.get<CompliancePolicy[]>("/compliance/policies");
   return data;
 }
 
+export async function fetchHealthSummary(): Promise<DeviceHealthSummary> {
+  if (isDemoApiEnabled()) {
+    return demoFetchHealthSummary();
+  }
+  const { data } = await apiClient.get<DeviceHealthSummary>("/devices/health");
+  return data;
+}
+
+export async function queueProbe(input: QueueProbeInput): Promise<QueueJobResponse> {
+  if (isDemoApiEnabled()) {
+    return demoQueueProbe(input);
+  }
+  const { data } = await apiClient.post<QueueJobResponse>("/devices:probe", input);
+  return data;
+}
+
 export async function createPolicy(input: CompliancePolicyInput): Promise<CompliancePolicy> {
+  if (isDemoApiEnabled()) {
+    return demoCreatePolicy(input);
+  }
   const { data } = await apiClient.post<CompliancePolicy>("/compliance/policies", input);
   return data;
 }
 
 export async function updatePolicy(policyId: number, input: CompliancePolicyInput): Promise<CompliancePolicy> {
+  if (isDemoApiEnabled()) {
+    return demoUpdatePolicy(policyId, input);
+  }
   const { data } = await apiClient.patch<CompliancePolicy>(`/compliance/policies/${policyId}`, input);
   return data;
 }
 
 export async function deletePolicy(policyId: number): Promise<void> {
+  if (isDemoApiEnabled()) {
+    demoDeletePolicy(policyId);
+    return;
+  }
   await apiClient.delete(`/compliance/policies/${policyId}`);
 }
 
 export function fetchRequestLogs(options?: OffsetPaginationOptions): Promise<RequestLogEntry[]> {
-  return fetchLogs<RequestLogEntry>("/logs/requests", options);
+  if (isDemoApiEnabled()) {
+    return Promise.resolve(demoFetchRequestLogs(options));
+  }
+  return fetchLogs<RequestLogEntry>("/logs/requests", options as OffsetPaginationOptions & Record<string, string | number | undefined>);
 }
 
 export function fetchErrorLogs(options?: OffsetPaginationOptions): Promise<ErrorLogEntry[]> {
-  return fetchLogs<ErrorLogEntry>("/logs/errors", options);
+  if (isDemoApiEnabled()) {
+    return Promise.resolve(demoFetchErrorLogs(options));
+  }
+  return fetchLogs<ErrorLogEntry>("/logs/errors", options as OffsetPaginationOptions & Record<string, string | number | undefined>);
+}
+
+export function fetchAppEvents(options?: EventLogQueryOptions): Promise<AppEventEntry[]> {
+  if (isDemoApiEnabled()) {
+    return Promise.resolve(demoFetchAppEvents(options));
+  }
+  return fetchLogs<AppEventEntry>("/logs/events", options as EventLogQueryOptions & Record<string, string | number | undefined>);
 }

@@ -12,7 +12,9 @@ python-dotenv>=1.0,<2.0
 gunicorn>=21.2,<22.0
 Jinja2>=3.1,<4.0
 click>=8.1,<9.0
+cryptography>=42.0,<43.0
 netmiko>=4.3,<5.0
+requests>=2.31,<3.0
 debugpy>=1.8,<2.0
 
 # Network automation (enable Nornir/NAPALM paths)

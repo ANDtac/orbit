@@ -80,14 +80,17 @@ from typing import Any
 from flask import request
 from flask_restx import Namespace, Resource, fields
 from flask_restx._http import HTTPStatus
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.extensions import db
 from app.models import (
     CompliancePolicies,
     ComplianceRules,
     ComplianceResults,
+    Devices,
 )
+from app.observability.activity import record_model_change, serialize_model_state
+from app.services import jobs as jobs_service
 from ..utils import get_pagination, apply_sorting, paginate_query
 
 # ---------------------------------------------------------------------------
@@ -283,6 +286,15 @@ class PolicyList(Resource):
         payload = request.get_json(force=True) or {}
         row = CompliancePolicies(**payload)
         db.session.add(row)
+        db.session.flush()
+        record_model_change(
+            action="compliance_policy.create",
+            target_type="compliance_policy",
+            target=row,
+            before=None,
+            after=serialize_model_state(row),
+            message=f"Created compliance policy {row.name}",
+        )
         db.session.commit()
         return row, HTTPStatus.CREATED
 
@@ -331,10 +343,19 @@ class PolicyItem(Resource):
         CompliancePolicyOut
         """
         row = CompliancePolicies.query.get_or_404(id)
+        before = serialize_model_state(row)
         data = request.get_json(force=True) or {}
         for k, v in data.items():
             if hasattr(row, k):
                 setattr(row, k, v)
+        record_model_change(
+            action="compliance_policy.update",
+            target_type="compliance_policy",
+            target=row,
+            before=before,
+            after=serialize_model_state(row),
+            message=f"Updated compliance policy {row.name}",
+        )
         db.session.commit()
         return row, HTTPStatus.OK
 
@@ -353,7 +374,16 @@ class PolicyItem(Resource):
             Confirmation message.
         """
         row = CompliancePolicies.query.get_or_404(id)
+        before = serialize_model_state(row)
         db.session.delete(row)
+        record_model_change(
+            action="compliance_policy.delete",
+            target_type="compliance_policy",
+            target=row,
+            before=before,
+            after=None,
+            message=f"Deleted compliance policy {row.name}",
+        )
         db.session.commit()
         return {"message": "deleted"}, HTTPStatus.OK
 
@@ -618,21 +648,77 @@ class Evaluate(Resource):
             A simple queued response; replace with real job id when wired.
         """
         payload: dict[str, Any] = request.get_json(silent=True) or {}
-        device_ids = payload.get("device_ids")
-        policy_ids = payload.get("policy_ids")
+        device_ids = [int(value) for value in (payload.get("device_ids") or []) if isinstance(value, (int, str))]
+        policy_ids = [int(value) for value in (payload.get("policy_ids") or []) if isinstance(value, (int, str))]
         run_async = bool(payload.get("async", True))
 
-        # Here you could:
-        #   - resolve device/policy scope
-        #   - enqueue async work item
-        #   - return job identifier and correlation id
-        # For now, we just acknowledge the request.
-        return {
-            "status": "queued" if run_async else "queued",
-            "enqueued_at": datetime.utcnow().isoformat() + "Z",
-            "job": {
-                "device_ids": device_ids,
-                "policy_ids": policy_ids,
+        if device_ids:
+            existing_devices = Devices.query.with_entities(Devices.id).filter(Devices.id.in_(device_ids)).all()
+            existing_device_ids = {row.id for row in existing_devices}
+            missing_devices = [device_id for device_id in device_ids if device_id not in existing_device_ids]
+            if missing_devices:
+                return {"error": "not_found", "missing_device_ids": missing_devices}, HTTPStatus.NOT_FOUND
+
+        if policy_ids:
+            existing_policies = (
+                CompliancePolicies.query.with_entities(CompliancePolicies.id)
+                .filter(CompliancePolicies.id.in_(policy_ids))
+                .all()
+            )
+            existing_policy_ids = {row.id for row in existing_policies}
+            missing_policies = [policy_id for policy_id in policy_ids if policy_id not in existing_policy_ids]
+            if missing_policies:
+                return {"error": "not_found", "missing_policy_ids": missing_policies}, HTTPStatus.NOT_FOUND
+        else:
+            policy_ids = [
+                row.id
+                for row in CompliancePolicies.query.with_entities(CompliancePolicies.id)
+                .filter(CompliancePolicies.is_active.is_(True))
+                .all()
+            ]
+
+        if not policy_ids:
+            return {"error": "validation_error", "message": "No active compliance policies available"}, HTTPStatus.BAD_REQUEST
+
+        owner_id = None
+        requested_by = str(get_jwt_identity() or "")
+        if requested_by.isdigit():
+            owner_id = int(requested_by)
+
+        job, created = jobs_service.enqueue_job(
+            job_type="compliance.evaluate",
+            owner_id=owner_id,
+            parameters={
+                "scope": {
+                    "device_ids": device_ids,
+                    "policy_ids": policy_ids,
+                },
                 "mode": "async" if run_async else "sync",
             },
-        }, HTTPStatus.ACCEPTED
+            idempotency_key=request.headers.get("Idempotency-Key"),
+            tasks=[
+                jobs_service.JobTaskSpec(
+                    task_type="compliance.policy",
+                    sequence=index,
+                    target_type="policy",
+                    target_id=policy_id,
+                    parameters={
+                        "policy_id": policy_id,
+                        "device_ids": device_ids,
+                    },
+                )
+                for index, policy_id in enumerate(policy_ids)
+            ],
+            event_message="compliance evaluation queued",
+            event_context={
+                "policy_count": len(policy_ids),
+                "device_count": len(device_ids),
+                "requested_by": requested_by,
+            },
+        )
+
+        return {
+            "status": "queued",
+            "enqueued_at": job.created_at.isoformat(),
+            "job": jobs_service.serialize_job(job),
+        }, (HTTPStatus.ACCEPTED if created else HTTPStatus.OK), {"Location": jobs_service.job_location(job)}

@@ -42,7 +42,11 @@ from app.models import (
     Users,
     Platforms,
     Devices,
+    CredentialProfiles,
+    CompliancePolicies,
     InventoryGroups,
+    Jobs,
+    PlatformOperationTemplates,
 )
 
 # -----------------------------------------------------------------------------
@@ -68,8 +72,6 @@ class TestConfig:
         Allow exceptions to surface to pytest for clear failures.
     RESTX_MASK_SWAGGER : bool
         Simplify Swagger output during tests.
-    ERROR_404_HELP : bool
-        Disable RESTX 404 hints.
     """
 
     TESTING = True
@@ -78,7 +80,11 @@ class TestConfig:
     JWT_SECRET_KEY = "test-secret"
     PROPAGATE_EXCEPTIONS = True
     RESTX_MASK_SWAGGER = False
-    ERROR_404_HELP = False
+    CORS_ORIGINS = ["http://localhost:5173"]
+    CORS_ALLOW_CREDENTIALS = True
+    CORS_ALLOW_HEADERS = ["Authorization", "Content-Type", "X-Request-ID"]
+    CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    CORS_EXPOSE_HEADERS = ["X-Request-ID"]
 
 
 # -----------------------------------------------------------------------------
@@ -245,6 +251,90 @@ def create_platform(db) -> Callable[[str, str], Platforms]:
 
 
 @pytest.fixture(scope="function")
+def create_credential_profile(db: SQLAlchemy) -> Callable[[str, str, str], CredentialProfiles]:
+    """Factory: create and persist a credential profile."""
+
+    def _factory(
+        name: str = "default-credentials",
+        username: str = "admin",
+        auth_type: str = "username_password",
+    ) -> CredentialProfiles:
+        existing = CredentialProfiles.query.filter_by(name=name).first()
+        if existing:
+            return existing
+        _ = db
+        profile = CredentialProfiles(name=name, username=username, auth_type=auth_type)
+        _db.session.add(profile)
+        _db.session.commit()
+        return profile
+
+    return _factory
+
+
+@pytest.fixture(scope="function")
+def create_operation_template(
+    db: SQLAlchemy,
+    create_platform,
+) -> Callable[..., PlatformOperationTemplates]:
+    """Factory: create and persist a platform operation template."""
+
+    def _factory(
+        platform_id: int | None = None,
+        name: str = "Backup Config",
+        op_type: str = "backup",
+        template_text: str = "show running-config",
+    ) -> PlatformOperationTemplates:
+        platform = create_platform("cisco_xe", "ios")
+        template = PlatformOperationTemplates(
+            platform_id=platform_id or platform.id,
+            name=name,
+            op_type=op_type,
+            template=template_text,
+        )
+        _ = db
+        _db.session.add(template)
+        _db.session.commit()
+        return template
+
+    return _factory
+
+
+@pytest.fixture(scope="function")
+def create_compliance_policy(db: SQLAlchemy) -> Callable[[str, dict | None], CompliancePolicies]:
+    """Factory: create and persist a compliance policy."""
+
+    def _factory(name: str = "Baseline Policy", rules: dict | None = None) -> CompliancePolicies:
+        existing = CompliancePolicies.query.filter_by(name=name).first()
+        if existing:
+            return existing
+        policy = CompliancePolicies(name=name, rules=rules or {}, scope={})
+        _ = db
+        _db.session.add(policy)
+        _db.session.commit()
+        return policy
+
+    return _factory
+
+
+@pytest.fixture(scope="function")
+def create_job(db: SQLAlchemy) -> Callable[[str, str, int | None], Jobs]:
+    """Factory: create and persist a job."""
+
+    def _factory(
+        job_type: str = "test.job",
+        status: str = "queued",
+        owner_id: int | None = None,
+    ) -> Jobs:
+        job = Jobs(job_type=job_type, status=status, owner_id=owner_id, parameters={})
+        _ = db
+        _db.session.add(job)
+        _db.session.commit()
+        return job
+
+    return _factory
+
+
+@pytest.fixture(scope="function")
 def create_inventory_group(db: SQLAlchemy) -> Callable[[str], InventoryGroups]:
     """
     Factory: create and persist an `InventoryGroups` row.
@@ -269,7 +359,12 @@ def create_inventory_group(db: SQLAlchemy) -> Callable[[str], InventoryGroups]:
 
 
 @pytest.fixture(scope="function")
-def create_device(db: SQLAlchemy, create_platform, create_inventory_group) -> Callable[..., Devices]:
+def create_device(
+    db: SQLAlchemy,
+    create_platform,
+    create_inventory_group,
+    create_credential_profile,
+) -> Callable[..., Devices]:
     """
     Factory: create and persist a `Devices` row.
 
@@ -282,6 +377,7 @@ def create_device(db: SQLAlchemy, create_platform, create_inventory_group) -> Ca
     def _factory(**overrides) -> Devices:
         platform = overrides.pop("platform", None) or create_platform("cisco_xe", "ios")
         group = overrides.pop("group", None) or create_inventory_group("Default")
+        credential_profile = overrides.pop("credential_profile", None) or create_credential_profile()
         inventory_group_id = overrides.pop("inventory_group_id", group.id)
         is_active = overrides.pop("is_active", True)
         d = Devices(
@@ -290,6 +386,7 @@ def create_device(db: SQLAlchemy, create_platform, create_inventory_group) -> Ca
             mgmt_ipv4=overrides.pop("mgmt_ipv4", "10.0.0.10"),
             mgmt_port=overrides.pop("mgmt_port", 22),
             platform_id=overrides.pop("platform_id", platform.id),
+            credential_profile_id=overrides.pop("credential_profile_id", credential_profile.id),
             os_name=overrides.pop("os_name", "iosxe"),
             os_version=overrides.pop("os_version", "17.3.1"),
             **overrides,

@@ -1,9 +1,9 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { MonitoringPoliciesPage } from "@/features/monitoring/pages/MonitoringPoliciesPage";
 import { fetchPolicies } from "@/features/monitoring/api/monitoring.api";
+import { renderWithProviders } from "@/tests/renderWithProviders";
 
 vi.mock("@/features/monitoring/api/monitoring.api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/features/monitoring/api/monitoring.api")>();
@@ -29,18 +29,7 @@ describe("MonitoringPoliciesPage", () => {
       },
     ]);
 
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-        mutations: { retry: false },
-      },
-    });
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MonitoringPoliciesPage />
-      </QueryClientProvider>,
-    );
+    renderWithProviders(<MonitoringPoliciesPage />);
 
     expect(await screen.findByText("NTP compliance")).toBeInTheDocument();
 

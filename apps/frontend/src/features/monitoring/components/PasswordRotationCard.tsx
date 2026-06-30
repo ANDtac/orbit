@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -9,7 +10,12 @@ import { QUERY_KEYS } from "@/lib/constants";
 
 const CONFIRM_PHRASE = "ROTATE";
 
+/** @deprecated Use PasswordChangeCard instead */
 export function PasswordRotationCard(): JSX.Element {
+  return <PasswordChangeCard />;
+}
+
+export function PasswordChangeCard(): JSX.Element {
   const queryClient = useQueryClient();
   const feedbackTimeoutRef = useRef<number | null>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -63,6 +69,11 @@ export function PasswordRotationCard(): JSX.Element {
       <Button className="mt-4" onClick={() => setIsOpen(true)}>
         Queue password rotation
       </Button>
+      <div className="mt-3">
+        <Link to="/operations/password-change" className="text-sm font-medium text-primary hover:underline">
+          Go to Password Changes
+        </Link>
+      </div>
       {feedback ? (
         <div className="mt-3 flex items-center gap-2 text-sm text-muted">
           <p>{feedback}</p>

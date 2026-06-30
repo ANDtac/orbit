@@ -48,6 +48,7 @@ from sqlalchemy.engine.url import make_url
 # (python -m apps.backend.manage ...)
 from app import create_app
 from app.extensions import db
+from app.auth.roles import ROLE_ADMIN
 from app.models import (
     Users,
     JWTTokenBlocklist,
@@ -247,6 +248,8 @@ def seed_dev():
             if hasattr(user, "set_password"):
                 user.set_password("admin")
             db.session.add(user)
+        if not list(user.roles or []):
+            user.roles = [ROLE_ADMIN]
 
         # Platforms (partial list)
         platform_rows = {

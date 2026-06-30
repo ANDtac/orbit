@@ -3,6 +3,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { LoginForm } from "../components/LoginForm";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
+import { useDemo } from "@/contexts/DemoContext";
 import orbitLightAnimatedFull from "@/assets/logos/orbit_light_animated_full.svg";
 import orbitDarkAnimatedFull from "@/assets/logos/orbit_dark_animated_full.svg";
 
@@ -10,6 +11,7 @@ export function LoginPage(): JSX.Element {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
   const { theme } = useTheme();
+  const { enterDemo } = useDemo();
 
   if (isAuthenticated) {
     const redirectTo = ((location.state as { from?: { pathname?: string } } | undefined)?.from?.pathname) ?? "/";
@@ -27,11 +29,22 @@ export function LoginPage(): JSX.Element {
             <div className="space-y-2">
               <h1 className="font-heading text-3xl font-semibold text-primary sm:text-4xl">Secure access</h1>
               <p className="text-sm text-muted sm:text-base">
-                Authenticate with the same credentials you use to reach the validation device. Orbit never stores
-                passwords—only successful access tokens.
+                Sign in with your network credentials.
               </p>
             </div>
             <LoginForm />
+            <div className="relative flex items-center py-2">
+              <div className="flex-1 border-t border-primary/10" />
+              <span className="px-3 text-xs text-muted">or</span>
+              <div className="flex-1 border-t border-primary/10" />
+            </div>
+            <button
+              type="button"
+              onClick={enterDemo}
+              className="w-full rounded-full border border-secondary/30 bg-secondary/10 px-4 py-2.5 text-sm font-medium text-secondary transition hover:bg-secondary/20"
+            >
+              Try Demo Mode
+            </button>
           </div>
         </div>
       </div>

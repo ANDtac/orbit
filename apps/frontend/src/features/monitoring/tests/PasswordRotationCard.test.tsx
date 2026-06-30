@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 
 import { PasswordRotationCard } from "@/features/monitoring/components/PasswordRotationCard";
 import { queuePasswordRotation } from "@/features/monitoring/api/monitoring.api";
@@ -43,9 +44,16 @@ describe("PasswordRotationCard", () => {
     });
 
     render(
-      <QueryClientProvider client={queryClient}>
-        <PasswordRotationCard />
-      </QueryClientProvider>,
+      <MemoryRouter>
+        <QueryClientProvider client={queryClient}>
+          <PasswordRotationCard />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("link", { name: "Go to Password Changes" })).toHaveAttribute(
+      "href",
+      "/operations/password-change",
     );
 
     await user.click(screen.getByRole("button", { name: "Queue password rotation" }));
@@ -71,9 +79,11 @@ describe("PasswordRotationCard", () => {
     mockedQueue.mockRejectedValue(new Error("network down"));
 
     render(
-      <QueryClientProvider client={queryClient}>
-        <PasswordRotationCard />
-      </QueryClientProvider>,
+      <MemoryRouter>
+        <QueryClientProvider client={queryClient}>
+          <PasswordRotationCard />
+        </QueryClientProvider>
+      </MemoryRouter>,
     );
 
     await user.click(screen.getByRole("button", { name: "Queue password rotation" }));

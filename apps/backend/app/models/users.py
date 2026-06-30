@@ -165,7 +165,7 @@ class Users(DisableableMixin, UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel)
     def get_by_id(cls, id: int) -> Users | None:
         """Return the user matching ``id`` if one exists."""
 
-        return cls.query.get(id)
+        return db.session.get(cls, id)
 
     @classmethod
     def get_by_email(cls, email: str) -> Users | None:

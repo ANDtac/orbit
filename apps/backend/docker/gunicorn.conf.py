@@ -36,7 +36,7 @@ import json
 import multiprocessing
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 
@@ -61,7 +61,7 @@ def _int_env(name: str, default: int) -> int:
 
 
 def _now() -> str:
-    return datetime.utcnow().isoformat(timespec="milliseconds") + "Z"
+    return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
 def _jlog(event: str, **extra: Any) -> None:

@@ -6,7 +6,6 @@ import { isAxiosError } from "axios";
 
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Toggle } from "@/components/ui/Toggle";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { useAppStore } from "@/app/store";
 import { useCookies } from "@/hooks/useCookies";
@@ -28,7 +27,6 @@ export function LoginForm(): JSX.Element {
 
   const [username, setUsername] = useState(savedUsername ?? "");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(Boolean(savedUsername));
   const [formError, setFormError] = useState<string | null>(null);
   const [lockoutInfo, setLockoutInfo] = useState<{ until: number; message: string } | null>(null);
 
@@ -39,7 +37,6 @@ export function LoginForm(): JSX.Element {
   useEffect(() => {
     if (savedUsername) {
       setUsername(savedUsername);
-      setRememberMe(true);
     }
   }, [savedUsername]);
 
@@ -78,7 +75,7 @@ export function LoginForm(): JSX.Element {
 
     try {
       const sanitizedUsername = username.trim();
-      const response = await mutation.mutateAsync({ username: sanitizedUsername, password, rememberMe });
+      const response = await mutation.mutateAsync({ username: sanitizedUsername, password });
 
       const expiresDays = Math.max(1, Math.ceil(response.expires_in / 86400));
       cookies.set(ACCESS_TOKEN_COOKIE, response.access_token, {
@@ -97,11 +94,7 @@ export function LoginForm(): JSX.Element {
         });
       }
 
-      if (rememberMe) {
-        setSavedUsername(sanitizedUsername);
-      } else {
-        setSavedUsername(null);
-      }
+      setSavedUsername(sanitizedUsername);
 
       setPassword("");
       setLockoutInfo(null);
@@ -155,12 +148,6 @@ export function LoginForm(): JSX.Element {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             required
-            disabled={mutation.isPending || isLocked}
-          />
-          <Toggle
-            checked={rememberMe}
-            onChange={(event) => setRememberMe(event.target.checked)}
-            label="Remember username"
             disabled={mutation.isPending || isLocked}
           />
         </div>

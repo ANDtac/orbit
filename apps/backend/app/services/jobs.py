@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from app.extensions import db
 from app.models import JobEvents, JobTasks, Jobs, Users
 from app.models.annotations import utcnow
+from app.observability.activity import record_app_event
 
 INTERNAL_JOBS_USERNAME = "jobs-system"
 INTERNAL_JOBS_EMAIL = "jobs-system@internal.local"
@@ -95,6 +96,29 @@ def job_location(job: Jobs) -> str:
     return f"/api/v1/jobs/{job.id}"
 
 
+def record_job_state_change(
+    job: Jobs,
+    previous_status: str | None,
+    *,
+    message: str | None = None,
+    extra: dict | None = None,
+) -> None:
+    """Stage an app-level event for a job status transition."""
+
+    record_app_event(
+        "job.state_change",
+        level="ERROR" if job.status == "failed" else "INFO",
+        message=message or f"Job {job.id} changed state to {job.status}",
+        extra={
+            "job_id": job.id,
+            "job_type": job.job_type,
+            "from_status": previous_status,
+            "to_status": job.status,
+            **(extra or {}),
+        },
+    )
+
+
 def create_job(
     *,
     job_type: str,
@@ -158,6 +182,12 @@ def create_job(
     event.context = event_context or {}
     event.occurred_at = utcnow()
     db.session.add(event)
+    record_job_state_change(
+        job,
+        None,
+        message=event_message or "job enqueued",
+        extra=event_context,
+    )
 
     try:
         db.session.commit()

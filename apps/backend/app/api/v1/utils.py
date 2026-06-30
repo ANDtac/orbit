@@ -25,6 +25,7 @@ from flask_jwt_extended import get_jwt_identity
 from sqlalchemy.orm import Query
 from sqlalchemy import desc
 
+from app.auth.roles import has_role
 from app.extensions import db
 from app.models import Users
 from sqlalchemy.sql import Select
@@ -378,11 +379,11 @@ def require_roles(*roles: str) -> Callable:
             identity = get_jwt_identity()
             user = None
             if identity is not None and str(identity).isdigit():
-                user = Users.query.get(int(identity))
+                user = db.session.get(Users, int(identity))
             if not user or not user.is_active:
                 return problem_response(HTTPStatus.FORBIDDEN, detail="User disabled")
-            user_roles = set(user.roles or [])
-            if roles and user_roles.isdisjoint(set(roles)):
+            user_roles = list(user.roles or [])
+            if roles and not has_role(user_roles, list(roles)):
                 return problem_response(HTTPStatus.FORBIDDEN, detail="Insufficient permissions")
             return func(*args, **kwargs)
 

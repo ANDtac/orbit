@@ -13,6 +13,9 @@ Coverage
 
 from __future__ import annotations
 
+from flask_jwt_extended import decode_token, verify_jwt_in_request
+
+from app.auth.routes import get_session_password
 from app.models import Users
 
 
@@ -50,6 +53,40 @@ def test_refresh_flow(client, auth_passwords):
     assert resp.status_code == 200
     data = resp.get_json()
     assert "access_token" in data and data["access_token"]
+
+
+def test_login_includes_encrypted_session_password(client, auth_passwords):
+    auth_passwords.add("session-pass")
+
+    resp = client.post("/api/v1/auth/login", json={"username": "session-user", "password": "session-pass"})
+
+    assert resp.status_code == 200
+    access_token = resp.get_json()["access_token"]
+    claims = decode_token(access_token)
+    assert claims["ep"]
+
+
+def test_refresh_carries_forward_encrypted_session_password(client, auth_passwords):
+    auth_passwords.add("refresh-pass")
+    login = client.post("/api/v1/auth/login", json={"username": "refresh-user", "password": "refresh-pass"})
+    refresh_token = login.get_json()["refresh_token"]
+    initial_claims = decode_token(login.get_json()["access_token"])
+
+    refreshed = client.post("/api/v1/auth/refresh", headers={"Authorization": f"Bearer {refresh_token}"})
+
+    assert refreshed.status_code == 200
+    refreshed_claims = decode_token(refreshed.get_json()["access_token"])
+    assert refreshed_claims["ep"] == initial_claims["ep"]
+
+
+def test_get_session_password_returns_decrypted_claim(app, client, auth_passwords):
+    auth_passwords.add("plain-secret")
+    login = client.post("/api/v1/auth/login", json={"username": "decrypt-user", "password": "plain-secret"})
+    access = login.get_json()["access_token"]
+
+    with app.test_request_context(headers={"Authorization": f"Bearer {access}"}):
+        verify_jwt_in_request()
+        assert get_session_password() == "plain-secret"
 
 
 def test_me_requires_auth(client):
@@ -108,3 +145,35 @@ def test_login_lockout_after_repeated_failures(client, auth_passwords):
     payload = locked.get_json()
     assert "locked_until" in payload
     assert "retry_after" in payload
+
+
+def test_dev_bypass_auth_succeeds_for_existing_user(app, client, create_user):
+    app.config["AUTH_DEV_BYPASS"] = True
+    create_user("dev-admin")
+
+    resp = client.post("/api/v1/auth/login", json={"username": "dev-admin", "password": "ignored"})
+
+    assert resp.status_code == 200
+    assert resp.get_json()["user"]["username"] == "dev-admin"
+
+
+def test_dev_bypass_auth_rejects_missing_user(app, client):
+    app.config["AUTH_DEV_BYPASS"] = True
+
+    resp = client.post("/api/v1/auth/login", json={"username": "ghost", "password": "ignored"})
+
+    assert resp.status_code == 401
+
+
+def test_dev_bypass_assigns_admin_role_when_user_has_no_roles(app, client, db):
+    app.config["AUTH_DEV_BYPASS"] = True
+
+    user = Users(username="roleless-dev", email="roleless-dev@local", roles=[])
+    db.session.add(user)
+    db.session.commit()
+
+    resp = client.post("/api/v1/auth/login", json={"username": "roleless-dev", "password": "ignored"})
+
+    assert resp.status_code == 200
+    db.session.refresh(user)
+    assert user.roles == ["admin"]
