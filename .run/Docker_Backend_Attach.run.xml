@@ -1,0 +1,20 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Docker: Backend Attach" type="PyRemoteDebugConfigurationType" factoryName="Python Remote Debug">
+    <module name="orbit" />
+    <option name="PORT" value="5678" />
+    <option name="HOST" value="localhost" />
+    <PathMappingSettings>
+      <option name="pathMappings">
+        <list>
+          <mapping local-root="$PROJECT_DIR$/apps/backend" remote-root="/app/apps/backend" />
+          <mapping local-root="$PROJECT_DIR$/packages" remote-root="/app/packages" />
+          <mapping local-root="$PROJECT_DIR$" remote-root="/app" />
+        </list>
+      </option>
+    </PathMappingSettings>
+    <option name="REDIRECT_OUTPUT" value="true" />
+    <option name="SUSPEND_AFTER_CONNECT" value="false" />
+    <option name="CLIENT_MODE" value="true" />
+    <method v="2" />
+  </configuration>
+</component>

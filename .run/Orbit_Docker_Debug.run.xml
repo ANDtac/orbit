@@ -1,0 +1,7 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Orbit: Docker Debug" type="CompoundRunConfigurationType">
+    <toRun name="Docker: Backend Attach" type="PyRemoteDebugConfigurationType" />
+    <toRun name="Docker: Frontend Browser" type="JavascriptDebugType" />
+    <method v="2" />
+  </configuration>
+</component>

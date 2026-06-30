@@ -1,0 +1,6 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Docker: Frontend Browser" type="JavascriptDebugType" uri="http://localhost:5173/" useFirstLineBreakpoints="true">
+    <mapping url="http://localhost:5173" local-file="$PROJECT_DIR$/apps/frontend" />
+    <method v="2" />
+  </configuration>
+</component>
