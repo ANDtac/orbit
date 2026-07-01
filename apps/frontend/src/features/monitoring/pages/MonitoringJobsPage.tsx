@@ -5,7 +5,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import type { ColumnDef, CursorPagination } from "@/components/ui/DataTable";
 import { fetchDevices } from "@/features/devices/api/devices.api";
 import { fetchJobs } from "@/features/monitoring/api/monitoring.api";
-import { JobDetailPanel } from "@/features/operations/components/JobDetailPanel";
+import { JobDetailPanel } from "@/components/JobDetailPanel";
 import { QUERY_KEYS } from "@/lib/constants";
 import type { Job } from "@/lib/types";
 

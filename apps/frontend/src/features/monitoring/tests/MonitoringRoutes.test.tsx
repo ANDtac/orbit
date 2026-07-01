@@ -15,16 +15,20 @@ vi.mock("@/components/layout/AppShell", () => ({
   AppShell: () => <Outlet />,
 }));
 
-vi.mock("@/features/monitoring/pages/MonitoringOverviewPage", () => ({
-  MonitoringOverviewPage: () => <div>monitoring overview page</div>,
+vi.mock("@/pages/Home", () => ({
+  Home: () => <div>home page</div>,
+}));
+
+vi.mock("@/features/compliance/pages/CompliancePoliciesPage", () => ({
+  CompliancePoliciesPage: () => <div>compliance policies page</div>,
 }));
 
 vi.mock("@/features/monitoring/pages/MonitoringHealthPage", () => ({
   MonitoringHealthPage: () => <div>monitoring health page</div>,
 }));
 
-vi.mock("@/features/monitoring/pages/MonitoringJobsPage", () => ({
-  MonitoringJobsPage: () => <div>monitoring jobs page</div>,
+vi.mock("@/features/automation/pages/RunsPage", () => ({
+  RunsPage: () => <div>runs page</div>,
 }));
 
 vi.mock("@/features/monitoring/pages/MonitoringProbesPage", () => ({
@@ -35,7 +39,7 @@ vi.mock("@/features/monitoring/pages/MonitoringPoliciesPage", () => ({
   MonitoringPoliciesPage: () => <div>monitoring policies page</div>,
 }));
 
-vi.mock("@/features/monitoring/pages/MonitoringLogsPage", () => ({
+vi.mock("@/features/admin/pages/MonitoringLogsPage", () => ({
   MonitoringLogsPage: () => <div>monitoring logs page</div>,
 }));
 
@@ -44,24 +48,24 @@ vi.mock("@/features/monitoring/pages/MonitoringAlertsPage", () => ({
 }));
 
 describe("Monitoring routes", () => {
-  it("renders monitoring overview route", () => {
+  it("redirects the legacy monitoring overview route to the global Overview", () => {
     render(
       <MemoryRouter initialEntries={["/monitoring"]} future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
         <AppRoutes />
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("monitoring overview page")).toBeInTheDocument();
+    expect(screen.getByText("home page")).toBeInTheDocument();
   });
 
-  it("renders monitoring jobs route", () => {
+  it("redirects the legacy monitoring jobs route to Automation runs", () => {
     render(
       <MemoryRouter initialEntries={["/monitoring/jobs"]} future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
         <AppRoutes />
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("monitoring jobs page")).toBeInTheDocument();
+    expect(screen.getByText("runs page")).toBeInTheDocument();
   });
 
   it("renders monitoring health route", () => {
@@ -74,17 +78,17 @@ describe("Monitoring routes", () => {
     expect(screen.getByText("monitoring health page")).toBeInTheDocument();
   });
 
-  it("renders monitoring policies route", () => {
+  it("redirects the legacy monitoring policies route to Compliance policies", () => {
     render(
       <MemoryRouter initialEntries={["/monitoring/policies"]} future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
         <AppRoutes />
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("monitoring policies page")).toBeInTheDocument();
+    expect(screen.getByText("compliance policies page")).toBeInTheDocument();
   });
 
-  it("renders monitoring logs route", () => {
+  it("redirects the legacy monitoring logs route to Admin system logs", () => {
     render(
       <MemoryRouter initialEntries={["/monitoring/logs"]} future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
         <AppRoutes />
@@ -94,23 +98,33 @@ describe("Monitoring routes", () => {
     expect(screen.getByText("monitoring logs page")).toBeInTheDocument();
   });
 
-  it("renders monitoring probes route", () => {
+  it("renders the Admin system logs route", () => {
+    render(
+      <MemoryRouter initialEntries={["/admin/system-logs"]} future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("monitoring logs page")).toBeInTheDocument();
+  });
+
+  it("redirects the hidden monitoring probes route to Health", () => {
     render(
       <MemoryRouter initialEntries={["/monitoring/probes"]} future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
         <AppRoutes />
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("monitoring probes page")).toBeInTheDocument();
+    expect(screen.getByText("monitoring health page")).toBeInTheDocument();
   });
 
-  it("renders monitoring alerts route", () => {
+  it("redirects the legacy monitoring alerts route to the global Overview", () => {
     render(
       <MemoryRouter initialEntries={["/monitoring/alerts"]} future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
         <AppRoutes />
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("monitoring alerts page")).toBeInTheDocument();
+    expect(screen.getByText("home page")).toBeInTheDocument();
   });
 });

@@ -196,12 +196,13 @@ class JobCollectionResource(Resource):
     @ns.marshal_with(JobCollection, code=HTTPStatus.OK)
     def get(self):
         filters = get_filter_args(
-            {"job_type", "status", "owner_id", "queue"},
+            {"job_type", "status", "owner_id", "queue", "run_as_internal"},
             legacy={
                 "job_type": "job_type",
                 "status": "status",
                 "owner_id": "owner_id",
                 "queue": "queue",
+                "run_as_internal": "run_as_internal",
             },
         )
         query = Jobs.query
@@ -215,6 +216,10 @@ class JobCollectionResource(Resource):
                 query = query.filter(Jobs.owner_id == int(owner))
         if queue := filters.get("queue"):
             query = query.filter(Jobs.queue == queue)
+        if run_as_internal := filters.get("run_as_internal"):
+            normalized = str(run_as_internal).strip().lower()
+            if normalized in {"true", "false"}:
+                query = query.filter(Jobs.run_as_internal.is_(normalized == "true"))
 
         query = apply_sorting(
             query,

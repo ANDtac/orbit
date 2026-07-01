@@ -10,17 +10,13 @@ import { DevicesListPage } from "@/features/devices/pages/DevicesListPage";
 import { DeviceDetailPage } from "@/features/devices/pages/DeviceDetailPage";
 import { DeviceCreatePage } from "@/features/devices/pages/DeviceCreatePage";
 import { DeviceEditPage } from "@/features/devices/pages/DeviceEditPage";
-import { MonitoringOverviewPage } from "@/features/monitoring/pages/MonitoringOverviewPage";
 import { MonitoringHealthPage } from "@/features/monitoring/pages/MonitoringHealthPage";
-import { MonitoringJobsPage } from "@/features/monitoring/pages/MonitoringJobsPage";
-import { MonitoringProbesPage } from "@/features/monitoring/pages/MonitoringProbesPage";
-import { MonitoringPoliciesPage } from "@/features/monitoring/pages/MonitoringPoliciesPage";
-import { MonitoringLogsPage } from "@/features/monitoring/pages/MonitoringLogsPage";
-import { MonitoringAlertsPage } from "@/features/monitoring/pages/MonitoringAlertsPage";
-import { PasswordChangePage } from "@/features/operations/pages/PasswordChangePage";
-import { OperationTemplatesPage } from "@/features/operations/pages/OperationTemplatesPage";
-import { OperationJobsPage } from "@/features/operations/pages/OperationJobsPage";
-import { SnapshotsPage } from "@/features/operations/pages/SnapshotsPage";
+import { MonitoringLogsPage } from "@/features/admin/pages/MonitoringLogsPage";
+import { PasswordChangePage } from "@/features/automation/pages/PasswordChangePage";
+import { OperationTemplatesPage } from "@/features/admin/pages/OperationTemplatesPage";
+import { RunsPage } from "@/features/automation/pages/RunsPage";
+import { RunDetailPage } from "@/features/automation/pages/RunDetailPage";
+import { SnapshotsPage } from "@/features/configurations/pages/SnapshotsPage";
 import { CompliancePoliciesPage } from "@/features/compliance/pages/CompliancePoliciesPage";
 import { ComplianceResultsPage } from "@/features/compliance/pages/ComplianceResultsPage";
 import { HardwareEoxPage } from "@/features/lifecycle/pages/HardwareEoxPage";
@@ -28,6 +24,7 @@ import { SoftwareEoxPage } from "@/features/lifecycle/pages/SoftwareEoxPage";
 import { PlatformsPage } from "@/features/admin/pages/PlatformsPage";
 import { CredentialsPage } from "@/features/admin/pages/CredentialsPage";
 import { AuditPage } from "@/features/admin/pages/AuditPage";
+import { AuditDetailPage } from "@/features/admin/pages/AuditDetailPage";
 
 export function AppRoutes(): JSX.Element {
     return (
@@ -73,56 +70,88 @@ export function AppRoutes(): JSX.Element {
                         element={<DeviceEditPage />}
                     />
 
+                    <Route
+                        path="/inventory/configurations"
+                        element={
+                            <Page
+                                title="Configurations"
+                                description="Browse captured configurations, inspect the latest state, and compare drift."
+                            >
+                                <SnapshotsPage />
+                            </Page>
+                        }
+                    />
+                    <Route
+                        path="/inventory/lifecycle/hardware"
+                        element={
+                            <Page
+                                title="Hardware EoX"
+                                description="Track hardware end-of-life milestones, identify risk windows, and maintain vendor lifecycle records."
+                            >
+                                <HardwareEoxPage />
+                            </Page>
+                        }
+                    />
+                    <Route
+                        path="/inventory/lifecycle/software"
+                        element={
+                            <Page
+                                title="Software EoX"
+                                description="Monitor software lifecycle windows by OS and version matching patterns."
+                            >
+                                <SoftwareEoxPage />
+                            </Page>
+                        }
+                    />
+
                     {/* Legacy redirect */}
                     <Route
                         path="/devices"
                         element={<Navigate to="/inventory/devices" replace />}
                     />
+                    <Route
+                        path="/operations/snapshots"
+                        element={
+                            <Navigate to="/inventory/configurations" replace />
+                        }
+                    />
+                    <Route
+                        path="/lifecycle/hardware"
+                        element={
+                            <Navigate
+                                to="/inventory/lifecycle/hardware"
+                                replace
+                            />
+                        }
+                    />
+                    <Route
+                        path="/lifecycle/software"
+                        element={
+                            <Navigate
+                                to="/inventory/lifecycle/software"
+                                replace
+                            />
+                        }
+                    />
 
                     {/* Monitoring */}
+                    {/* Overview folded into the global Overview (/) */}
                     <Route
                         path="/monitoring"
-                        element={
-                            <Page
-                                title="Monitoring"
-                                description="Operator action center for live monitoring, guardrailed operations, and workflow status."
-                            >
-                                <MonitoringOverviewPage />
-                            </Page>
-                        }
+                        element={<Navigate to="/" replace />}
                     />
                     <Route
                         path="/monitoring/jobs"
-                        element={
-                            <Page
-                                title="Monitoring Jobs"
-                                description="Track asynchronous execution across queued, running, and completed monitoring workflows."
-                            >
-                                <MonitoringJobsPage />
-                            </Page>
-                        }
+                        element={<Navigate to="/automation/runs" replace />}
                     />
+                    {/* Policies consolidated into Compliance */}
                     <Route
                         path="/monitoring/policies"
-                        element={
-                            <Page
-                                title="Monitoring Policies"
-                                description="Create and manage monitoring/compliance policies using Orbit-native policy resources."
-                            >
-                                <MonitoringPoliciesPage />
-                            </Page>
-                        }
+                        element={<Navigate to="/compliance/policies" replace />}
                     />
                     <Route
                         path="/monitoring/logs"
-                        element={
-                            <Page
-                                title="Monitoring Logs"
-                                description="Inspect request and error telemetry without leaving Orbit workflows."
-                            >
-                                <MonitoringLogsPage />
-                            </Page>
-                        }
+                        element={<Navigate to="/admin/system-logs" replace />}
                     />
                     <Route
                         path="/monitoring/health"
@@ -135,27 +164,15 @@ export function AppRoutes(): JSX.Element {
                             </Page>
                         }
                     />
+                    {/* Probes surface hidden; page retained on disk */}
                     <Route
                         path="/monitoring/probes"
-                        element={
-                            <Page
-                                title="Probes"
-                                description="Queue device probe batches and review recent probe execution jobs."
-                            >
-                                <MonitoringProbesPage />
-                            </Page>
-                        }
+                        element={<Navigate to="/monitoring/health" replace />}
                     />
+                    {/* Alerts folded into the global Overview (/) */}
                     <Route
                         path="/monitoring/alerts"
-                        element={
-                            <Page
-                                title="Alerts"
-                                description="Review recent backend errors, failed jobs, and failing compliance results in one place."
-                            >
-                                <MonitoringAlertsPage />
-                            </Page>
-                        }
+                        element={<Navigate to="/" replace />}
                     />
 
                     {/* Operations */}
@@ -172,34 +189,33 @@ export function AppRoutes(): JSX.Element {
                     />
                     <Route
                         path="/operations/templates"
-                        element={
-                            <Page
-                                title="Operation Templates"
-                                description="Manage reusable per-platform runbooks and command templates."
-                            >
-                                <OperationTemplatesPage />
-                            </Page>
-                        }
+                        element={<Navigate to="/admin/templates" replace />}
                     />
                     <Route
                         path="/operations/jobs"
+                        element={<Navigate to="/automation/runs" replace />}
+                    />
+
+                    {/* Automation */}
+                    <Route
+                        path="/automation/runs"
                         element={
                             <Page
-                                title="Operation Jobs"
-                                description="Track queued and completed operation execution batches."
+                                title="Runs"
+                                description="Track asynchronous execution across operator runs and system jobs — queued, running, and completed."
                             >
-                                <OperationJobsPage />
+                                <RunsPage />
                             </Page>
                         }
                     />
                     <Route
-                        path="/operations/snapshots"
+                        path="/automation/runs/:id"
                         element={
                             <Page
-                                title="Configuration Snapshots"
-                                description="Browse captured configurations, inspect the latest state, and compare drift."
+                                title="Run detail"
+                                description="Inspect task breakdown, parameters, timing, and events for a single run."
                             >
-                                <SnapshotsPage />
+                                <RunDetailPage />
                             </Page>
                         }
                     />
@@ -228,30 +244,6 @@ export function AppRoutes(): JSX.Element {
                         }
                     />
 
-                    {/* Lifecycle */}
-                    <Route
-                        path="/lifecycle/hardware"
-                        element={
-                            <Page
-                                title="Hardware EoX"
-                                description="Track hardware end-of-life milestones, identify risk windows, and maintain vendor lifecycle records."
-                            >
-                                <HardwareEoxPage />
-                            </Page>
-                        }
-                    />
-                    <Route
-                        path="/lifecycle/software"
-                        element={
-                            <Page
-                                title="Software EoX"
-                                description="Monitor software lifecycle windows by OS and version matching patterns."
-                            >
-                                <SoftwareEoxPage />
-                            </Page>
-                        }
-                    />
-
                     {/* Admin */}
                     <Route
                         path="/admin/platforms"
@@ -276,6 +268,28 @@ export function AppRoutes(): JSX.Element {
                         }
                     />
                     <Route
+                        path="/admin/templates"
+                        element={
+                            <Page
+                                title="Operation Templates"
+                                description="Manage reusable per-platform runbooks and command templates."
+                            >
+                                <OperationTemplatesPage />
+                            </Page>
+                        }
+                    />
+                    <Route
+                        path="/admin/system-logs"
+                        element={
+                            <Page
+                                title="System Logs"
+                                description="Inspect request and error telemetry without leaving Orbit workflows."
+                            >
+                                <MonitoringLogsPage />
+                            </Page>
+                        }
+                    />
+                    <Route
                         path="/admin/audit"
                         element={
                             <Page
@@ -283,6 +297,17 @@ export function AppRoutes(): JSX.Element {
                                 description="Review the audit trail of user actions and configuration changes with payload drill-down."
                             >
                                 <AuditPage />
+                            </Page>
+                        }
+                    />
+                    <Route
+                        path="/admin/audit/:id"
+                        element={
+                            <Page
+                                title="Audit entry"
+                                description="Human-readable view of a single audit event and its recorded changes."
+                            >
+                                <AuditDetailPage />
                             </Page>
                         }
                     />

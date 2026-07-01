@@ -96,6 +96,7 @@ export function RulesPanel({
 }: RulesPanelProps): JSX.Element {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<ComplianceRule | null>(null);
+  const [viewRule, setViewRule] = useState<ComplianceRule | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ComplianceRule | null>(null);
   const [formValues, setFormValues] = useState<RuleFormValues>(EMPTY_VALUES);
   const [formError, setFormError] = useState<string | null>(null);
@@ -106,10 +107,19 @@ export function RulesPanel({
   useEffect(() => {
     setIsFormOpen(false);
     setEditingRule(null);
+    setViewRule(null);
     setDeleteTarget(null);
     setFormValues(EMPTY_VALUES);
     setFormError(null);
   }, [policy?.id]);
+
+  function startEditRule(rule: ComplianceRule) {
+    setEditingRule(rule);
+    setFormValues(toFormValues(rule));
+    setFormError(null);
+    setViewRule(null);
+    setIsFormOpen(true);
+  }
 
   async function handleSubmit() {
     if (!policy) {
@@ -208,7 +218,18 @@ export function RulesPanel({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Rules Panel</p>
-          <h2 className="mt-1 font-heading text-xl text-text">{policy.name}</h2>
+          <div className="mt-1 flex items-center gap-2">
+            <h2 className="font-heading text-xl text-text">{policy.name}</h2>
+            <span
+              className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${
+                policy.is_active
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
+                  : "border-primary/20 bg-primary/5 text-muted"
+              }`}
+            >
+              {policy.is_active ? "Active" : "Inactive"}
+            </span>
+          </div>
           <p className="mt-1 text-sm text-muted">
             {policy.description ?? "Define granular compliance checks and queue an evaluation when the rule set is ready."}
           </p>
@@ -256,16 +277,10 @@ export function RulesPanel({
                 </pre>
               </div>
               <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setEditingRule(rule);
-                    setFormValues(toFormValues(rule));
-                    setFormError(null);
-                    setIsFormOpen(true);
-                  }}
-                >
+                <Button variant="ghost" size="sm" onClick={() => setViewRule(rule)}>
+                  View
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => startEditRule(rule)}>
                   Edit
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(rule)}>
@@ -276,6 +291,49 @@ export function RulesPanel({
           </article>
         ))}
       </div>
+
+      <Modal
+        isOpen={Boolean(viewRule)}
+        onClose={() => setViewRule(null)}
+        title={viewRule ? viewRule.name : "Rule details"}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setViewRule(null)}>
+              Close
+            </Button>
+            <Button onClick={() => viewRule && startEditRule(viewRule)}>Edit rule</Button>
+          </>
+        }
+      >
+        {viewRule ? (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold uppercase ${severityClasses(viewRule.severity)}`}>
+                {viewRule.severity}
+              </span>
+              <span className="inline-flex rounded-full border border-primary/20 px-2 py-1 font-mono text-xs text-primary">
+                {viewRule.rule_type}
+              </span>
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted">Description</p>
+              <p className="mt-1 text-sm text-text">{viewRule.description ?? "No description provided."}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted">Expression</p>
+              <pre className="mt-1 overflow-x-auto rounded-xl bg-background px-3 py-2 font-mono text-xs text-text">
+                {viewRule.expression}
+              </pre>
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted">Params</p>
+              <pre className="mt-1 overflow-x-auto rounded-xl bg-background px-3 py-2 font-mono text-xs text-text">
+                {JSON.stringify(viewRule.params ?? {}, null, 2)}
+              </pre>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
 
       <Modal
         isOpen={isFormOpen}

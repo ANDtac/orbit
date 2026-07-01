@@ -63,11 +63,20 @@ interface JobsQueryOptions {
   job_type?: string;
   status?: string;
   queue?: string;
+  /**
+   * Bucket jobs by classification: true = System (run_as_internal), false =
+   * operator Runs, omit for all. Filtered server-side by GET /jobs.
+   */
+  run_as_internal?: boolean;
 }
 
 interface OffsetPaginationOptions {
   page?: number;
   per_page?: number;
+  /** Inclusive lower bound on occurred_at (ISO date or datetime). Filtered server-side. */
+  from?: string;
+  /** Inclusive upper bound on occurred_at; a date-only value covers the whole day. Filtered server-side. */
+  to?: string;
 }
 
 interface EventLogQueryOptions extends OffsetPaginationOptions {

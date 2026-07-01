@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -7,10 +8,11 @@ import { DataTable } from "@/components/ui/DataTable";
 import type { ColumnDef } from "@/components/ui/DataTable";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
+import { StatCard } from "@/components/ui/StatCard";
 import { fetchDevices } from "@/features/devices/api/devices.api";
 import { fetchPlatforms } from "@/features/devices/api/platforms.api";
 import { QUERY_KEYS } from "@/lib/constants";
-import type { SoftwareLifecycle } from "@/lib/types";
+import type { Device, SoftwareLifecycle } from "@/lib/types";
 
 import {
     createSoftwareLifecycle,
@@ -19,6 +21,15 @@ import {
     updateSoftwareLifecycle,
     type SoftwareLifecycleInput,
 } from "../api/lifecycle.api";
+import {
+    dateClass,
+    formatDate,
+    getLifecycleStatus,
+    LifecycleDeviceModal,
+    LifecycleStatusBadge,
+    statusLabel,
+    type LifecycleStatus,
+} from "../lifecycleUtils";
 
 interface SoftwareFormValues {
     platform_id: string;
@@ -54,28 +65,12 @@ const MATCH_VALUE_PLACEHOLDERS: Record<SoftwareLifecycle["match_operator"], stri
     regex: "^17\\.3\\..*",
 };
 
-function isPast(value?: string): boolean {
-    return value ? new Date(value) < new Date() : false;
-}
-
-function isDueSoon(value?: string, days = 90): boolean {
-    if (!value) return false;
-    const now = new Date();
-    const future = new Date();
-    future.setDate(future.getDate() + days);
-    const date = new Date(value);
-    return date >= now && date <= future;
-}
-
-function formatDate(value?: string): string {
-    return value ? new Date(value).toLocaleDateString() : "—";
-}
-
-function dateClass(value?: string): string {
-    if (!value) return "text-muted";
-    if (isPast(value)) return "text-red-500";
-    if (isDueSoon(value)) return "text-amber-500";
-    return "text-text";
+function softwareStatus(row: SoftwareLifecycle): LifecycleStatus {
+    return getLifecycleStatus(row.last_day_of_support_date, [
+        row.end_of_sale_date,
+        row.end_of_software_maintenance_date,
+        row.end_of_security_fixes_date,
+    ]);
 }
 
 function toFormValues(row?: SoftwareLifecycle | null): SoftwareFormValues {
@@ -120,10 +115,7 @@ function InfoTooltip({ text }: { text: string }) {
     );
 }
 
-function countMatchingDevices(
-    devices: Array<{ os_name?: string; os_version?: string }>,
-    row: SoftwareLifecycle,
-): number {
+function matchDevices(devices: Device[], row: SoftwareLifecycle): Device[] {
     return devices.filter((device) => {
         if (device.os_name !== row.os_name) return false;
         const version = device.os_version ?? "";
@@ -142,13 +134,16 @@ function countMatchingDevices(
             default:
                 return false;
         }
-    }).length;
+    });
 }
 
 export function SoftwareEoxPage(): JSX.Element {
     const queryClient = useQueryClient();
     const [platformFilter, setPlatformFilter] = useState("");
     const [osNameFilter, setOsNameFilter] = useState("");
+    const [statusFilter, setStatusFilter] = useState<LifecycleStatus | null>(null);
+    const [viewingRow, setViewingRow] = useState<SoftwareLifecycle | null>(null);
+    const [deviceDrillRow, setDeviceDrillRow] = useState<SoftwareLifecycle | null>(null);
     const [editingRow, setEditingRow] = useState<SoftwareLifecycle | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<SoftwareLifecycle | null>(null);
     const [deletePhrase, setDeletePhrase] = useState("");
@@ -232,24 +227,22 @@ export function SoftwareEoxPage(): JSX.Element {
             const osMatch = osNameFilter
                 ? row.os_name.toLowerCase().includes(osNameFilter.toLowerCase())
                 : true;
-            return platformMatch && osMatch;
+            const statusMatch = statusFilter ? softwareStatus(row) === statusFilter : true;
+            return platformMatch && osMatch && statusMatch;
         });
-    }, [lifecycleQuery.data, osNameFilter, platformFilter]);
+    }, [lifecycleQuery.data, osNameFilter, platformFilter, statusFilter]);
 
-    const summary = useMemo(
-        () => ({
-            pastEos: (lifecycleQuery.data ?? []).filter((row) => isPast(row.end_of_sale_date)).length,
-            dueSoon: (lifecycleQuery.data ?? []).filter((row) =>
-                [
-                    row.end_of_sale_date,
-                    row.end_of_software_maintenance_date,
-                    row.end_of_security_fixes_date,
-                    row.last_day_of_support_date,
-                ].some((value) => isDueSoon(value)),
-            ).length,
-        }),
-        [lifecycleQuery.data],
-    );
+    const summary = useMemo(() => {
+        const counts: Record<LifecycleStatus, number> = { past: 0, dueSoon: 0, active: 0 };
+        (lifecycleQuery.data ?? []).forEach((row) => {
+            counts[softwareStatus(row)] += 1;
+        });
+        return counts;
+    }, [lifecycleQuery.data]);
+
+    function toggleStatusFilter(status: LifecycleStatus) {
+        setStatusFilter((current) => (current === status ? null : status));
+    }
 
     // TODO: Add 'Test match' button that shows which devices in inventory match the current OS Name + Operator + Value combination before saving
 
@@ -272,15 +265,30 @@ export function SoftwareEoxPage(): JSX.Element {
             ),
         },
         {
+            key: "status",
+            header: "Status",
+            accessor: (row) => <LifecycleStatusBadge status={softwareStatus(row)} />,
+        },
+        {
             key: "devices",
             header: "Devices",
             accessor: (row) => {
-                const count = countMatchingDevices(deviceList, row);
+                const count = matchDevices(deviceList, row).length;
                 if (count === 0) {
                     return <span className="text-muted">0</span>;
                 }
-                // TODO: Link to device list filtered by OS version once that filter is available
-                return <span className="font-medium text-text">{count}</span>;
+                return (
+                    <button
+                        type="button"
+                        className="font-medium text-primary hover:underline"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            setDeviceDrillRow(row);
+                        }}
+                    >
+                        {count}
+                    </button>
+                );
             },
         },
         {
@@ -380,10 +388,41 @@ export function SoftwareEoxPage(): JSX.Element {
 
     return (
         <div className="space-y-4">
-            <div className="grid gap-3 md:grid-cols-2">
-                <SummaryCard label="Past EoS" value={summary.pastEos} tone="danger" />
-                <SummaryCard label="Due In 90 Days" value={summary.dueSoon} tone="warning" />
+            <div className="grid gap-3 md:grid-cols-3">
+                <StatCard
+                    label="Past EoL"
+                    value={summary.past}
+                    accent="red"
+                    onClick={() => toggleStatusFilter("past")}
+                />
+                <StatCard
+                    label="Due Soon"
+                    value={summary.dueSoon}
+                    accent="amber"
+                    onClick={() => toggleStatusFilter("dueSoon")}
+                />
+                <StatCard
+                    label="Active"
+                    value={summary.active}
+                    accent="emerald"
+                    onClick={() => toggleStatusFilter("active")}
+                />
             </div>
+
+            {statusFilter ? (
+                <div className="flex items-center gap-2 text-sm text-muted">
+                    <span>
+                        Filtered by status: <strong className="text-text">{statusLabel(statusFilter)}</strong>
+                    </span>
+                    <button
+                        type="button"
+                        className="rounded-full border border-primary/30 px-2 py-0.5 text-xs text-primary hover:bg-primary/10"
+                        onClick={() => setStatusFilter(null)}
+                    >
+                        Clear
+                    </button>
+                </div>
+            ) : null}
 
             <div className="flex flex-wrap items-end justify-between gap-3">
                 <div className="flex flex-wrap items-end gap-3">
@@ -440,16 +479,114 @@ export function SoftwareEoxPage(): JSX.Element {
                     lifecycleQuery.refetch();
                     platformsQuery.refetch();
                 }}
-                onRowClick={(row) => {
-                    setEditingRow(row);
-                    setFormValues(toFormValues(row));
-                    setFormError(null);
-                    setIsFormOpen(true);
-                }}
+                onRowClick={(row) => setViewingRow(row)}
                 dense
                 emptyState={
                     <p className="text-sm text-muted">No software lifecycle rows match the current filters.</p>
                 }
+            />
+
+            <Modal
+                isOpen={Boolean(viewingRow)}
+                onClose={() => setViewingRow(null)}
+                title="Software lifecycle record"
+                size="lg"
+                footer={
+                    <>
+                        <Button variant="ghost" onClick={() => setViewingRow(null)}>
+                            Close
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                const row = viewingRow;
+                                if (!row) return;
+                                setViewingRow(null);
+                                setEditingRow(row);
+                                setFormValues(toFormValues(row));
+                                setFormError(null);
+                                setIsFormOpen(true);
+                            }}
+                        >
+                            Edit
+                        </Button>
+                    </>
+                }
+            >
+                {viewingRow ? (
+                    <dl className="grid grid-cols-1 gap-4 pb-2 sm:grid-cols-2">
+                        <DetailRow label="Status">
+                            <LifecycleStatusBadge status={softwareStatus(viewingRow)} />
+                        </DetailRow>
+                        <DetailRow label="Platform">
+                            {platformNames[viewingRow.platform_id ?? 0] ?? "Any platform"}
+                        </DetailRow>
+                        <DetailRow label="OS Name">{viewingRow.os_name}</DetailRow>
+                        <DetailRow label="Match Rule">
+                            <span className="font-mono text-xs">
+                                {viewingRow.match_operator}:{viewingRow.match_value}
+                            </span>
+                        </DetailRow>
+                        <DetailRow label="Affected Devices">
+                            {matchDevices(deviceList, viewingRow).length > 0 ? (
+                                <button
+                                    type="button"
+                                    className="font-medium text-primary hover:underline"
+                                    onClick={() => setDeviceDrillRow(viewingRow)}
+                                >
+                                    {matchDevices(deviceList, viewingRow).length} device(s)
+                                </button>
+                            ) : (
+                                <span className="text-muted">0</span>
+                            )}
+                        </DetailRow>
+                        <DetailRow label="End of Sale">
+                            <span className={dateClass(viewingRow.end_of_sale_date)}>
+                                {formatDate(viewingRow.end_of_sale_date)}
+                            </span>
+                        </DetailRow>
+                        <DetailRow label="SW Maintenance">
+                            <span className={dateClass(viewingRow.end_of_software_maintenance_date)}>
+                                {formatDate(viewingRow.end_of_software_maintenance_date)}
+                            </span>
+                        </DetailRow>
+                        <DetailRow label="Security Fixes">
+                            <span className={dateClass(viewingRow.end_of_security_fixes_date)}>
+                                {formatDate(viewingRow.end_of_security_fixes_date)}
+                            </span>
+                        </DetailRow>
+                        <DetailRow label="Last Day of Support">
+                            <span className={dateClass(viewingRow.last_day_of_support_date)}>
+                                {formatDate(viewingRow.last_day_of_support_date)}
+                            </span>
+                        </DetailRow>
+                        <DetailRow label="Source">
+                            {viewingRow.source_url ? (
+                                <a
+                                    href={viewingRow.source_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-primary hover:underline"
+                                >
+                                    View bulletin
+                                </a>
+                            ) : (
+                                <span className="text-muted">—</span>
+                            )}
+                        </DetailRow>
+                        <div className="sm:col-span-2">
+                            <DetailRow label="Notes">
+                                <span className="whitespace-pre-wrap">{viewingRow.notes || "—"}</span>
+                            </DetailRow>
+                        </div>
+                    </dl>
+                ) : null}
+            </Modal>
+
+            <LifecycleDeviceModal
+                isOpen={Boolean(deviceDrillRow)}
+                onClose={() => setDeviceDrillRow(null)}
+                title={deviceDrillRow ? `Devices matching ${deviceDrillRow.os_name}` : "Devices"}
+                devices={deviceDrillRow ? matchDevices(deviceList, deviceDrillRow) : []}
             />
 
             <Modal
@@ -677,25 +814,11 @@ export function SoftwareEoxPage(): JSX.Element {
     );
 }
 
-function SummaryCard({
-    label,
-    value,
-    tone,
-}: {
-    label: string;
-    value: number;
-    tone: "danger" | "warning";
-}): JSX.Element {
-    const toneClasses =
-        tone === "danger"
-            ? "border-red-500/20 bg-red-500/10 text-red-500"
-            : "border-amber-500/20 bg-amber-500/10 text-amber-500";
-
+function DetailRow({ label, children }: { label: string; children: ReactNode }): JSX.Element {
     return (
-        <div className={`rounded-2xl border px-4 py-4 ${toneClasses}`}>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em]">{label}</p>
-            <p className="mt-2 font-heading text-3xl">{value}</p>
-            <p className="mt-1 text-xs opacity-70">OS versions affected</p>
+        <div className="space-y-1">
+            <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">{label}</dt>
+            <dd className="text-sm text-text">{children}</dd>
         </div>
     );
 }

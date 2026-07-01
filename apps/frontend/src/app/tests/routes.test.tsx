@@ -54,22 +54,22 @@ vi.mock("@/features/monitoring/pages/MonitoringProbesPage", () => ({
 vi.mock("@/features/monitoring/pages/MonitoringPoliciesPage", () => ({
   MonitoringPoliciesPage: () => <div>MonitoringPoliciesPage</div>,
 }));
-vi.mock("@/features/monitoring/pages/MonitoringLogsPage", () => ({
+vi.mock("@/features/admin/pages/MonitoringLogsPage", () => ({
   MonitoringLogsPage: () => <div>MonitoringLogsPage</div>,
 }));
 vi.mock("@/features/monitoring/pages/MonitoringAlertsPage", () => ({
   MonitoringAlertsPage: () => <div>MonitoringAlertsPage</div>,
 }));
-vi.mock("@/features/operations/pages/PasswordChangePage", () => ({
+vi.mock("@/features/automation/pages/PasswordChangePage", () => ({
   PasswordChangePage: () => <div>PasswordChangePage</div>,
 }));
-vi.mock("@/features/operations/pages/OperationTemplatesPage", () => ({
+vi.mock("@/features/admin/pages/OperationTemplatesPage", () => ({
   OperationTemplatesPage: () => <div>OperationTemplatesPage</div>,
 }));
-vi.mock("@/features/operations/pages/OperationJobsPage", () => ({
+vi.mock("@/features/automation/pages/OperationJobsPage", () => ({
   OperationJobsPage: () => <div>OperationJobsPage</div>,
 }));
-vi.mock("@/features/operations/pages/SnapshotsPage", () => ({
+vi.mock("@/features/configurations/pages/SnapshotsPage", () => ({
   SnapshotsPage: () => <div>SnapshotsPage</div>,
 }));
 vi.mock("@/features/compliance/pages/CompliancePoliciesPage", () => ({

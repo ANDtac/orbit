@@ -73,6 +73,7 @@ export function PlatformsPage(): JSX.Element {
   const [sortField, setSortField] = useState("display_name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [viewPlatform, setViewPlatform] = useState<Platform | null>(null);
   const [editingPlatform, setEditingPlatform] = useState<Platform | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Platform | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
@@ -228,16 +229,7 @@ export function PlatformsPage(): JSX.Element {
       accessor: (platform) =>
         isOwner ? (
           <div className="flex gap-2" onClick={(event) => event.stopPropagation()}>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setEditingPlatform(platform);
-                setFormValues(toFormValues(platform));
-                setFormError(null);
-                setIsFormOpen(true);
-              }}
-            >
+            <Button variant="ghost" size="sm" onClick={() => openEdit(platform)}>
               Edit
             </Button>
             <Button variant="ghost" size="sm" onClick={() => { setDeleteTarget(platform); setDeleteConfirmText(""); }}>
@@ -249,6 +241,13 @@ export function PlatformsPage(): JSX.Element {
         ),
     },
   ];
+
+  function openEdit(platform: Platform) {
+    setEditingPlatform(platform);
+    setFormValues(toFormValues(platform));
+    setFormError(null);
+    setIsFormOpen(true);
+  }
 
   function closeForm() {
     setEditingPlatform(null);
@@ -338,6 +337,7 @@ export function PlatformsPage(): JSX.Element {
         keyExtractor={(platform) => platform.id}
         pagination={pagination}
         sorting={sorting}
+        onRowClick={(platform) => setViewPlatform(platform)}
         isLoading={platformsQuery.isLoading}
         isError={platformsQuery.isError}
         errorMessage="Unable to load platform metadata."
@@ -345,6 +345,65 @@ export function PlatformsPage(): JSX.Element {
         dense
         emptyState={<p className="text-sm text-muted">No platforms match the current filters.</p>}
       />
+
+      <Modal
+        isOpen={Boolean(viewPlatform)}
+        onClose={() => setViewPlatform(null)}
+        title={viewPlatform?.display_name || viewPlatform?.slug || "Platform"}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setViewPlatform(null)}>
+              Close
+            </Button>
+            {isOwner && viewPlatform ? (
+              <Button
+                onClick={() => {
+                  const target = viewPlatform;
+                  setViewPlatform(null);
+                  openEdit(target);
+                }}
+              >
+                Edit
+              </Button>
+            ) : null}
+          </>
+        }
+      >
+        {viewPlatform ? (
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-[0.14em] text-muted">Slug</dt>
+              <dd className="mt-0.5 font-mono text-sm text-text">{viewPlatform.slug}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-[0.14em] text-muted">Display name</dt>
+              <dd className="mt-0.5 text-sm text-text">{viewPlatform.display_name ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-[0.14em] text-muted">Vendor</dt>
+              <dd className="mt-0.5 text-sm text-text">{viewPlatform.vendor_hint ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-[0.14em] text-muted">NAPALM driver</dt>
+              <dd className="mt-0.5 font-mono text-sm text-text">{viewPlatform.napalm_driver ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-[0.14em] text-muted">Netmiko type</dt>
+              <dd className="mt-0.5 font-mono text-sm text-text">{viewPlatform.netmiko_type ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-[0.14em] text-muted">Status</dt>
+              <dd className="mt-0.5 text-sm text-text">
+                {viewPlatform.is_active === false ? "Inactive" : "Active"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-[0.14em] text-muted">Devices using this platform</dt>
+              <dd className="mt-0.5 text-sm text-text">{viewPlatform.device_count ?? 0}</dd>
+            </div>
+          </dl>
+        ) : null}
+      </Modal>
 
       <Modal
         isOpen={isFormOpen}

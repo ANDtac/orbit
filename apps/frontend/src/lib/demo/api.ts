@@ -45,6 +45,7 @@ type JobsQueryOptions = {
     job_type?: string;
     status?: string;
     queue?: string;
+    run_as_internal?: boolean;
 };
 
 type OffsetPaginationOptions = {
@@ -417,6 +418,10 @@ export function demoFetchJobs(options?: JobsQueryOptions): { data: Job[]; page: 
 
     if (options?.queue) {
         jobs = jobs.filter((job) => job.queue === options.queue);
+    }
+
+    if (options?.run_as_internal !== undefined) {
+        jobs = jobs.filter((job) => Boolean(job.run_as_internal) === options.run_as_internal);
     }
 
     jobs = sortByField(

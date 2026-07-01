@@ -88,6 +88,22 @@ describe("CompliancePoliciesPage", () => {
     expect(await screen.findByText(/Compliance evaluation started for 1 policy/i)).toBeInTheDocument();
   });
 
+  it("opens a read-only rule view before editing", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(<CompliancePoliciesPage />);
+
+    expect(await screen.findByText("ntp server present")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "View" }));
+
+    // Read-only view offers an explicit Edit action rather than editing inline.
+    const editRuleButton = await screen.findByRole("button", { name: "Edit rule" });
+    await user.click(editRuleButton);
+
+    expect(await screen.findByRole("button", { name: "Save rule" })).toBeInTheDocument();
+  });
+
   it("creates a new policy from the modal", async () => {
     const user = userEvent.setup();
 

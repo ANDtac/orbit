@@ -1,16 +1,33 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 
 import { DataTable } from "@/components/ui/DataTable";
 import type { ColumnDef } from "@/components/ui/DataTable";
+import { Modal } from "@/components/ui/Modal";
+import { StatCard } from "@/components/ui/StatCard";
 import { fetchHealthSummary } from "@/features/monitoring/api/monitoring.api";
 import { QUERY_KEYS } from "@/lib/constants";
 import type { DeviceHealthBreakdown } from "@/lib/types";
 
+type HealthBucket = "total" | "healthy" | "warning" | "critical";
+
+const BUCKET_TITLES: Record<HealthBucket, string> = {
+    total: "Tracked devices",
+    healthy: "Healthy devices",
+    warning: "Warning devices",
+    critical: "Critical devices",
+};
+
+interface BucketScopeRow extends DeviceHealthBreakdown {
+    /** Device count within the selected bucket for this scope. */
+    bucketCount: number;
+}
+
 export function MonitoringHealthPage(): JSX.Element {
     const navigate = useNavigate();
+    const [activeBucket, setActiveBucket] = useState<HealthBucket | null>(null);
     const { data, isLoading, isError, refetch } = useQuery({
         queryKey: [QUERY_KEYS.deviceHealthSummary],
         queryFn: () => fetchHealthSummary(),
@@ -24,6 +41,17 @@ export function MonitoringHealthPage(): JSX.Element {
         () => [...(data?.by_group ?? [])].sort((left, right) => right.total - left.total),
         [data?.by_group],
     );
+
+    // Scopes (platforms + groups) that contribute to the selected summary bucket.
+    const bucketRows = useMemo<BucketScopeRow[]>(() => {
+        if (!activeBucket || !data) return [];
+        const countFor = (row: DeviceHealthBreakdown): number =>
+            activeBucket === "total" ? row.total : (row.statuses[activeBucket] ?? 0);
+        return [...(data.by_platform ?? []), ...(data.by_group ?? [])]
+            .map((row) => ({ ...row, bucketCount: countFor(row) }))
+            .filter((row) => row.bucketCount > 0)
+            .sort((left, right) => right.bucketCount - left.bucketCount);
+    }, [activeBucket, data]);
 
     const columns: ColumnDef<DeviceHealthBreakdown>[] = [
         {
@@ -50,6 +78,34 @@ export function MonitoringHealthPage(): JSX.Element {
         },
     ];
 
+    const bucketColumns: ColumnDef<BucketScopeRow>[] = [
+        {
+            key: "scope",
+            header: "Scope",
+            accessor: (row) => (
+                <div>
+                    <div className="font-medium text-text">
+                        {row.name ?? row.identifier ?? "Unassigned"}
+                    </div>
+                    <div className="text-xs uppercase tracking-[0.16em] text-muted">
+                        {row.scope}
+                    </div>
+                </div>
+            ),
+        },
+        {
+            key: "count",
+            header: "Devices",
+            accessor: (row) => String(row.bucketCount),
+        },
+    ];
+
+    const navigateToScope = (row: DeviceHealthBreakdown): void => {
+        if (!row.identifier) return;
+        const param = row.scope === "group" ? "groupId" : "platformId";
+        void navigate(`/inventory/devices?${param}=${encodeURIComponent(row.identifier)}`);
+    };
+
     if (isLoading) {
         return <p className="text-muted">Loading health summary…</p>;
     }
@@ -65,21 +121,29 @@ export function MonitoringHealthPage(): JSX.Element {
     return (
         <div className="space-y-6">
             <section className="grid gap-4 md:grid-cols-4">
-                <StatCard title="Tracked devices" value={String(data.overall.total)} />
                 <StatCard
-                    title="Healthy"
-                    value={String(data.overall.statuses.healthy ?? 0)}
-                    tone="healthy"
+                    label="Tracked devices"
+                    value={data.overall.total}
+                    accent="primary"
+                    onClick={() => setActiveBucket("total")}
                 />
                 <StatCard
-                    title="Warning"
-                    value={String(data.overall.statuses.warning ?? 0)}
-                    tone="warning"
+                    label="Healthy"
+                    value={data.overall.statuses.healthy ?? 0}
+                    accent="emerald"
+                    onClick={() => setActiveBucket("healthy")}
                 />
                 <StatCard
-                    title="Critical"
-                    value={String(data.overall.statuses.critical ?? 0)}
-                    tone="critical"
+                    label="Warning"
+                    value={data.overall.statuses.warning ?? 0}
+                    accent="amber"
+                    onClick={() => setActiveBucket("warning")}
+                />
+                <StatCard
+                    label="Critical"
+                    value={data.overall.statuses.critical ?? 0}
+                    accent="red"
+                    onClick={() => setActiveBucket("critical")}
                 />
             </section>
 
@@ -105,11 +169,7 @@ export function MonitoringHealthPage(): JSX.Element {
                         onRetry={() => refetch()}
                         errorMessage="Unable to load health by platform."
                         dense
-                        onRowClick={(row) => {
-                            if (row.identifier) {
-                                void navigate(`/inventory/devices?platformId=${encodeURIComponent(row.identifier)}`);
-                            }
-                        }}
+                        onRowClick={navigateToScope}
                         emptyState={
                             <p className="text-sm text-muted">No platform health snapshots yet.</p>
                         }
@@ -134,44 +194,41 @@ export function MonitoringHealthPage(): JSX.Element {
                         onRetry={() => refetch()}
                         errorMessage="Unable to load health by group."
                         dense
-                        onRowClick={(row) => {
-                            if (row.identifier) {
-                                void navigate(`/inventory/devices?groupId=${encodeURIComponent(row.identifier)}`);
-                            }
-                        }}
+                        onRowClick={navigateToScope}
                         emptyState={
                             <p className="text-sm text-muted">No group health snapshots yet.</p>
                         }
                     />
                 </div>
             </section>
+
+            <Modal
+                isOpen={activeBucket !== null}
+                onClose={() => setActiveBucket(null)}
+                title={activeBucket ? BUCKET_TITLES[activeBucket] : ""}
+                size="lg"
+            >
+                <p className="mb-4 text-sm text-muted">
+                    Platforms and groups contributing to this count. Select a row to view the
+                    matching devices.
+                </p>
+                <DataTable
+                    columns={bucketColumns}
+                    data={bucketRows}
+                    keyExtractor={(row) =>
+                        `${row.scope}-${row.identifier ?? row.name ?? "scope"}`
+                    }
+                    dense
+                    onRowClick={(row) => {
+                        setActiveBucket(null);
+                        navigateToScope(row);
+                    }}
+                    emptyState={
+                        <p className="text-sm text-muted">No devices in this bucket.</p>
+                    }
+                />
+            </Modal>
         </div>
-    );
-}
-
-function StatCard({
-    title,
-    value,
-    tone = "default",
-}: {
-    title: string;
-    value: string;
-    tone?: "default" | "healthy" | "warning" | "critical";
-}) {
-    const textTone =
-        tone === "healthy"
-            ? "text-emerald-500"
-            : tone === "warning"
-              ? "text-amber-500"
-              : tone === "critical"
-                ? "text-red-500"
-                : "text-primary";
-
-    return (
-        <article className="rounded-2xl border border-primary/10 bg-surface p-5 shadow-sm">
-            <p className="text-sm text-muted">{title}</p>
-            <p className={`mt-1 font-heading text-3xl ${textTone}`}>{value}</p>
-        </article>
     );
 }
 

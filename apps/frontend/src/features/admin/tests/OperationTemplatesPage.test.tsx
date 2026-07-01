@@ -5,16 +5,16 @@ import { fetchPlatforms } from "@/features/devices/api/platforms.api";
 import {
   createOperationTemplate,
   fetchOperationTemplates,
-} from "@/features/operations/api/operations.api";
-import { OperationTemplatesPage } from "@/features/operations/pages/OperationTemplatesPage";
+} from "@/features/admin/api/operationTemplates.api";
+import { OperationTemplatesPage } from "@/features/admin/pages/OperationTemplatesPage";
 import { renderWithProviders } from "@/tests/renderWithProviders";
 
 vi.mock("@/features/devices/api/platforms.api", () => ({
   fetchPlatforms: vi.fn(),
 }));
 
-vi.mock("@/features/operations/api/operations.api", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/features/operations/api/operations.api")>();
+vi.mock("@/features/admin/api/operationTemplates.api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/features/admin/api/operationTemplates.api")>();
   return {
     ...actual,
     fetchOperationTemplates: vi.fn(),
@@ -63,6 +63,8 @@ describe("OperationTemplatesPage", () => {
     renderWithProviders(<OperationTemplatesPage />);
 
     expect(await screen.findByText("Backup Running Config")).toBeInTheDocument();
+    // Column relabeled from the untruthful "Updated"/"Last used" to "Last modified".
+    expect(screen.getByText("Last modified")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "New template" }));
     await user.selectOptions(screen.getByLabelText(/Platform/i), "1");

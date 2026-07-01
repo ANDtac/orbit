@@ -1,4 +1,5 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { fetchHealthSummary } from "@/features/monitoring/api/monitoring.api";
 import { MonitoringHealthPage } from "@/features/monitoring/pages/MonitoringHealthPage";
@@ -50,5 +51,44 @@ describe("MonitoringHealthPage", () => {
     expect(screen.getByText("Cisco IOS")).toBeInTheDocument();
     expect(screen.getByText("Core Routers")).toBeInTheDocument();
     expect(screen.getByText(/critical 1/i)).toBeInTheDocument();
+  });
+
+  it("drills into a summary card, listing the scopes in that bucket", async () => {
+    vi.mocked(fetchHealthSummary).mockResolvedValue({
+      generated_at: "2026-04-02T12:00:00Z",
+      overall: {
+        total: 10,
+        statuses: { healthy: 6, warning: 3, critical: 1 },
+      },
+      by_platform: [
+        {
+          scope: "platform",
+          identifier: "1",
+          name: "Cisco IOS",
+          total: 5,
+          statuses: { healthy: 4, warning: 1 },
+        },
+      ],
+      by_group: [
+        {
+          scope: "group",
+          identifier: "core",
+          name: "Core Routers",
+          total: 4,
+          statuses: { healthy: 2, critical: 1, warning: 1 },
+        },
+      ],
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<MonitoringHealthPage />);
+
+    await user.click(await screen.findByRole("button", { name: /^Warning/ }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Warning devices")).toBeInTheDocument();
+    // Both the platform and group carry a warning device.
+    expect(within(dialog).getByText("Cisco IOS")).toBeInTheDocument();
+    expect(within(dialog).getByText("Core Routers")).toBeInTheDocument();
   });
 });

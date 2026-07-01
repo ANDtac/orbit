@@ -1,8 +1,10 @@
 {
   "compilerOptions": {
     "composite": true,
+    "lib": ["ES2022", "DOM"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
     "types": ["node"],
     "typeRoots": ["./types", "./node_modules/@types"]

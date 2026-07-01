@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { DataTable } from "@/components/ui/DataTable";
 import type { ColumnDef, OffsetPagination, SelectionConfig } from "@/components/ui/DataTable";
 import { fetchDevices } from "@/features/devices/api/devices.api";
 import { QUERY_KEYS } from "@/lib/constants";
 import type { DeviceConfigSnapshot } from "@/lib/types";
 
-import { fetchSnapshots } from "../api/operations.api";
+import { fetchSnapshots } from "../api/snapshots.api";
 import { SnapshotDiffModal } from "../components/SnapshotDiffModal";
 
 const PER_PAGE = 14;
@@ -27,6 +28,14 @@ function snapshotSize(snapshot: DeviceConfigSnapshot): string {
 
 function snapshotLabel(snapshot: DeviceConfigSnapshot, deviceName: string): string {
   return `${deviceName} · ${new Date(snapshot.captured_at).toLocaleString()}`;
+}
+
+const PREVIEW_LINE_COUNT = 16;
+
+function snapshotPreview(snapshot: DeviceConfigSnapshot): { text: string; truncated: boolean } {
+  const lines = snapshot.config_text.split("\n");
+  const truncated = lines.length > PREVIEW_LINE_COUNT;
+  return { text: lines.slice(0, PREVIEW_LINE_COUNT).join("\n"), truncated };
 }
 
 // ─── Tooltip ─────────────────────────────────────────────────────────────────
@@ -64,6 +73,7 @@ export function SnapshotsPage(): JSX.Element {
   const [sourceFilter, setSourceFilter] = useState("");
   const [selected, setSelected] = useState<Set<string | number>>(new Set());
   const [activeSnapshotId, setActiveSnapshotId] = useState<number | null>(null);
+  const [quickViewId, setQuickViewId] = useState<number | null>(null);
   const [isDiffOpen, setIsDiffOpen] = useState(false);
 
   const queryOptions = useMemo(
@@ -113,6 +123,11 @@ export function SnapshotsPage(): JSX.Element {
     snapshots.find((snapshot) => snapshot.id === activeSnapshotId) ?? snapshots[0] ?? null;
 
   const selectedSnapshots = snapshots.filter((snapshot) => selected.has(snapshot.id));
+
+  const quickViewSnapshot = snapshots.find((snapshot) => snapshot.id === quickViewId) ?? null;
+  const quickViewDeviceName = quickViewSnapshot
+    ? deviceNames[quickViewSnapshot.device_id] ?? `Device #${quickViewSnapshot.device_id}`
+    : "";
 
   const columns: ColumnDef<DeviceConfigSnapshot>[] = [
     {
@@ -212,13 +227,18 @@ export function SnapshotsPage(): JSX.Element {
           </div>
         </div>
 
-        <Button
-          variant="outline"
-          onClick={() => setIsDiffOpen(true)}
-          disabled={selectedSnapshots.length !== 2}
-        >
-          Compare 2 selected
-        </Button>
+        <div className="flex flex-col items-end gap-1">
+          <Button
+            variant="outline"
+            onClick={() => setIsDiffOpen(true)}
+            disabled={selectedSnapshots.length !== 2}
+          >
+            Compare selected ({selectedSnapshots.length}/2)
+          </Button>
+          <p className="text-xs text-muted">
+            Tick two snapshots to compare their configurations line by line.
+          </p>
+        </div>
       </div>
 
       <DataTable
@@ -231,7 +251,10 @@ export function SnapshotsPage(): JSX.Element {
         isError={isError}
         errorMessage="Unable to load configuration snapshots."
         onRetry={() => refetch()}
-        onRowClick={(snapshot) => setActiveSnapshotId(snapshot.id)}
+        onRowClick={(snapshot) => {
+          setActiveSnapshotId(snapshot.id);
+          setQuickViewId(snapshot.id);
+        }}
         dense
         emptyState={<p className="text-sm text-muted">No configuration snapshots match the current filters.</p>}
       />
@@ -265,6 +288,81 @@ export function SnapshotsPage(): JSX.Element {
           </pre>
         </section>
       ) : null}
+
+      <Modal
+        isOpen={quickViewSnapshot !== null}
+        onClose={() => setQuickViewId(null)}
+        title="Snapshot summary"
+        size="lg"
+        footer={
+          quickViewSnapshot ? (
+            <>
+              <Button variant="ghost" onClick={() => setQuickViewId(null)}>
+                Close
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => downloadSnapshot(quickViewSnapshot, quickViewDeviceName)}
+              >
+                Download config
+              </Button>
+              <Button
+                onClick={() => {
+                  setActiveSnapshotId(quickViewSnapshot.id);
+                  setQuickViewId(null);
+                }}
+              >
+                View full config
+              </Button>
+            </>
+          ) : null
+        }
+      >
+        {quickViewSnapshot ? (
+          <div className="space-y-4">
+            <dl className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <dt className="text-xs uppercase tracking-[0.24em] text-muted">Device</dt>
+                <dd className="mt-1 font-medium text-text">{quickViewDeviceName}</dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-[0.24em] text-muted">Source</dt>
+                <dd className="mt-1 text-text">{quickViewSnapshot.source ?? "unknown"}</dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-[0.24em] text-muted">Captured</dt>
+                <dd className="mt-1 text-text">
+                  {new Date(quickViewSnapshot.captured_at).toLocaleString()}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-[0.24em] text-muted">Size</dt>
+                <dd className="mt-1 text-text">{snapshotSize(quickViewSnapshot)}</dd>
+              </div>
+              <div className="col-span-2">
+                <dt className="text-xs uppercase tracking-[0.24em] text-muted">Config hash</dt>
+                <dd className="mt-1 font-mono text-xs text-text">
+                  {quickViewSnapshot.config_hash ?? "—"}
+                </dd>
+              </div>
+            </dl>
+
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-muted">Preview</p>
+              <pre className="mt-2 max-h-64 overflow-auto rounded-xl border border-primary/10 bg-background/60 p-4 font-mono text-xs text-text">
+                {snapshotPreview(quickViewSnapshot).text}
+                {snapshotPreview(quickViewSnapshot).truncated ? "\n…" : ""}
+              </pre>
+              {snapshotPreview(quickViewSnapshot).truncated ? (
+                <p className="mt-1 text-xs text-muted">
+                  Showing the first {PREVIEW_LINE_COUNT} lines. Use “View full config” for the
+                  complete capture.
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+      </Modal>
 
       <SnapshotDiffModal
         isOpen={isDiffOpen}

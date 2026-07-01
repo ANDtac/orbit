@@ -5,6 +5,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
 import type { ColumnDef } from "@/components/ui/DataTable";
+import { Modal } from "@/components/ui/Modal";
 import { fetchAppEvents, fetchErrorLogs, fetchRequestLogs } from "@/features/monitoring/api/monitoring.api";
 import { QUERY_KEYS } from "@/lib/constants";
 import type { AppEventEntry, ErrorLogEntry, RequestLogEntry } from "@/lib/types";
@@ -62,14 +63,25 @@ export function MonitoringLogsPage(): JSX.Element {
   // Text search filters
   const [searchText, setSearchText] = useState("");
 
+  // Read-only detail modal for a single log record
+  const [detailRecord, setDetailRecord] = useState<Record<string, unknown> | null>(null);
+  const [detailTitle, setDetailTitle] = useState("");
+
+  // Date range params are sent to the API so filtering is server-side across all
+  // pages, not just the rows currently loaded. `to` is inclusive-to-end-of-day.
+  const dateParams = useMemo(
+    () => ({ from: fromDate || undefined, to: toDate || undefined }),
+    [fromDate, toDate],
+  );
+
   const {
     data: requestLogs = [],
     isLoading: requestLoading,
     isError: requestError,
     refetch: refetchRequests,
   } = useQuery({
-    queryKey: [QUERY_KEYS.requestLogs, requestPage],
-    queryFn: () => fetchRequestLogs({ page: requestPage, per_page: PAGE_SIZE }),
+    queryKey: [QUERY_KEYS.requestLogs, requestPage, dateParams],
+    queryFn: () => fetchRequestLogs({ page: requestPage, per_page: PAGE_SIZE, ...dateParams }),
   });
 
   const {
@@ -78,8 +90,8 @@ export function MonitoringLogsPage(): JSX.Element {
     isError: errorError,
     refetch: refetchErrors,
   } = useQuery({
-    queryKey: [QUERY_KEYS.errorLogs, errorPage],
-    queryFn: () => fetchErrorLogs({ page: errorPage, per_page: PAGE_SIZE }),
+    queryKey: [QUERY_KEYS.errorLogs, errorPage, dateParams],
+    queryFn: () => fetchErrorLogs({ page: errorPage, per_page: PAGE_SIZE, ...dateParams }),
   });
 
   const {
@@ -88,47 +100,30 @@ export function MonitoringLogsPage(): JSX.Element {
     isError: eventError,
     refetch: refetchEvents,
   } = useQuery({
-    queryKey: [QUERY_KEYS.appEvents, eventPage],
-    queryFn: () => fetchAppEvents({ page: eventPage, per_page: PAGE_SIZE }),
+    queryKey: [QUERY_KEYS.appEvents, eventPage, dateParams],
+    queryFn: () => fetchAppEvents({ page: eventPage, per_page: PAGE_SIZE, ...dateParams }),
   });
 
-  // TODO: API does not currently support date range params — filtering client-side on current page data.
+  // Date filtering is handled server-side; only the free-text search runs client-side.
   const filteredRequests = useMemo(() => {
-    let rows = requestLogs;
-    if (fromDate) rows = rows.filter((r) => r.created_at >= fromDate);
-    if (toDate) rows = rows.filter((r) => r.created_at <= toDate + "T23:59:59");
-    if (searchText) {
-      const q = searchText.toLowerCase();
-      rows = rows.filter((r) => r.path.toLowerCase().includes(q) || r.method.toLowerCase().includes(q));
-    }
-    return rows;
-  }, [requestLogs, fromDate, toDate, searchText]);
+    if (!searchText) return requestLogs;
+    const q = searchText.toLowerCase();
+    return requestLogs.filter((r) => r.path.toLowerCase().includes(q) || r.method.toLowerCase().includes(q));
+  }, [requestLogs, searchText]);
 
   const filteredErrors = useMemo(() => {
-    let rows = errorLogs;
-    if (fromDate) rows = rows.filter((r) => r.created_at >= fromDate);
-    if (toDate) rows = rows.filter((r) => r.created_at <= toDate + "T23:59:59");
-    if (searchText) {
-      const q = searchText.toLowerCase();
-      rows = rows.filter((r) => r.message.toLowerCase().includes(q));
-    }
-    return rows;
-  }, [errorLogs, fromDate, toDate, searchText]);
+    if (!searchText) return errorLogs;
+    const q = searchText.toLowerCase();
+    return errorLogs.filter((r) => r.message.toLowerCase().includes(q));
+  }, [errorLogs, searchText]);
 
   const filteredEvents = useMemo(() => {
-    let rows = appEvents;
-    if (fromDate) rows = rows.filter((r) => r.created_at >= fromDate);
-    if (toDate) rows = rows.filter((r) => r.created_at <= toDate + "T23:59:59");
-    if (searchText) {
-      const q = searchText.toLowerCase();
-      rows = rows.filter(
-        (r) =>
-          r.event.toLowerCase().includes(q) ||
-          (r.message ?? "").toLowerCase().includes(q),
-      );
-    }
-    return rows;
-  }, [appEvents, fromDate, toDate, searchText]);
+    if (!searchText) return appEvents;
+    const q = searchText.toLowerCase();
+    return appEvents.filter(
+      (r) => r.event.toLowerCase().includes(q) || (r.message ?? "").toLowerCase().includes(q),
+    );
+  }, [appEvents, searchText]);
 
   const requestColumns: ColumnDef<RequestLogEntry>[] = [
     {
@@ -259,26 +254,39 @@ export function MonitoringLogsPage(): JSX.Element {
 
       <div className="flex flex-wrap items-end gap-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted">From</label>
+          <label htmlFor="logs-from-date" className="mb-1 block text-xs font-medium text-muted">From</label>
           <input
+            id="logs-from-date"
             type="date"
             value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
+            onChange={(e) => {
+              setFromDate(e.target.value);
+              setRequestPage(1);
+              setErrorPage(1);
+              setEventPage(1);
+            }}
             className="rounded-xl border border-primary/30 bg-background px-3 py-2 text-sm text-text"
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted">To</label>
+          <label htmlFor="logs-to-date" className="mb-1 block text-xs font-medium text-muted">To</label>
           <input
+            id="logs-to-date"
             type="date"
             value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
+            onChange={(e) => {
+              setToDate(e.target.value);
+              setRequestPage(1);
+              setErrorPage(1);
+              setEventPage(1);
+            }}
             className="rounded-xl border border-primary/30 bg-background px-3 py-2 text-sm text-text"
           />
         </div>
         <div className="min-w-[240px] flex-1">
-          <label className="mb-1 block text-xs font-medium text-muted">Search</label>
+          <label htmlFor="logs-search" className="mb-1 block text-xs font-medium text-muted">Search</label>
           <input
+            id="logs-search"
             type="text"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
@@ -307,6 +315,10 @@ export function MonitoringLogsPage(): JSX.Element {
               columns={requestColumns}
               data={filteredRequests}
               keyExtractor={(entry) => entry.id}
+              onRowClick={(entry) => {
+                setDetailTitle(`${entry.method} ${entry.path}`);
+                setDetailRecord(entry as unknown as Record<string, unknown>);
+              }}
               isLoading={requestLoading}
               isError={requestError}
               onRetry={() => refetchRequests()}
@@ -337,6 +349,10 @@ export function MonitoringLogsPage(): JSX.Element {
               columns={errorColumns}
               data={filteredErrors}
               keyExtractor={(entry) => entry.id}
+              onRowClick={(entry) => {
+                setDetailTitle(`${entry.level} · ${entry.correlation_id}`);
+                setDetailRecord(entry as unknown as Record<string, unknown>);
+              }}
               isLoading={errorLoading}
               isError={errorError}
               onRetry={() => refetchErrors()}
@@ -367,6 +383,10 @@ export function MonitoringLogsPage(): JSX.Element {
               columns={eventColumns}
               data={filteredEvents}
               keyExtractor={(entry) => entry.id}
+              onRowClick={(entry) => {
+                setDetailTitle(entry.event);
+                setDetailRecord(entry as unknown as Record<string, unknown>);
+              }}
               isLoading={eventLoading}
               isError={eventError}
               onRetry={() => refetchEvents()}
@@ -383,8 +403,37 @@ export function MonitoringLogsPage(): JSX.Element {
           </div>
         ) : null}
       </div>
+
+      <Modal
+        isOpen={detailRecord !== null}
+        onClose={() => setDetailRecord(null)}
+        title={detailTitle || "Log entry"}
+        size="lg"
+        footer={
+          <Button variant="ghost" onClick={() => setDetailRecord(null)}>
+            Close
+          </Button>
+        }
+      >
+        {detailRecord ? (
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+            {Object.entries(detailRecord).map(([key, value]) => (
+              <div key={key} className="min-w-0">
+                <dt className="text-xs font-medium uppercase tracking-[0.14em] text-muted">{key}</dt>
+                <dd className="mt-0.5 break-words font-mono text-sm text-text">{formatFieldValue(value)}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
+      </Modal>
     </div>
   );
+}
+
+function formatFieldValue(value: unknown): string {
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "object") return JSON.stringify(value, null, 2);
+  return String(value);
 }
 
 function PaginationControls({

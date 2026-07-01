@@ -175,8 +175,9 @@ export function TemplateDetailModal({
               </p>
             </div>
             <div className="rounded-xl border border-primary/10 bg-background/40 p-4">
-              {/* TODO: Track actual job usage count via API — currently shows last modified date as proxy */}
-              <p className="text-xs uppercase tracking-[0.24em] text-muted">Last used</p>
+              {/* Backend template serialization exposes no usage/execution count, so we
+                  surface the truthful last-modified time rather than an invented usage metric. */}
+              <p className="text-xs uppercase tracking-[0.24em] text-muted">Last modified</p>
               <p className="mt-2 text-sm font-medium text-text">{relativeDate(template.updated_at)}</p>
             </div>
           </div>

@@ -319,6 +319,126 @@
             "description": "Delete a device by ID."
           },
           "response": []
+        },
+        {
+          "name": "Discover Devices",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/devices:discover",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "devices:discover"
+              ]
+            },
+            "description": "Queue a discovery job for one or more seed targets. Returns a job reference (202 Accepted).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"seeds\": [\n    \"10.0.0.0/24\"\n  ],\n  \"credentials\": {\n    \"credential_profile_id\": 1\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Probe Devices",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/devices:probe",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "devices:probe"
+              ]
+            },
+            "description": "Queue a probe job against one or more devices, using either a probe_type or a template_id. Returns a job reference (202 Accepted).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"device_ids\": [\n    1,\n    2\n  ],\n  \"probe_type\": \"reachability\",\n  \"template_id\": null,\n  \"variables\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Bulk Update Devices",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/devices:bulk-update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "devices:bulk-update"
+              ]
+            },
+            "description": "Queue a bulk update job across devices selected by device_ids and/or filters. Returns a job reference (202 Accepted).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"device_ids\": [\n    1,\n    2\n  ],\n  \"filters\": {},\n  \"updates\": {\n    \"notes\": \"Bulk updated\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -2225,6 +2345,126 @@
       ]
     },
     {
+      "name": "Jobs",
+      "item": [
+        {
+          "name": "List Jobs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jobs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "jobs"
+              ],
+              "query": [
+                {
+                  "key": "job_type",
+                  "value": "",
+                  "description": "Filter by job_type (supports trailing '*' prefix match)"
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "Filter by job status"
+                },
+                {
+                  "key": "run_as_internal",
+                  "value": "",
+                  "description": "true = system jobs, false = operator runs"
+                },
+                {
+                  "key": "sort",
+                  "value": "-created_at",
+                  "description": "Sort fields"
+                }
+              ]
+            },
+            "description": "List asynchronous jobs (cursor-paginated). Requires the network_admin role."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Job",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jobs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "jobs"
+              ]
+            },
+            "description": "Enqueue an asynchronous job. Returns the job with 202 Accepted. Requires the network_admin role.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"job_type\": \"device.probe\",\n  \"queue\": null,\n  \"priority\": 5,\n  \"run_as_internal\": false,\n  \"parameters\": {},\n  \"tasks\": [\n    {\n      \"task_type\": \"device.probe.run\",\n      \"device_id\": 1\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Job",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jobs/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "jobs",
+                "1"
+              ]
+            },
+            "description": "Retrieve a single job with related tasks and events. Requires the network_admin role."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Logs",
       "item": [
         {
@@ -2264,6 +2504,16 @@
                 {
                   "key": "status_to",
                   "value": "299"
+                },
+                {
+                  "key": "from",
+                  "value": "",
+                  "description": "Inclusive lower bound on occurred_at (ISO8601 date or datetime)"
+                },
+                {
+                  "key": "to",
+                  "value": "",
+                  "description": "Inclusive upper bound on occurred_at; a date-only value covers the whole day"
                 }
               ]
             },
@@ -2331,6 +2581,16 @@
                 {
                   "key": "level",
                   "value": "ERROR"
+                },
+                {
+                  "key": "from",
+                  "value": "",
+                  "description": "Inclusive lower bound on occurred_at (ISO8601 date or datetime)"
+                },
+                {
+                  "key": "to",
+                  "value": "",
+                  "description": "Inclusive upper bound on occurred_at; a date-only value covers the whole day"
                 }
               ]
             },
@@ -2398,6 +2658,16 @@
                 {
                   "key": "level",
                   "value": "INFO"
+                },
+                {
+                  "key": "from",
+                  "value": "",
+                  "description": "Inclusive lower bound on occurred_at (ISO8601 date or datetime)"
+                },
+                {
+                  "key": "to",
+                  "value": "",
+                  "description": "Inclusive upper bound on occurred_at; a date-only value covers the whole day"
                 }
               ]
             },

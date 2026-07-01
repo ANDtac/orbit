@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 
 import {
   fetchComplianceResults,
@@ -74,14 +75,20 @@ describe("ComplianceResultsPage", () => {
     vi.clearAllMocks();
   });
 
-  it("renders mapped names and expands result details", async () => {
-    const user = userEvent.setup();
-
-    render(
+  function renderPage() {
+    return render(
       <QueryClientProvider client={queryClient}>
-        <ComplianceResultsPage />
+        <MemoryRouter>
+          <ComplianceResultsPage />
+        </MemoryRouter>
       </QueryClientProvider>,
     );
+  }
+
+  it("renders mapped names and expands result details with device/policy links", async () => {
+    const user = userEvent.setup();
+
+    renderPage();
 
     expect(await screen.findByText("core-rtr-01")).toBeInTheDocument();
     expect(screen.getByText("NTP Baseline", { selector: "td" })).toBeInTheDocument();
@@ -90,5 +97,27 @@ describe("ComplianceResultsPage", () => {
     await user.click(screen.getByText("core-rtr-01"));
 
     expect(await screen.findByText(/missing ntp server/i)).toBeInTheDocument();
+
+    const deviceLink = screen.getByRole("link", { name: /View device: core-rtr-01/i });
+    expect(deviceLink).toHaveAttribute("href", "/inventory/devices/1");
+
+    const policyLink = screen.getByRole("link", { name: /View policy: NTP Baseline/i });
+    expect(policyLink).toHaveAttribute("href", "/compliance/policies");
+  });
+
+  it("filters results by status when a summary card is clicked", async () => {
+    const user = userEvent.setup();
+
+    renderPage();
+
+    expect(await screen.findByText("core-rtr-01")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /^Fail\s*1$/ }));
+
+    await waitFor(() => {
+      expect(
+        vi.mocked(fetchComplianceResults).mock.calls.some(([opts]) => opts?.status === "fail"),
+      ).toBe(true);
+    });
   });
 });

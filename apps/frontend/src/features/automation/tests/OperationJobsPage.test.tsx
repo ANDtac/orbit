@@ -4,9 +4,7 @@ import userEvent from "@testing-library/user-event";
 
 import { fetchDevices } from "@/features/devices/api/devices.api";
 import { fetchJobs } from "@/features/monitoring/api/monitoring.api";
-import { fetchSnapshots } from "@/features/operations/api/operations.api";
-import { OperationJobsPage } from "@/features/operations/pages/OperationJobsPage";
-import { SnapshotsPage } from "@/features/operations/pages/SnapshotsPage";
+import { OperationJobsPage } from "@/features/automation/pages/OperationJobsPage";
 
 vi.mock("@/features/devices/api/devices.api", () => ({
   fetchDevices: vi.fn(),
@@ -16,15 +14,7 @@ vi.mock("@/features/monitoring/api/monitoring.api", () => ({
   fetchJobs: vi.fn(),
 }));
 
-vi.mock("@/features/operations/api/operations.api", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/features/operations/api/operations.api")>();
-  return {
-    ...actual,
-    fetchSnapshots: vi.fn(),
-  };
-});
-
-describe("OperationJobsPage and SnapshotsPage", () => {
+describe("OperationJobsPage", () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
@@ -93,17 +83,6 @@ describe("OperationJobsPage and SnapshotsPage", () => {
         total: 1,
       },
     });
-
-    vi.mocked(fetchSnapshots).mockResolvedValue([
-      {
-        id: 9,
-        device_id: 1,
-        captured_at: "2026-03-31T11:00:00Z",
-        source: "napalm:get_config",
-        config_text: "hostname edge-1\ninterface Loopback0",
-        config_hash: "demo-hash-0009",
-      },
-    ]);
   });
 
   afterEach(() => {
@@ -124,16 +103,5 @@ describe("OperationJobsPage and SnapshotsPage", () => {
     await user.click(screen.getByText("operation.execute"));
     expect(await screen.findByText("job enqueued")).toBeInTheDocument();
     expect(screen.getByText("edge-1")).toBeInTheDocument();
-  });
-
-  it("renders snapshot preview for the active row", async () => {
-    render(
-      <QueryClientProvider client={queryClient}>
-        <SnapshotsPage />
-      </QueryClientProvider>,
-    );
-
-    expect(await screen.findByText(/hostname edge-1/)).toBeInTheDocument();
-    expect(screen.getAllByText("demo-hash-0009")).toHaveLength(2);
   });
 });

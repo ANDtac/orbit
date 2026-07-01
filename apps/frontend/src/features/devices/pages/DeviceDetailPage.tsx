@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -8,25 +8,15 @@ import { Modal } from "@/components/ui/Modal";
 import { QUERY_KEYS } from "@/lib/constants";
 import { fetchDevice, deleteDevice } from "../api/devices.api";
 import { DeviceSummaryTab } from "../components/tabs/DeviceSummaryTab";
-import { DevicePlaceholderTab } from "../components/tabs/DevicePlaceholderTab";
-
-const TABS = [
-    { key: "summary", label: "Summary" },
-    { key: "monitoring", label: "Monitoring" },
-    { key: "operations", label: "Operations" },
-    { key: "compliance", label: "Compliance" },
-    { key: "lifecycle", label: "Lifecycle" },
-] as const;
-
-type TabKey = (typeof TABS)[number]["key"];
+// NOTE: Only the Summary tab is currently implemented. The Monitoring, Operations,
+// Compliance, and Lifecycle tabs (rendered via DevicePlaceholderTab) are hidden
+// until built out — the components remain on disk for future use.
 
 export function DeviceDetailPage(): JSX.Element {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const [searchParams, setSearchParams] = useSearchParams();
 
-    const activeTab = (searchParams.get("tab") as TabKey) || "summary";
     const deviceId = Number(id);
 
     const [showDelete, setShowDelete] = useState(false);
@@ -53,10 +43,6 @@ export function DeviceDetailPage(): JSX.Element {
             toast.error("Failed to delete device");
         },
     });
-
-    function setTab(tab: TabKey) {
-        setSearchParams({ tab });
-    }
 
     if (isLoading) {
         return (
@@ -168,55 +154,8 @@ export function DeviceDetailPage(): JSX.Element {
                 </div>
             </div>
 
-            {/* Tab bar */}
-            <div className="mb-6 border-b border-primary/10">
-                <nav className="-mb-px flex gap-1" aria-label="Device tabs">
-                    {TABS.map((tab) => (
-                        <button
-                            key={tab.key}
-                            onClick={() => setTab(tab.key)}
-                            className={`border-b-2 px-4 py-2.5 text-sm font-medium transition ${
-                                activeTab === tab.key
-                                    ? "border-primary text-primary"
-                                    : "border-transparent text-muted hover:border-primary/30 hover:text-text"
-                            }`}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
-                </nav>
-            </div>
-
-            {/* Tab content */}
-            {activeTab === "summary" && <DeviceSummaryTab device={device} />}
-            {/* TODO: Implement Monitoring tab — data available via existing API endpoints */}
-            {activeTab === "monitoring" && (
-                <DevicePlaceholderTab
-                    title="Monitoring"
-                    description="Real-time health status, interface states, and probe history for this device."
-                />
-            )}
-            {/* TODO: Implement Operations tab — data available via existing API endpoints */}
-            {activeTab === "operations" && (
-                <DevicePlaceholderTab
-                    title="Operations"
-                    description="Password change history, configuration backups, and executed command results for this device."
-                />
-            )}
-            {/* TODO: Implement Compliance tab — data available via existing API endpoints */}
-            {activeTab === "compliance" && (
-                <DevicePlaceholderTab
-                    title="Compliance"
-                    description="Compliance rule results specific to this device across all active policies."
-                />
-            )}
-            {/* TODO: Implement Lifecycle tab — data available via existing API endpoints */}
-            {activeTab === "lifecycle" && (
-                <DevicePlaceholderTab
-                    title="Lifecycle"
-                    description="Hardware and software end-of-life status based on this device's platform and OS version."
-                />
-            )}
+            {/* Summary — the only implemented tab; tab strip hidden until others land */}
+            <DeviceSummaryTab device={device} />
 
             {/* Delete modal */}
             <Modal

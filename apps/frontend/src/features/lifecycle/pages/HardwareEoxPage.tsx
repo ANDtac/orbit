@@ -7,6 +7,7 @@
 // - Add: "devices missing model number" and "devices missing OS version" count cards
 
 import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -15,6 +16,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import type { ColumnDef } from "@/components/ui/DataTable";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
+import { StatCard } from "@/components/ui/StatCard";
 import { fetchDevices } from "@/features/devices/api/devices.api";
 import { QUERY_KEYS } from "@/lib/constants";
 import type { HardwareLifecycle } from "@/lib/types";
@@ -26,6 +28,15 @@ import {
     updateHardwareLifecycle,
     type HardwareLifecycleInput,
 } from "../api/lifecycle.api";
+import {
+    dateClass,
+    formatDate,
+    getLifecycleStatus,
+    LifecycleDeviceModal,
+    LifecycleStatusBadge,
+    statusLabel,
+    type LifecycleStatus,
+} from "../lifecycleUtils";
 
 interface HardwareFormValues {
     product_model_id: string;
@@ -49,28 +60,12 @@ const EMPTY_FORM: HardwareFormValues = {
 
 const DELETE_PHRASE = "DELETE";
 
-function isPast(value?: string): boolean {
-    return value ? new Date(value) < new Date() : false;
-}
-
-function isDueSoon(value?: string, days = 90): boolean {
-    if (!value) return false;
-    const now = new Date();
-    const future = new Date();
-    future.setDate(future.getDate() + days);
-    const date = new Date(value);
-    return date >= now && date <= future;
-}
-
-function formatDate(value?: string): string {
-    return value ? new Date(value).toLocaleDateString() : "—";
-}
-
-function dateClass(value?: string): string {
-    if (!value) return "text-muted";
-    if (isPast(value)) return "text-red-500";
-    if (isDueSoon(value)) return "text-amber-500";
-    return "text-text";
+function hardwareStatus(row: HardwareLifecycle): LifecycleStatus {
+    return getLifecycleStatus(row.last_day_of_support_date, [
+        row.end_of_sale_date,
+        row.end_of_software_maintenance_date,
+        row.end_of_security_fixes_date,
+    ]);
 }
 
 function toFormValues(row?: HardwareLifecycle | null): HardwareFormValues {
@@ -115,6 +110,9 @@ function InfoTooltip({ text }: { text: string }) {
 export function HardwareEoxPage(): JSX.Element {
     const queryClient = useQueryClient();
     const [productModelFilter, setProductModelFilter] = useState("");
+    const [statusFilter, setStatusFilter] = useState<LifecycleStatus | null>(null);
+    const [viewingRow, setViewingRow] = useState<HardwareLifecycle | null>(null);
+    const [deviceDrillRow, setDeviceDrillRow] = useState<HardwareLifecycle | null>(null);
     const [editingRow, setEditingRow] = useState<HardwareLifecycle | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<HardwareLifecycle | null>(null);
     const [deletePhrase, setDeletePhrase] = useState("");
@@ -177,28 +175,30 @@ export function HardwareEoxPage(): JSX.Element {
 
     const deviceList = useMemo(() => devicesQuery.data?.data ?? [], [devicesQuery.data]);
 
+    const matchDevices = (row: HardwareLifecycle) =>
+        deviceList.filter((device) => device.model_number === String(row.product_model_id));
+
     const rows = useMemo(() => {
         const items = lifecycleQuery.data ?? [];
-        if (!productModelFilter.trim()) {
-            return items;
-        }
-        return items.filter((row) => String(row.product_model_id).includes(productModelFilter.trim()));
-    }, [lifecycleQuery.data, productModelFilter]);
+        const query = productModelFilter.trim();
+        return items.filter((row) => {
+            const modelMatch = query ? String(row.product_model_id).includes(query) : true;
+            const statusMatch = statusFilter ? hardwareStatus(row) === statusFilter : true;
+            return modelMatch && statusMatch;
+        });
+    }, [lifecycleQuery.data, productModelFilter, statusFilter]);
 
-    const summary = useMemo(
-        () => ({
-            pastEos: (lifecycleQuery.data ?? []).filter((row) => isPast(row.end_of_sale_date)).length,
-            dueSoon: (lifecycleQuery.data ?? []).filter((row) =>
-                [
-                    row.end_of_sale_date,
-                    row.end_of_software_maintenance_date,
-                    row.end_of_security_fixes_date,
-                    row.last_day_of_support_date,
-                ].some((value) => isDueSoon(value)),
-            ).length,
-        }),
-        [lifecycleQuery.data],
-    );
+    const summary = useMemo(() => {
+        const counts: Record<LifecycleStatus, number> = { past: 0, dueSoon: 0, active: 0 };
+        (lifecycleQuery.data ?? []).forEach((row) => {
+            counts[hardwareStatus(row)] += 1;
+        });
+        return counts;
+    }, [lifecycleQuery.data]);
+
+    function toggleStatusFilter(status: LifecycleStatus) {
+        setStatusFilter((current) => (current === status ? null : status));
+    }
 
     // TODO: Add timeline/Gantt visualization showing lifecycle milestones for all products — helps identify clustering of support end dates
 
@@ -209,17 +209,30 @@ export function HardwareEoxPage(): JSX.Element {
             accessor: (row) => <span className="font-mono text-xs">{row.product_model_id}</span>,
         },
         {
+            key: "status",
+            header: "Status",
+            accessor: (row) => <LifecycleStatusBadge status={hardwareStatus(row)} />,
+        },
+        {
             key: "devices",
             header: "Devices",
             accessor: (row) => {
-                const count = deviceList.filter(
-                    (device) => device.model_number === String(row.product_model_id),
-                ).length;
+                const count = matchDevices(row).length;
                 if (count === 0) {
                     return <span className="text-muted">0</span>;
                 }
-                // TODO: Link to device list filtered by model number once that filter is available
-                return <span className="font-medium text-text">{count}</span>;
+                return (
+                    <button
+                        type="button"
+                        className="font-medium text-primary hover:underline"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            setDeviceDrillRow(row);
+                        }}
+                    >
+                        {count}
+                    </button>
+                );
             },
         },
         {
@@ -321,10 +334,41 @@ export function HardwareEoxPage(): JSX.Element {
 
     return (
         <div className="space-y-4">
-            <div className="grid gap-3 md:grid-cols-2">
-                <SummaryCard label="Past EoS" value={summary.pastEos} tone="danger" />
-                <SummaryCard label="Due In 90 Days" value={summary.dueSoon} tone="warning" />
+            <div className="grid gap-3 md:grid-cols-3">
+                <StatCard
+                    label="Past EoL"
+                    value={summary.past}
+                    accent="red"
+                    onClick={() => toggleStatusFilter("past")}
+                />
+                <StatCard
+                    label="Due Soon"
+                    value={summary.dueSoon}
+                    accent="amber"
+                    onClick={() => toggleStatusFilter("dueSoon")}
+                />
+                <StatCard
+                    label="Active"
+                    value={summary.active}
+                    accent="emerald"
+                    onClick={() => toggleStatusFilter("active")}
+                />
             </div>
+
+            {statusFilter ? (
+                <div className="flex items-center gap-2 text-sm text-muted">
+                    <span>
+                        Filtered by status: <strong className="text-text">{statusLabel(statusFilter)}</strong>
+                    </span>
+                    <button
+                        type="button"
+                        className="rounded-full border border-primary/30 px-2 py-0.5 text-xs text-primary hover:bg-primary/10"
+                        onClick={() => setStatusFilter(null)}
+                    >
+                        Clear
+                    </button>
+                </div>
+            ) : null}
 
             <div className="flex flex-wrap items-end justify-between gap-3">
                 <div className="min-w-[220px]">
@@ -358,16 +402,112 @@ export function HardwareEoxPage(): JSX.Element {
                 isError={lifecycleQuery.isError}
                 errorMessage="Unable to load hardware lifecycle data."
                 onRetry={() => lifecycleQuery.refetch()}
-                onRowClick={(row) => {
-                    setEditingRow(row);
-                    setFormValues(toFormValues(row));
-                    setFormError(null);
-                    setIsFormOpen(true);
-                }}
+                onRowClick={(row) => setViewingRow(row)}
                 dense
                 emptyState={
                     <p className="text-sm text-muted">No hardware lifecycle rows match the current filters.</p>
                 }
+            />
+
+            <Modal
+                isOpen={Boolean(viewingRow)}
+                onClose={() => setViewingRow(null)}
+                title="Hardware lifecycle record"
+                size="lg"
+                footer={
+                    <>
+                        <Button variant="ghost" onClick={() => setViewingRow(null)}>
+                            Close
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                const row = viewingRow;
+                                if (!row) return;
+                                setViewingRow(null);
+                                setEditingRow(row);
+                                setFormValues(toFormValues(row));
+                                setFormError(null);
+                                setIsFormOpen(true);
+                            }}
+                        >
+                            Edit
+                        </Button>
+                    </>
+                }
+            >
+                {viewingRow ? (
+                    <dl className="grid grid-cols-1 gap-4 pb-2 sm:grid-cols-2">
+                        <DetailRow label="Status">
+                            <LifecycleStatusBadge status={hardwareStatus(viewingRow)} />
+                        </DetailRow>
+                        <DetailRow label="Product Model">
+                            <span className="font-mono">{viewingRow.product_model_id}</span>
+                        </DetailRow>
+                        <DetailRow label="Affected Devices">
+                            {matchDevices(viewingRow).length > 0 ? (
+                                <button
+                                    type="button"
+                                    className="font-medium text-primary hover:underline"
+                                    onClick={() => setDeviceDrillRow(viewingRow)}
+                                >
+                                    {matchDevices(viewingRow).length} device(s)
+                                </button>
+                            ) : (
+                                <span className="text-muted">0</span>
+                            )}
+                        </DetailRow>
+                        <DetailRow label="End of Sale">
+                            <span className={dateClass(viewingRow.end_of_sale_date)}>
+                                {formatDate(viewingRow.end_of_sale_date)}
+                            </span>
+                        </DetailRow>
+                        <DetailRow label="SW Maintenance">
+                            <span className={dateClass(viewingRow.end_of_software_maintenance_date)}>
+                                {formatDate(viewingRow.end_of_software_maintenance_date)}
+                            </span>
+                        </DetailRow>
+                        <DetailRow label="Security Fixes">
+                            <span className={dateClass(viewingRow.end_of_security_fixes_date)}>
+                                {formatDate(viewingRow.end_of_security_fixes_date)}
+                            </span>
+                        </DetailRow>
+                        <DetailRow label="Last Day of Support">
+                            <span className={dateClass(viewingRow.last_day_of_support_date)}>
+                                {formatDate(viewingRow.last_day_of_support_date)}
+                            </span>
+                        </DetailRow>
+                        <DetailRow label="Source">
+                            {viewingRow.source_url ? (
+                                <a
+                                    href={viewingRow.source_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-primary hover:underline"
+                                >
+                                    View bulletin
+                                </a>
+                            ) : (
+                                <span className="text-muted">—</span>
+                            )}
+                        </DetailRow>
+                        <div className="sm:col-span-2">
+                            <DetailRow label="Notes">
+                                <span className="whitespace-pre-wrap">{viewingRow.notes || "—"}</span>
+                            </DetailRow>
+                        </div>
+                    </dl>
+                ) : null}
+            </Modal>
+
+            <LifecycleDeviceModal
+                isOpen={Boolean(deviceDrillRow)}
+                onClose={() => setDeviceDrillRow(null)}
+                title={
+                    deviceDrillRow
+                        ? `Devices on model ${deviceDrillRow.product_model_id}`
+                        : "Devices"
+                }
+                devices={deviceDrillRow ? matchDevices(deviceDrillRow) : []}
             />
 
             <Modal
@@ -535,25 +675,11 @@ export function HardwareEoxPage(): JSX.Element {
     );
 }
 
-function SummaryCard({
-    label,
-    value,
-    tone,
-}: {
-    label: string;
-    value: number;
-    tone: "danger" | "warning";
-}): JSX.Element {
-    const toneClasses =
-        tone === "danger"
-            ? "border-red-500/20 bg-red-500/10 text-red-500"
-            : "border-amber-500/20 bg-amber-500/10 text-amber-500";
-
+function DetailRow({ label, children }: { label: string; children: ReactNode }): JSX.Element {
     return (
-        <div className={`rounded-2xl border px-4 py-4 ${toneClasses}`}>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em]">{label}</p>
-            <p className="mt-2 font-heading text-3xl">{value}</p>
-            <p className="mt-1 text-xs opacity-70">products affected</p>
+        <div className="space-y-1">
+            <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">{label}</dt>
+            <dd className="text-sm text-text">{children}</dd>
         </div>
     );
 }

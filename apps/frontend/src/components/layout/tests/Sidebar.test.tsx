@@ -33,11 +33,11 @@ describe("Sidebar", () => {
         mobileOpen={false}
         onMobileClose={vi.fn()}
       />,
-      { route: "/monitoring/jobs" },
+      { route: "/automation/runs" },
     );
 
-    expect((await screen.findAllByRole("link", { name: "Jobs" })).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("button", { name: /monitoring/i }).length).toBeGreaterThan(0);
+    expect((await screen.findAllByRole("link", { name: "Runs" })).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: /automation/i }).length).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: /admin/i })).not.toBeInTheDocument();
   });
 

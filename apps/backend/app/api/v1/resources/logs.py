@@ -29,6 +29,9 @@ page : int
 per_page : int
 sort : str
     Comma-separated fields; prefix with '-' for DESC. Example: `-created_at,id`.
+from : ISO8601 date or datetime   (inclusive lower bound on occurred_at)
+to : ISO8601 date or datetime     (inclusive upper bound; a date-only value
+    covers the whole day)
 
 Requests-specific filters:
     user_id : int
@@ -166,6 +169,32 @@ def _parse_iso_dt(value: str | None) -> datetime | None:
         return None
 
 
+def _parse_to_boundary(value: str | None) -> datetime | None:
+    """
+    Parse the inclusive upper-bound (`to`) date-range parameter.
+
+    A date-only value (e.g., '2026-06-30') is treated as the end of that day so
+    that a whole-day range is inclusive, mirroring the System Logs UI date
+    pickers. Datetime values are used as-is.
+
+    Parameters
+    ----------
+    value : str | None
+        Raw string from the query parameter.
+
+    Returns
+    -------
+    datetime | None
+        Parsed inclusive upper-bound datetime or None if missing/invalid.
+    """
+    dt = _parse_iso_dt(value)
+    if dt is None:
+        return None
+    if value and "T" not in value and len(value.strip()) == 10:
+        dt = dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+    return dt
+
+
 # ---------------------------------------------------------------------------
 # Requests
 # ---------------------------------------------------------------------------
@@ -235,6 +264,14 @@ class RequestLogList(Resource):
         until = _parse_iso_dt(request.args.get("until"))
         if until:
             q = q.filter(RequestLogs.occurred_at < until)
+
+        date_from = _parse_iso_dt(request.args.get("from"))
+        if date_from:
+            q = q.filter(RequestLogs.occurred_at >= date_from)
+
+        date_to = _parse_to_boundary(request.args.get("to"))
+        if date_to:
+            q = q.filter(RequestLogs.occurred_at <= date_to)
 
         q = apply_sorting(
             q,
@@ -330,6 +367,14 @@ class ErrorLogList(Resource):
         if until:
             qy = qy.filter(ErrorLogs.occurred_at < until)
 
+        date_from = _parse_iso_dt(request.args.get("from"))
+        if date_from:
+            qy = qy.filter(ErrorLogs.occurred_at >= date_from)
+
+        date_to = _parse_to_boundary(request.args.get("to"))
+        if date_to:
+            qy = qy.filter(ErrorLogs.occurred_at <= date_to)
+
         qy = apply_sorting(
             qy,
             ErrorLogs,
@@ -409,6 +454,14 @@ class EventList(Resource):
         until = _parse_iso_dt(request.args.get("until"))
         if until:
             q = q.filter(AppEvents.occurred_at < until)
+
+        date_from = _parse_iso_dt(request.args.get("from"))
+        if date_from:
+            q = q.filter(AppEvents.occurred_at >= date_from)
+
+        date_to = _parse_to_boundary(request.args.get("to"))
+        if date_to:
+            q = q.filter(AppEvents.occurred_at <= date_to)
 
         q = apply_sorting(
             q,

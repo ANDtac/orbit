@@ -33,31 +33,24 @@ export const navConfig: NavSection[] = [
         icon: "inventory",
         children: [
             { label: "Devices", to: "/inventory/devices" },
+            { label: "Configurations", to: "/inventory/configurations" },
+            { label: "Hardware EoX", to: "/inventory/lifecycle/hardware" },
+            { label: "Software EoX", to: "/inventory/lifecycle/software" },
         ],
     },
     {
         label: "Monitoring",
-        to: "/monitoring",
+        to: "/monitoring/health",
         icon: "monitoring",
-        children: [
-            { label: "Overview", to: "/monitoring", end: true },
-            { label: "Jobs", to: "/monitoring/jobs" },
-            { label: "Policies", to: "/monitoring/policies" },
-            { label: "Logs", to: "/monitoring/logs" },
-            { label: "Health", to: "/monitoring/health" },
-            { label: "Probes", to: "/monitoring/probes" },
-            { label: "Alerts", to: "/monitoring/alerts" },
-        ],
+        children: [{ label: "Health", to: "/monitoring/health" }],
     },
     {
-        label: "Operations",
+        label: "Automation",
         to: "/operations/password-change",
         icon: "operations",
         children: [
             { label: "Password Changes", to: "/operations/password-change" },
-            { label: "Templates", to: "/operations/templates" },
-            { label: "Jobs", to: "/operations/jobs" },
-            { label: "Snapshots", to: "/operations/snapshots" },
+            { label: "Runs", to: "/automation/runs" },
         ],
     },
     {
@@ -70,15 +63,6 @@ export const navConfig: NavSection[] = [
         ],
     },
     {
-        label: "Lifecycle",
-        to: "/lifecycle/hardware",
-        icon: "lifecycle",
-        children: [
-            { label: "Hardware EoX", to: "/lifecycle/hardware" },
-            { label: "Software EoX", to: "/lifecycle/software" },
-        ],
-    },
-    {
         label: "Admin",
         to: "/admin/platforms",
         icon: "admin",
@@ -86,6 +70,8 @@ export const navConfig: NavSection[] = [
         children: [
             { label: "Platforms", to: "/admin/platforms" },
             { label: "Credentials", to: "/admin/credentials" },
+            { label: "Templates", to: "/admin/templates" },
+            { label: "System Logs", to: "/admin/system-logs" },
             { label: "Audit", to: "/admin/audit" },
         ],
     },

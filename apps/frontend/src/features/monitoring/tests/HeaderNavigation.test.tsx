@@ -35,7 +35,7 @@ describe("Header monitoring navigation", () => {
     expect(screen.getByRole("link", { name: "Devices" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Monitoring menu" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Overview" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Jobs" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Runs" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Policies" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Logs" })).toBeInTheDocument();
   });

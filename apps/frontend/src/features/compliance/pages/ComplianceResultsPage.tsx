@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { DataTable } from "@/components/ui/DataTable";
 import type { ColumnDef, OffsetPagination } from "@/components/ui/DataTable";
+import { StatCard } from "@/components/ui/StatCard";
 import { fetchDevices } from "@/features/devices/api/devices.api";
 import { QUERY_KEYS } from "@/lib/constants";
 import type { ComplianceResult, ComplianceResultStatus } from "@/lib/types";
@@ -30,8 +32,16 @@ function statusClasses(status: ComplianceResultStatus): string {
   }
 }
 
-function ResultDetailPanel({ details }: { details?: Record<string, unknown> }) {
-  if (!details) return <p className="text-xs text-muted">No details available.</p>;
+function ResultDetailPanel({
+  result,
+  deviceName,
+  policyName,
+}: {
+  result: ComplianceResult;
+  deviceName: string;
+  policyName: string;
+}) {
+  const details = result.details;
 
   const knownFields: Array<[string, string]> = [
     ["expression", "Rule Expression"],
@@ -42,23 +52,44 @@ function ResultDetailPanel({ details }: { details?: Record<string, unknown> }) {
     ["error", "Error"],
   ];
 
-  const rendered = knownFields.filter(([key]) => details[key] !== undefined);
+  const rendered = details ? knownFields.filter(([key]) => details[key] !== undefined) : [];
   const knownKeys = knownFields.map(([f]) => f);
-  const hasExtra = Object.keys(details).some((k) => !knownKeys.includes(k));
+  const hasExtra = details ? Object.keys(details).some((k) => !knownKeys.includes(k)) : false;
 
   return (
     <div className="space-y-2">
-      {rendered.map(([key, label]) => (
-        <div key={key}>
-          <span className="text-xs font-medium text-muted">{label}: </span>
-          <span className="font-mono text-xs text-text">{String(details[key])}</span>
-        </div>
-      ))}
-      {hasExtra && (
-        <details>
-          <summary className="cursor-pointer text-xs text-muted">Raw details</summary>
-          <pre className="mt-1 overflow-auto rounded bg-background/60 p-2 text-xs">{JSON.stringify(details, null, 2)}</pre>
-        </details>
+      <div className="flex flex-wrap gap-3 text-xs">
+        <Link
+          to={`/inventory/devices/${result.device_id}`}
+          className="font-medium text-primary underline hover:text-primary/80"
+        >
+          View device: {deviceName}
+        </Link>
+        <Link
+          to="/compliance/policies"
+          className="font-medium text-primary underline hover:text-primary/80"
+        >
+          View policy: {policyName}
+        </Link>
+      </div>
+
+      {!details ? (
+        <p className="text-xs text-muted">No details available.</p>
+      ) : (
+        <>
+          {rendered.map(([key, label]) => (
+            <div key={key}>
+              <span className="text-xs font-medium text-muted">{label}: </span>
+              <span className="font-mono text-xs text-text">{String(details[key])}</span>
+            </div>
+          ))}
+          {hasExtra && (
+            <details>
+              <summary className="cursor-pointer text-xs text-muted">Raw details</summary>
+              <pre className="mt-1 overflow-auto rounded bg-background/60 p-2 text-xs">{JSON.stringify(details, null, 2)}</pre>
+            </details>
+          )}
+        </>
       )}
     </div>
   );
@@ -147,6 +178,11 @@ export function ComplianceResultsPage(): JSX.Element {
       { pass: 0, fail: 0, skip: 0, error: 0 },
     );
   }, [resultsQuery.data]);
+
+  function handleStatusCardClick(next: ComplianceResultStatus) {
+    setPage(1);
+    setStatus((current) => (current === next ? "" : next));
+  }
 
   async function handleExportCsv() {
     setIsExporting(true);
@@ -237,10 +273,30 @@ export function ComplianceResultsPage(): JSX.Element {
     <div className="space-y-4">
       {/* TODO: Add compliance trend chart (pass rate over time) — requires time-series API endpoint that returns daily pass/fail counts */}
       <div className="grid gap-3 md:grid-cols-4">
-        <SummaryCard label="Pass" value={stats.pass} tone="success" />
-        <SummaryCard label="Fail" value={stats.fail} tone="danger" />
-        <SummaryCard label="Skip" value={stats.skip} tone="muted" />
-        <SummaryCard label="Error" value={stats.error} tone="warning" />
+        <StatCard
+          label="Pass"
+          value={stats.pass}
+          accent="emerald"
+          onClick={() => handleStatusCardClick("pass")}
+        />
+        <StatCard
+          label="Fail"
+          value={stats.fail}
+          accent="red"
+          onClick={() => handleStatusCardClick("fail")}
+        />
+        <StatCard
+          label="Skip"
+          value={stats.skip}
+          accent="muted"
+          onClick={() => handleStatusCardClick("skip")}
+        />
+        <StatCard
+          label="Error"
+          value={stats.error}
+          accent="amber"
+          onClick={() => handleStatusCardClick("error")}
+        />
       </div>
 
       {/* TODO: Add group-by toggle (by device / by policy) to aggregate results — requires client-side aggregation or API-level grouping endpoint */}
@@ -280,7 +336,11 @@ export function ComplianceResultsPage(): JSX.Element {
         expandable={{
           render: (result) => (
             <div className="px-3 py-2">
-              <ResultDetailPanel details={result.details} />
+              <ResultDetailPanel
+                result={result}
+                deviceName={deviceNames[result.device_id] ?? `Device #${result.device_id}`}
+                policyName={policyNames[result.policy_id] ?? `Policy #${result.policy_id}`}
+              />
             </div>
           ),
         }}
@@ -295,30 +355,6 @@ export function ComplianceResultsPage(): JSX.Element {
           </div>
         }
       />
-    </div>
-  );
-}
-
-function SummaryCard({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone: "success" | "danger" | "warning" | "muted";
-}): JSX.Element {
-  const toneClasses: Record<typeof tone, string> = {
-    success: "border-emerald-500/20 bg-emerald-500/10 text-emerald-500",
-    danger: "border-red-500/20 bg-red-500/10 text-red-500",
-    warning: "border-orange-500/20 bg-orange-500/10 text-orange-500",
-    muted: "border-primary/10 bg-surface text-text",
-  };
-
-  return (
-    <div className={`rounded-2xl border px-4 py-4 ${toneClasses[tone]}`}>
-      <p className="text-xs font-semibold uppercase tracking-[0.2em]">{label}</p>
-      <p className="mt-2 font-heading text-3xl">{value}</p>
     </div>
   );
 }

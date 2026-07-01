@@ -45,7 +45,7 @@ describe("Compliance and lifecycle routes", () => {
     expect(screen.getByText("compliance policies page")).toBeInTheDocument();
   });
 
-  it("renders the hardware lifecycle route", () => {
+  it("redirects the legacy hardware lifecycle route to Inventory", () => {
     render(
       <MemoryRouter
         initialEntries={["/lifecycle/hardware"]}
@@ -56,5 +56,31 @@ describe("Compliance and lifecycle routes", () => {
     );
 
     expect(screen.getByText("hardware eox page")).toBeInTheDocument();
+  });
+
+  it("renders the Inventory hardware lifecycle route", () => {
+    render(
+      <MemoryRouter
+        initialEntries={["/inventory/lifecycle/hardware"]}
+        future={{ v7_relativeSplatPath: true, v7_startTransition: true }}
+      >
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("hardware eox page")).toBeInTheDocument();
+  });
+
+  it("renders the Inventory software lifecycle route", () => {
+    render(
+      <MemoryRouter
+        initialEntries={["/inventory/lifecycle/software"]}
+        future={{ v7_relativeSplatPath: true, v7_startTransition: true }}
+      >
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("software eox page")).toBeInTheDocument();
   });
 });

@@ -12,7 +12,7 @@ import { QUERY_KEYS } from "@/lib/constants";
 import type { Job } from "@/lib/types";
 import apiClient from "@/lib/apiClient";
 
-import { JobDetailPanel } from "../components/JobDetailPanel";
+import { JobDetailPanel } from "@/components/JobDetailPanel";
 
 function statusTone(status: Job["status"]): string {
   if (status === "succeeded" || status === "finished") return "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.45)]";

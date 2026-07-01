@@ -1,4 +1,5 @@
 import { DataTable } from "@/components/ui/DataTable";
+import type { ColumnDef } from "@/components/ui/DataTable";
 import { Button } from "@/components/ui/Button";
 import type { Device, PasswordChangeResult } from "@/lib/types";
 
@@ -20,6 +21,8 @@ interface PasswordChangeProgressProps {
   devices: Device[];
   isPolling: boolean;
   onRetryFailed?: () => void;
+  /** When provided, failed rows expose a per-device retry action (retry just that device). */
+  onRetryDevice?: (deviceId: number) => void;
 }
 
 export function PasswordChangeProgress({
@@ -27,11 +30,79 @@ export function PasswordChangeProgress({
   devices,
   isPolling,
   onRetryFailed,
+  onRetryDevice,
 }: PasswordChangeProgressProps): JSX.Element {
   const deviceMap = new Map(devices.map((device) => [device.id, device]));
   const orderedResults = [...results].sort((left, right) => sortWeight(left) - sortWeight(right));
   const completed = results.filter((result) => result.ok || result.phase === "completed").length;
   const failedIds = results.filter((result) => !result.ok).map((result) => result.device_id);
+
+  const columns: ColumnDef<PasswordChangeResult>[] = [
+    {
+      key: "status",
+      header: "Status",
+      accessor: (result) => (
+        <span className={`inline-block h-2.5 w-2.5 rounded-full ${statusDot(result)}`} />
+      ),
+      width: "w-16",
+    },
+    {
+      key: "device_id",
+      header: "Device",
+      accessor: (result) => {
+        const device = deviceMap.get(result.device_id);
+        return (
+          <div>
+            <div className="font-medium text-text">{device?.name ?? `Device ${result.device_id}`}</div>
+            <div className="font-mono text-xs text-muted">
+              {device?.mgmt_ipv4 ?? result.host ?? "Unknown"}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: "platform",
+      header: "Platform",
+      accessor: (result) => (
+        <span className="rounded-full border border-primary/20 px-2 py-1 font-mono text-xs text-primary">
+          {result.platform ?? "unknown"}
+        </span>
+      ),
+    },
+    {
+      key: "phase",
+      header: "Phase",
+      accessor: (result) => result.phase ?? "pending",
+    },
+    {
+      key: "details",
+      header: "Details",
+      accessor: (result) => (
+        <span className="text-xs text-muted">
+          {result.error ?? result.output ?? (result.ok ? "Completed" : "Waiting")}
+        </span>
+      ),
+    },
+  ];
+
+  if (onRetryDevice) {
+    columns.push({
+      key: "actions",
+      header: "",
+      accessor: (result) =>
+        !result.ok ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onRetryDevice(result.device_id)}
+          >
+            Retry
+          </Button>
+        ) : null,
+      cellClassName: "w-[90px]",
+    });
+  }
 
   return (
     <section className="space-y-4 rounded-2xl border border-primary/10 bg-surface p-6 shadow-sm">
@@ -57,54 +128,7 @@ export function PasswordChangeProgress({
       </div>
 
       <DataTable<PasswordChangeResult>
-        columns={[
-          {
-            key: "status",
-            header: "Status",
-            accessor: (result) => (
-              <span className={`inline-block h-2.5 w-2.5 rounded-full ${statusDot(result)}`} />
-            ),
-            width: "w-16",
-          },
-          {
-            key: "device_id",
-            header: "Device",
-            accessor: (result) => {
-              const device = deviceMap.get(result.device_id);
-              return (
-                <div>
-                  <div className="font-medium text-text">{device?.name ?? `Device ${result.device_id}`}</div>
-                  <div className="font-mono text-xs text-muted">
-                    {device?.mgmt_ipv4 ?? result.host ?? "Unknown"}
-                  </div>
-                </div>
-              );
-            },
-          },
-          {
-            key: "platform",
-            header: "Platform",
-            accessor: (result) => (
-              <span className="rounded-full border border-primary/20 px-2 py-1 font-mono text-xs text-primary">
-                {result.platform ?? "unknown"}
-              </span>
-            ),
-          },
-          {
-            key: "phase",
-            header: "Phase",
-            accessor: (result) => result.phase ?? "pending",
-          },
-          {
-            key: "details",
-            header: "Details",
-            accessor: (result) => (
-              <span className="text-xs text-muted">
-                {result.error ?? result.output ?? (result.ok ? "Completed" : "Waiting")}
-              </span>
-            ),
-          },
-        ]}
+        columns={columns}
         data={orderedResults}
         keyExtractor={(result) => result.device_id}
         dense

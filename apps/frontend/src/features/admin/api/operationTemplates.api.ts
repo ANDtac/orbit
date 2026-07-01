@@ -2,30 +2,11 @@ import apiClient from "@/lib/apiClient";
 import {
   demoCreateOperationTemplate,
   demoDeleteOperationTemplate,
-  demoFetchJob,
   demoFetchOperationTemplates,
-  demoFetchSnapshots,
-  demoStartPasswordChange,
   demoUpdateOperationTemplate,
   isDemoApiEnabled,
 } from "@/lib/demo/api";
-import type { DeviceConfigSnapshot, Job, OperationTemplate, PasswordChangeResult } from "@/lib/types";
-
-export interface StartPasswordChangeInput {
-  device_ids: number[];
-  current_password?: string;
-  new_password: string;
-  enable_secret?: string;
-  async?: boolean;
-  validate_after?: boolean;
-}
-
-export interface StartPasswordChangeResponse {
-  status: string;
-  job?: Job;
-  summary?: Record<string, unknown>;
-  results?: PasswordChangeResult[];
-}
+import type { OperationTemplate } from "@/lib/types";
 
 export interface OperationTemplateInput {
   platform_id: number;
@@ -44,35 +25,6 @@ export interface OperationTemplateQueryOptions {
   platform_id?: number;
   op_type?: string;
   name?: string;
-}
-
-export interface SnapshotQueryOptions {
-  page?: number;
-  per_page?: number;
-  sort?: string;
-  device_id?: number;
-  source?: string;
-  hash?: string;
-}
-
-export async function startPasswordChange(
-  input: StartPasswordChangeInput,
-): Promise<StartPasswordChangeResponse> {
-  if (isDemoApiEnabled()) {
-    return demoStartPasswordChange(input);
-  }
-
-  const { data } = await apiClient.post<StartPasswordChangeResponse>("/operations/password-change", input);
-  return data;
-}
-
-export async function fetchOperationJob(jobId: number): Promise<Job> {
-  if (isDemoApiEnabled()) {
-    return demoFetchJob(jobId);
-  }
-
-  const { data } = await apiClient.get<Job>(`/jobs/${jobId}`);
-  return data;
 }
 
 export async function fetchOperationTemplates(
@@ -121,15 +73,4 @@ export async function deleteOperationTemplate(templateId: number): Promise<void>
   }
 
   await apiClient.delete(`/platform_operation_templates/${templateId}`);
-}
-
-export async function fetchSnapshots(options?: SnapshotQueryOptions): Promise<DeviceConfigSnapshot[]> {
-  if (isDemoApiEnabled()) {
-    return demoFetchSnapshots(options);
-  }
-
-  const { data } = await apiClient.get<DeviceConfigSnapshot[]>("/snapshots", {
-    params: options,
-  });
-  return data;
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { Input } from "@/components/ui/Input";
@@ -31,6 +32,21 @@ function InfoTooltip({ text }: { text: string }) {
                 {text}
             </span>
         </span>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Labeled section wrapper — purely structural grouping for readability
+// ---------------------------------------------------------------------------
+
+function FormSection({ title, children }: { title: string; children: ReactNode }): JSX.Element {
+    return (
+        <fieldset className="rounded-xl border border-primary/10 p-4">
+            <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-muted">
+                {title}
+            </legend>
+            <div className="space-y-4">{children}</div>
+        </fieldset>
     );
 }
 
@@ -190,7 +206,8 @@ export function DeviceForm({
                 Fields marked <span className="text-red-500">*</span> are required.
             </p>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <FormSection title="Identity">
+                <div className="grid gap-4 sm:grid-cols-2">
                 {/* Name — required */}
                 <div className="space-y-1">
                     <label htmlFor="device-name" className="block text-sm font-medium text-text">
@@ -221,7 +238,11 @@ export function DeviceForm({
                         className="w-full rounded-xl border border-primary/30 bg-surface px-3 py-2 text-base text-text shadow-sm transition focus:border-primary focus:shadow-focus focus:outline-none"
                     />
                 </div>
+                </div>
+            </FormSection>
 
+            <FormSection title="Network / Transport">
+                <div className="grid gap-4 sm:grid-cols-2">
                 {/* Management IP */}
                 <div className="space-y-1">
                     <label htmlFor="device-ip" className="block text-sm font-medium text-text">
@@ -268,7 +289,11 @@ export function DeviceForm({
                         <p className="mt-1 text-xs text-red-500">{fieldErrors.mgmt_port}</p>
                     )}
                 </div>
+                </div>
+            </FormSection>
 
+            <FormSection title="Platform & Credentials">
+                <div className="grid gap-4 sm:grid-cols-2">
                 {/* Platform */}
                 <div>
                     <label htmlFor="device-platform" className="mb-1 block text-sm font-medium text-text">
@@ -330,7 +355,11 @@ export function DeviceForm({
                         ))}
                     </select>
                 </div>
+                </div>
+            </FormSection>
 
+            <FormSection title="Metadata & Notes">
+                <div className="grid gap-4 sm:grid-cols-2">
                 {/* OS Name */}
                 <div className="space-y-1">
                     <label htmlFor="device-os" className="block text-sm font-medium text-text">
@@ -381,6 +410,7 @@ export function DeviceForm({
                     placeholder="Optional notes about this device..."
                 />
             </div>
+            </FormSection>
 
             <div className="flex justify-end gap-2 pt-2">
                 <Button variant="ghost" size="sm" type="button" onClick={onCancel}>

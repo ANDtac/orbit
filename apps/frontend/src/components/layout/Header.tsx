@@ -10,7 +10,7 @@ import orbitLightStillFull from "@/assets/logos/orbit_light_still_full.svg";
 import orbitDarkStillFull from "@/assets/logos/orbit_dark_still_full.svg";
 
 const monitoringChildren = [
-  { to: "/monitoring/jobs", label: "Jobs" },
+  { to: "/automation/runs", label: "Runs" },
   { to: "/monitoring/policies", label: "Policies" },
   { to: "/monitoring/logs", label: "Logs" },
 ] as const;

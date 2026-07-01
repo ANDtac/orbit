@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -56,6 +57,7 @@ function exportAuditCsv(entries: AuditLogEntry[]): void {
 }
 
 export function AuditPage(): JSX.Element {
+  const navigate = useNavigate();
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [actionFilter, setActionFilter] = useState("");
   const [targetTypeFilter, setTargetTypeFilter] = useState("");
@@ -139,7 +141,27 @@ export function AuditPage(): JSX.Element {
       header: "IP",
       accessor: (entry) => <span className="font-mono text-xs">{entry.ip_address ?? "—"}</span>,
     },
+    {
+      key: "actions",
+      header: "",
+      accessor: (entry) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(event) => {
+            event.stopPropagation();
+            openDetail(entry);
+          }}
+        >
+          View
+        </Button>
+      ),
+    },
   ];
+
+  function openDetail(entry: AuditLogEntry) {
+    navigate(`/admin/audit/${entry.id}`, { state: { entry } });
+  }
 
   const pagination: CursorPagination = {
     mode: "cursor",
@@ -237,13 +259,7 @@ export function AuditPage(): JSX.Element {
         data={auditQuery.data?.data ?? []}
         keyExtractor={(entry) => entry.id}
         pagination={pagination}
-        expandable={{
-          render: (entry) => (
-            <pre className="overflow-x-auto rounded-xl bg-background px-3 py-2 font-mono text-xs text-text">
-              {JSON.stringify(entry.payload ?? {}, null, 2)}
-            </pre>
-          ),
-        }}
+        onRowClick={(entry) => openDetail(entry)}
         isLoading={auditQuery.isLoading}
         isError={auditQuery.isError}
         errorMessage="Unable to load audit entries."

@@ -324,8 +324,15 @@ def create_job(db: SQLAlchemy) -> Callable[[str, str, int | None], Jobs]:
         job_type: str = "test.job",
         status: str = "queued",
         owner_id: int | None = None,
+        run_as_internal: bool = False,
     ) -> Jobs:
-        job = Jobs(job_type=job_type, status=status, owner_id=owner_id, parameters={})
+        job = Jobs(
+            job_type=job_type,
+            status=status,
+            owner_id=owner_id,
+            run_as_internal=run_as_internal,
+            parameters={},
+        )
         _ = db
         _db.session.add(job)
         _db.session.commit()

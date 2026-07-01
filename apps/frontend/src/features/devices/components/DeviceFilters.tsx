@@ -61,7 +61,7 @@ export function DeviceFilters({ values, onChange }: DeviceFiltersProps): JSX.Ele
                 <input
                     id="filter-name"
                     type="text"
-                    placeholder="Device name or IP..."
+                    placeholder="Search by name..."
                     value={localName}
                     onChange={(e) => setLocalName(e.target.value)}
                     className="w-full rounded-lg border border-primary/20 bg-background px-3 py-1.5 text-sm text-text placeholder:text-muted/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"

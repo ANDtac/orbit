@@ -90,6 +90,46 @@ def test_jobs_list_accepts_admin_role_and_job_type_wildcard(client, auth_passwor
     assert [job["job_type"] for job in payload["data"]] == ["operation.execute"]
 
 
+def test_jobs_list_filters_by_run_as_internal(client, auth_headers, create_job):
+    headers = auth_headers("runs-admin", "pw")
+
+    system_job = create_job(job_type="device.discovery", run_as_internal=True)
+    operator_job = create_job(job_type="password_change.batch", run_as_internal=False)
+
+    system_resp = client.get("/api/v1/jobs?run_as_internal=true", headers=headers)
+    assert system_resp.status_code == 200
+    system_ids = [job["id"] for job in system_resp.get_json()["data"]]
+    assert system_ids == [system_job.id]
+
+    operator_resp = client.get("/api/v1/jobs?run_as_internal=false", headers=headers)
+    assert operator_resp.status_code == 200
+    operator_ids = [job["id"] for job in operator_resp.get_json()["data"]]
+    assert operator_ids == [operator_job.id]
+
+
+def test_jobs_list_run_as_internal_case_insensitive(client, auth_headers, create_job):
+    headers = auth_headers("runs-admin-ci", "pw")
+
+    system_job = create_job(job_type="device.discovery", run_as_internal=True)
+    create_job(job_type="password_change.batch", run_as_internal=False)
+
+    resp = client.get("/api/v1/jobs?run_as_internal=TRUE", headers=headers)
+    assert resp.status_code == 200
+    assert [job["id"] for job in resp.get_json()["data"]] == [system_job.id]
+
+
+def test_jobs_list_without_run_as_internal_returns_all(client, auth_headers, create_job):
+    headers = auth_headers("runs-admin-all", "pw")
+
+    system_job = create_job(job_type="device.discovery", run_as_internal=True)
+    operator_job = create_job(job_type="password_change.batch", run_as_internal=False)
+
+    resp = client.get("/api/v1/jobs", headers=headers)
+    assert resp.status_code == 200
+    returned_ids = {job["id"] for job in resp.get_json()["data"]}
+    assert returned_ids == {system_job.id, operator_job.id}
+
+
 def test_compliance_evaluate_creates_job(client, auth_headers):
     headers = auth_headers("compliance-user", "pw")
     user = Users.query.filter_by(username="compliance-user").one()

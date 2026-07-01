@@ -7,7 +7,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import type { ColumnDef } from "@/components/ui/DataTable";
 import { fetchDevices } from "@/features/devices/api/devices.api";
 import { fetchJobs, queueProbe } from "@/features/monitoring/api/monitoring.api";
-import { JobDetailPanel } from "@/features/operations/components/JobDetailPanel";
+import { JobDetailPanel } from "@/components/JobDetailPanel";
 import { QUERY_KEYS } from "@/lib/constants";
 import type { Device, Job } from "@/lib/types";
 
@@ -217,7 +217,7 @@ export function MonitoringProbesPage(): JSX.Element {
             {jobId != null ? (
               <p className="mt-3 text-sm text-emerald-600">
                 Probe batch queued as{" "}
-                <Link to="/monitoring/jobs" className="font-medium underline hover:no-underline">
+                <Link to="/automation/runs" className="font-medium underline hover:no-underline">
                   job #{jobId}
                 </Link>
                 .

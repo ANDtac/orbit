@@ -27,6 +27,10 @@ vi.mock("@/features/admin/pages/AuditPage", () => ({
   AuditPage: () => <div>audit page</div>,
 }));
 
+vi.mock("@/features/admin/pages/AuditDetailPage", () => ({
+  AuditDetailPage: () => <div>audit detail page</div>,
+}));
+
 describe("Admin routes", () => {
   it("renders the platforms route", () => {
     render(
@@ -46,5 +50,15 @@ describe("Admin routes", () => {
     );
 
     expect(screen.getByText("audit page")).toBeInTheDocument();
+  });
+
+  it("renders the audit detail route", () => {
+    render(
+      <MemoryRouter initialEntries={["/admin/audit/42"]} future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("audit detail page")).toBeInTheDocument();
   });
 });

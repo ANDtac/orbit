@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import type { ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -217,6 +218,19 @@ function ExportDropdown({ onExportCSV, isExporting }: ExportDropdownProps): JSX.
 }
 
 // ---------------------------------------------------------------------------
+// Quick-view field row (read-only)
+// ---------------------------------------------------------------------------
+
+function QuickViewField({ label, value }: { label: string; value: ReactNode }): JSX.Element {
+    return (
+        <div className="flex items-baseline justify-between gap-4 border-b border-primary/5 py-2 last:border-0">
+            <dt className="text-xs font-medium text-muted">{label}</dt>
+            <dd className="text-right text-sm text-text">{value}</dd>
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
 
@@ -233,6 +247,19 @@ export function DevicesListPage(): JSX.Element {
     const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
     const [deletePhrase, setDeletePhrase] = useState("");
     const [showCSVImport, setShowCSVImport] = useState(false);
+
+    // Read-only quick-view modal (opened on row click)
+    const [quickViewDevice, setQuickViewDevice] = useState<Device | null>(null);
+
+    function openFullDetail(id: number) {
+        setQuickViewDevice(null);
+        void navigate(`/inventory/devices/${id}`);
+    }
+
+    function openEdit(id: number) {
+        setQuickViewDevice(null);
+        void navigate(`/inventory/devices/${id}/edit`);
+    }
 
     // Bulk delete state
     const [showBulkDelete, setShowBulkDelete] = useState(false);
@@ -620,7 +647,7 @@ export function DevicesListPage(): JSX.Element {
                 isError={isError}
                 errorMessage="Unable to load devices right now."
                 onRetry={() => refetch()}
-                onRowClick={(d) => navigate(`/inventory/devices/${d.id}`)}
+                onRowClick={(d) => setQuickViewDevice(d)}
                 dense
                 emptyState={
                     <div className="py-4 text-center">
@@ -643,6 +670,130 @@ export function DevicesListPage(): JSX.Element {
             {showCSVImport && (
                 <CSVImportModal onClose={() => setShowCSVImport(false)} />
             )}
+
+            {/* Read-only quick-view modal */}
+            <Modal
+                isOpen={quickViewDevice !== null}
+                title={quickViewDevice?.name ?? "Device"}
+                size="lg"
+                onClose={() => setQuickViewDevice(null)}
+                footer={
+                    <div className="flex justify-end gap-2">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setQuickViewDevice(null)}
+                        >
+                            Close
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                if (quickViewDevice) openEdit(quickViewDevice.id);
+                            }}
+                        >
+                            Edit
+                        </Button>
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => {
+                                if (quickViewDevice) openFullDetail(quickViewDevice.id);
+                            }}
+                        >
+                            Open full detail →
+                        </Button>
+                    </div>
+                }
+            >
+                {quickViewDevice && (
+                    <dl>
+                        <QuickViewField label="Name" value={quickViewDevice.name} />
+                        <QuickViewField
+                            label="Management IP"
+                            value={
+                                quickViewDevice.mgmt_ipv4 ? (
+                                    <span className="font-mono text-xs">
+                                        {quickViewDevice.mgmt_ipv4}
+                                    </span>
+                                ) : (
+                                    "—"
+                                )
+                            }
+                        />
+                        <QuickViewField
+                            label="FQDN"
+                            value={
+                                quickViewDevice.fqdn ? (
+                                    <span className="font-mono text-xs">{quickViewDevice.fqdn}</span>
+                                ) : (
+                                    "—"
+                                )
+                            }
+                        />
+                        <QuickViewField
+                            label="Platform"
+                            value={
+                                quickViewDevice.platform_id
+                                    ? `ID: ${quickViewDevice.platform_id}`
+                                    : "—"
+                            }
+                        />
+                        <QuickViewField
+                            label="OS"
+                            value={
+                                quickViewDevice.os_name
+                                    ? `${quickViewDevice.os_name}${
+                                          quickViewDevice.os_version
+                                              ? ` ${quickViewDevice.os_version}`
+                                              : ""
+                                      }`
+                                    : "—"
+                            }
+                        />
+                        <QuickViewField
+                            label="Status"
+                            value={
+                                <span className="inline-flex items-center gap-1.5 text-xs font-medium">
+                                    <span
+                                        className={`inline-block h-2 w-2 rounded-full ${
+                                            quickViewDevice.is_active !== false
+                                                ? "bg-green-500"
+                                                : "bg-red-400"
+                                        }`}
+                                    />
+                                    {quickViewDevice.is_active !== false ? "Active" : "Inactive"}
+                                </span>
+                            }
+                        />
+                        <QuickViewField
+                            label="Inventory Group"
+                            value={
+                                quickViewDevice.inventory_group_id
+                                    ? `Group #${quickViewDevice.inventory_group_id}`
+                                    : "—"
+                            }
+                        />
+                        <QuickViewField
+                            label="Serial Number"
+                            value={
+                                quickViewDevice.serial_number ? (
+                                    <span className="font-mono text-xs">
+                                        {quickViewDevice.serial_number}
+                                    </span>
+                                ) : (
+                                    "—"
+                                )
+                            }
+                        />
+                        <QuickViewField
+                            label="Model Number"
+                            value={quickViewDevice.model_number ?? "—"}
+                        />
+                    </dl>
+                )}
+            </Modal>
 
             {/* Single-device delete confirmation modal */}
             <Modal

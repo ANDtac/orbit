@@ -63,6 +63,7 @@ export function CredentialsPage(): JSX.Element {
   const [sortField, setSortField] = useState("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [viewProfile, setViewProfile] = useState<CredentialProfile | null>(null);
   const [editingProfile, setEditingProfile] = useState<CredentialProfile | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CredentialProfile | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
@@ -190,27 +191,15 @@ export function CredentialsPage(): JSX.Element {
       accessor: (profile) =>
         isOwner ? (
           <div className="flex gap-2" onClick={(event) => event.stopPropagation()}>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setEditingProfile(profile);
-                setFormValues(toFormValues(profile));
-                setFormError(null);
-                setIsFormOpen(true);
-              }}
-            >
+            <Button variant="ghost" size="sm" onClick={() => openEdit(profile)}>
               Edit
             </Button>
-            {/* TODO: Implement test connection — call POST /api/v1/admin/credential-profiles/{id}/test which attempts to resolve the secret ref and verify SSH connectivity to a sample device */}
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled
-              title="Coming soon"
-            >
-              Test
-            </Button>
+            {/*
+              No credential test/validate endpoint exists on the backend
+              (app/api/v1/resources/credential_profiles.py exposes only
+              list/create and item get/patch/delete). A "Test" action is
+              intentionally omitted to avoid a dead surface.
+            */}
             <Button
               variant="ghost"
               size="sm"
@@ -227,6 +216,13 @@ export function CredentialsPage(): JSX.Element {
         ),
     },
   ];
+
+  function openEdit(profile: CredentialProfile) {
+    setEditingProfile(profile);
+    setFormValues(toFormValues(profile));
+    setFormError(null);
+    setIsFormOpen(true);
+  }
 
   function closeForm() {
     setEditingProfile(null);
@@ -291,6 +287,7 @@ export function CredentialsPage(): JSX.Element {
         keyExtractor={(profile) => profile.id}
         pagination={pagination}
         sorting={sorting}
+        onRowClick={(profile) => setViewProfile(profile)}
         isLoading={credentialsQuery.isLoading}
         isError={credentialsQuery.isError}
         errorMessage="Unable to load credential profiles."
@@ -298,6 +295,67 @@ export function CredentialsPage(): JSX.Element {
         dense
         emptyState={<p className="text-sm text-muted">No credential profiles match the current filters.</p>}
       />
+
+      <Modal
+        isOpen={Boolean(viewProfile)}
+        onClose={() => setViewProfile(null)}
+        title={viewProfile?.name || "Credential profile"}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setViewProfile(null)}>
+              Close
+            </Button>
+            {isOwner && viewProfile ? (
+              <Button
+                onClick={() => {
+                  const target = viewProfile;
+                  setViewProfile(null);
+                  openEdit(target);
+                }}
+              >
+                Edit
+              </Button>
+            ) : null}
+          </>
+        }
+      >
+        {viewProfile ? (
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-[0.14em] text-muted">Name</dt>
+              <dd className="mt-0.5 text-sm text-text">{viewProfile.name}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-[0.14em] text-muted">Auth type</dt>
+              <dd className="mt-0.5 text-sm text-text">{viewProfile.auth_type ?? "unknown"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-[0.14em] text-muted">Username</dt>
+              <dd className="mt-0.5 text-sm text-text">{viewProfile.username ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-[0.14em] text-muted">Secret reference</dt>
+              <dd className="mt-0.5 font-mono text-sm text-text">{maskSecretRef(viewProfile.secret_ref)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-[0.14em] text-muted">Status</dt>
+              <dd className="mt-0.5 text-sm text-text">
+                {viewProfile.is_active === false ? "Inactive" : "Active"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-[0.14em] text-muted">Devices using this profile</dt>
+              <dd className="mt-0.5 text-sm text-text">{viewProfile.device_count ?? 0}</dd>
+            </div>
+            {viewProfile.description ? (
+              <div className="sm:col-span-2">
+                <dt className="text-xs font-medium uppercase tracking-[0.14em] text-muted">Description</dt>
+                <dd className="mt-0.5 text-sm text-text">{viewProfile.description}</dd>
+              </div>
+            ) : null}
+          </dl>
+        ) : null}
+      </Modal>
 
       <Modal
         isOpen={isFormOpen}

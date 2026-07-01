@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import {
@@ -105,6 +105,34 @@ describe("Admin pages", () => {
     const call = vi.mocked(createAdminPlatform).mock.calls[0]?.[0];
     expect(call?.slug).toBe("juniper_junos");
     expect(call?.display_name).toBe("Juniper Junos");
+  });
+
+  it("opens a read-only platform quick-view with an Edit action on row click", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<PlatformsPage />);
+
+    await user.click(await screen.findByText("Cisco NX-OS"));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("NAPALM driver")).toBeInTheDocument();
+    expect(within(dialog).getByText("nxos")).toBeInTheDocument();
+    expect(within(dialog).getByText("Netmiko type")).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole("button", { name: "Edit" }));
+    expect(await screen.findByRole("button", { name: "Save platform" })).toBeInTheDocument();
+  });
+
+  it("opens a read-only credential quick-view and exposes no Test action", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<CredentialsPage />);
+
+    await user.click(await screen.findByText("Default SSH"));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Secret reference")).toBeInTheDocument();
+    expect(within(dialog).getByText("Auth type")).toBeInTheDocument();
+    // No credential test/validate endpoint exists — the action must not appear.
+    expect(screen.queryByRole("button", { name: "Test" })).not.toBeInTheDocument();
   });
 
   it("renders credentials and audit data", async () => {

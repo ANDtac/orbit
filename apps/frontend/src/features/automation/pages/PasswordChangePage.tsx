@@ -13,7 +13,7 @@ import { fetchCredentialProfiles } from "@/features/devices/api/credentialProfil
 import { DeviceSelectionTable } from "../components/DeviceSelectionTable";
 import { PasswordChangeForm } from "../components/PasswordChangeForm";
 import { PasswordChangeProgress } from "../components/PasswordChangeProgress";
-import { fetchOperationJob, startPasswordChange } from "../api/operations.api";
+import { fetchOperationJob, startPasswordChange } from "../api/automation.api";
 import type { Device, PasswordChangeResult } from "@/lib/types";
 
 // TODO: Add 'Validate connectivity' step before credentials that tests SSH connection to selected devices
@@ -248,6 +248,14 @@ export function PasswordChangePage(): JSX.Element {
     setStep("credentials");
   }
 
+  function handleRetryDevice(deviceId: number) {
+    setSelectedIds(new Set([deviceId]));
+    setConfirmation("");
+    setCompletedResults([]);
+    setJobId(null);
+    setStep("credentials");
+  }
+
   return (
     <div className="space-y-6">
       {step === "select" ? (
@@ -284,7 +292,7 @@ export function PasswordChangePage(): JSX.Element {
               </select>
             </label>
             <label className="space-y-1 text-sm">
-              <span className="font-medium text-text">Status</span>
+              <span className="font-medium text-text">Device Status</span>
               <select
                 value={activeFilter}
                 onChange={(event) => setActiveFilter(event.target.value)}
@@ -350,6 +358,7 @@ export function PasswordChangePage(): JSX.Element {
           devices={displayDevices}
           isPolling={step === "executing" && !isTerminalStatus(jobQuery.data?.status)}
           onRetryFailed={step === "complete" ? handleRetryFailed : undefined}
+          onRetryDevice={step === "complete" ? handleRetryDevice : undefined}
         />
       ) : null}
 

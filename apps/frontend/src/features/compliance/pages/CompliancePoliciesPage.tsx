@@ -241,7 +241,7 @@ export function CompliancePoliciesPage(): JSX.Element {
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Policy Catalog</p>
             <h2 className="mt-1 font-heading text-xl text-text">Compliance Policies</h2>
             <p className="mt-1 text-sm text-muted">
-              Compliance management now lives here. Monitoring can link into these policies, but this is the primary authoring surface.
+              Select a policy to view and manage its rules.
             </p>
           </div>
           <Button onClick={openCreateForm}>New policy</Button>
@@ -253,10 +253,10 @@ export function CompliancePoliciesPage(): JSX.Element {
               Compliance evaluation started for {evalSuccess.count}{" "}
               {evalSuccess.count === 1 ? "policy" : "policies"}.{" "}
               <Link
-                to="/monitoring/jobs"
+                to="/automation/runs"
                 className="underline text-primary hover:text-primary/80"
               >
-                Track progress in Monitoring Jobs →
+                Track progress in Runs →
               </Link>
             </p>
           </div>
@@ -274,9 +274,10 @@ export function CompliancePoliciesPage(): JSX.Element {
             return (
               <article
                 key={policy.id}
+                aria-current={isSelected ? "true" : undefined}
                 className={`cursor-pointer rounded-2xl border p-4 transition ${
                   isSelected
-                    ? "border-primary/40 bg-primary/5"
+                    ? "border-l-4 border-primary bg-primary/10 ring-2 ring-primary/40 shadow-sm"
                     : "border-primary/10 bg-background/40 hover:bg-primary/5"
                 }`}
                 onClick={() => setSelectedPolicyId(policy.id)}
@@ -286,6 +287,11 @@ export function CompliancePoliciesPage(): JSX.Element {
                     <div className="flex items-center gap-2">
                       <span className={`inline-block h-2.5 w-2.5 rounded-full ${statusDot(policy.is_active)}`} />
                       <h3 className="font-medium text-text">{policy.name}</h3>
+                      {isSelected ? (
+                        <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                          Selected
+                        </span>
+                      ) : null}
                     </div>
                     <p className="text-sm text-muted">{policy.description ?? "No description provided."}</p>
                     <div className="flex flex-wrap gap-2 text-xs text-muted">

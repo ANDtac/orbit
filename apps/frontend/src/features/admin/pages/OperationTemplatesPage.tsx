@@ -13,7 +13,7 @@ import {
   fetchOperationTemplates,
   updateOperationTemplate,
   type OperationTemplateInput,
-} from "@/features/operations/api/operations.api";
+} from "@/features/admin/api/operationTemplates.api";
 import { QUERY_KEYS } from "@/lib/constants";
 import type { OperationTemplate, Platform } from "@/lib/types";
 
@@ -268,7 +268,7 @@ export function OperationTemplatesPage(): JSX.Element {
     },
     {
       key: "updated_at",
-      header: "Updated",
+      header: "Last modified",
       accessor: (template) => (template.updated_at ? new Date(template.updated_at).toLocaleString() : "—"),
       sortable: true,
     },
