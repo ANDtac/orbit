@@ -6,7 +6,7 @@ import {
   demoUpdateOperationTemplate,
   isDemoApiEnabled,
 } from "@/lib/demo/api";
-import type { OperationTemplate } from "@/lib/types";
+import type { OperationTemplate, VariablesSchema } from "@/lib/types";
 
 export interface OperationTemplateInput {
   platform_id: number;
@@ -14,7 +14,7 @@ export interface OperationTemplateInput {
   description?: string;
   op_type: string;
   template: string;
-  variables?: Record<string, unknown>;
+  variables?: VariablesSchema;
   notes?: string;
 }
 

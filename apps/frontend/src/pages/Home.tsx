@@ -7,12 +7,13 @@ import { fetchComplianceResults } from "@/features/compliance/api/compliance.api
 import { fetchDevices } from "@/features/devices/api/devices.api";
 import { AlertsPanel } from "@/features/monitoring/components/AlertsPanel";
 import { fetchJobs } from "@/features/monitoring/api/monitoring.api";
+import { fetchPinnedDashboards } from "@/features/dashboards/api/dashboards.api";
 import { StatCard } from "@/components/ui/StatCard";
 import { Modal } from "@/components/ui/Modal";
 import { DataTable } from "@/components/ui/DataTable";
 import type { ColumnDef } from "@/components/ui/DataTable";
 import { QUERY_KEYS } from "@/lib/constants";
-import type { ComplianceResult, Device, Job } from "@/lib/types";
+import type { ComplianceResult, Dashboard, Device, Job } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
 // Home dashboard
@@ -54,6 +55,11 @@ export function Home(): JSX.Element {
     } = useQuery({
         queryKey: [QUERY_KEYS.complianceResults, "homeSummary"],
         queryFn: () => fetchComplianceResults({ per_page: 200, sort: "-evaluated_at" }),
+    });
+
+    const { data: pinnedDashboards = [] } = useQuery({
+        queryKey: [QUERY_KEYS.dashboards, "pinned"],
+        queryFn: fetchPinnedDashboards,
     });
 
     // Derived stats -------------------------------------------------------
@@ -194,6 +200,20 @@ export function Home(): JSX.Element {
                     />
                 </div>
             </section>
+
+            {/* Pinned dashboards */}
+            {pinnedDashboards.length > 0 ? (
+                <section aria-label="Pinned dashboards">
+                    <h3 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-muted">
+                        Pinned Dashboards
+                    </h3>
+                    <div className="flex gap-4 overflow-x-auto pb-2">
+                        {pinnedDashboards.map((dashboard) => (
+                            <PinnedDashboardCard key={dashboard.id} dashboard={dashboard} />
+                        ))}
+                    </div>
+                </section>
+            ) : null}
 
             {/* Feature cards */}
             <section className="grid gap-4 sm:grid-cols-2" aria-label="Feature highlights">
@@ -346,6 +366,23 @@ export function Home(): JSX.Element {
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
+
+function PinnedDashboardCard({ dashboard }: { dashboard: Dashboard }): JSX.Element {
+    return (
+        <Link
+            to={`/dashboards/${dashboard.id}`}
+            className="min-w-[200px] max-w-[240px] shrink-0 rounded-2xl border border-primary/10 bg-surface p-4 shadow-sm transition hover:border-primary/30 hover:shadow-md"
+        >
+            <p className="font-heading text-base font-medium text-text truncate">{dashboard.name}</p>
+            <p className="mt-1 text-xs text-muted">
+                {dashboard.panels.length} panel{dashboard.panels.length !== 1 ? "s" : ""}
+            </p>
+            <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-primary">
+                Open →
+            </p>
+        </Link>
+    );
+}
 
 function QuickActionButton({
     to,

@@ -227,10 +227,96 @@ export interface OperationTemplate {
     description?: string;
     op_type: string;
     template: string;
-    variables?: Record<string, unknown>;
+    variables?: VariablesSchema;
+    outputs?: VariablesSchema;
+    is_mutating?: boolean;
+    is_active?: boolean;
     notes?: string;
     created_at?: string;
     updated_at?: string;
+}
+
+// ---- Schema-driven forms ----------------------------------------------------
+
+export type SchemaFieldType = "string" | "number" | "boolean" | "enum";
+
+/** A single field descriptor within a template's `variables`/`outputs` schema. */
+export interface SchemaField {
+    type: SchemaFieldType;
+    label?: string;
+    help?: string;
+    required?: boolean;
+    default?: unknown;
+    enum?: string[];
+    pattern?: string;
+}
+
+/** Map of field name → descriptor. Drives the dynamic `SchemaForm` renderer. */
+export type VariablesSchema = Record<string, SchemaField>;
+
+// ---- Automations ------------------------------------------------------------
+
+export type AutomationVisibility = "private" | "shared" | "role";
+export type AutomationOnFailure = "stop" | "continue";
+
+export interface AutomationTarget {
+    device_ids?: number[];
+}
+
+// ---- Automation steps -------------------------------------------------------
+
+/**
+ * A typed reference to a prior step's declared output field.
+ * Resolved at runtime by the worker to the actual output value.
+ */
+export interface StepBindingRef {
+    __ref__: true;
+    /** 1-based sequence number of the step whose output is being referenced. */
+    step: number;
+    /** Field name in that step's action's `outputs` schema. */
+    output: string;
+}
+
+/** A step input value: either a literal or a reference to a prior step's output. */
+export type StepValue = StepBindingRef | string | number | boolean | null | undefined;
+
+/** One step in a linear automation sequence. */
+export interface AutomationStep {
+    id?: number;
+    /** 1-based position in the sequence. Auto-assigned from array index on save. */
+    sequence: number;
+    action_id: number;
+    /** Input field values keyed by variable field name. Values may be literals or StepBindingRef refs. */
+    variable_bindings: Record<string, StepValue>;
+    on_failure: AutomationOnFailure;
+}
+
+export interface Automation {
+    id: number;
+    name: string;
+    description?: string;
+    /** Present for single-action automations; may be absent for pure sequence automations. */
+    action_id?: number;
+    variable_values?: Record<string, unknown>;
+    /** Present when this automation is a linear multi-step sequence. */
+    steps?: AutomationStep[];
+    target: AutomationTarget;
+    visibility: AutomationVisibility;
+    on_failure: AutomationOnFailure;
+    created_at?: string;
+    updated_at?: string;
+}
+
+/** Synchronous single-device dry-run result returned by `POST /automations/:id/test`. */
+export interface AutomationDryRunResult {
+    ok: boolean;
+    device_id?: number;
+    host?: string;
+    latency_ms?: number;
+    fields?: Record<string, unknown>;
+    field_errors?: Record<string, string>;
+    diff?: string;
+    error?: string;
 }
 
 export interface DeviceConfigSnapshot {
@@ -246,6 +332,45 @@ export interface DeviceConfigSnapshot {
     created_at?: string;
     updated_at?: string;
 }
+
+// ---- Schedules --------------------------------------------------------------
+
+export type SchedulePreset =
+    | "every_5m"
+    | "every_15m"
+    | "every_30m"
+    | "hourly"
+    | "daily"
+    | "weekly";
+
+export type ScheduleTargetType = "automation" | "monitor";
+
+export interface Schedule {
+    id: number;
+    name?: string;
+    target_type: ScheduleTargetType;
+    target_id: number;
+    cron_expr: string;
+    preset?: SchedulePreset;
+    next_run?: string;
+    last_run?: string;
+    last_job_id?: number;
+    enabled: boolean;
+    timezone: string;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface ScheduleCreateInput {
+    name?: string;
+    target_type: ScheduleTargetType;
+    target_id: number;
+    preset: SchedulePreset;
+    timezone: string;
+    enabled: boolean;
+}
+
+export type ScheduleUpdateInput = Partial<Omit<ScheduleCreateInput, "target_type" | "target_id">>;
 
 // ---- Compliance -------------------------------------------------------------
 
@@ -311,6 +436,98 @@ export interface SoftwareLifecycle {
     source_url?: string;
     notes?: string;
 }
+
+// ---- Monitors ---------------------------------------------------------------
+
+export type MonitorStatus = "passing" | "failing" | "unknown";
+export type MonitorComparator = "gt" | "lt" | "gte" | "lte" | "eq" | "ne";
+export type MonitorVisibility = "private" | "shared" | "role";
+export type MonitorResultStatus = "passing" | "failing" | "error";
+
+export interface MonitorTarget {
+    device_ids: number[];
+}
+
+export interface Monitor {
+    id: number;
+    name: string;
+    description?: string;
+    action_id: number;
+    /** Denormalised display name — populated by the backend when listing. */
+    action_name?: string;
+    target: MonitorTarget;
+    metric: string;
+    comparator: MonitorComparator;
+    threshold: number | null;
+    status: MonitorStatus;
+    visibility: MonitorVisibility;
+    last_run?: string;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface MonitorResult {
+    id: number;
+    monitor_id: number;
+    device_id: number;
+    observed_at: string;
+    value: number | null;
+    status: MonitorResultStatus;
+    payload?: Record<string, unknown>;
+}
+
+// ---- Dashboards -------------------------------------------------------------
+
+export type DashboardVisibility = "private" | "shared";
+export type PanelVizType = "stat" | "timechart" | "statusgrid" | "table";
+
+export interface PanelPosition {
+    col: number;
+    row: number;
+    w: number;
+    h: number;
+}
+
+export interface DashboardPanel {
+    id: number;
+    dashboard_id: number;
+    monitor_id: number;
+    title?: string;
+    viz_type: PanelVizType;
+    position: PanelPosition;
+    config?: Record<string, unknown>;
+}
+
+export interface Dashboard {
+    id: number;
+    name: string;
+    description?: string;
+    visibility: DashboardVisibility;
+    layout?: Record<string, unknown>;
+    panels: DashboardPanel[];
+    is_pinned: boolean;
+    owner_id?: number;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface DashboardCreateInput {
+    name: string;
+    description?: string;
+    visibility: DashboardVisibility;
+}
+
+export type DashboardUpdateInput = Partial<DashboardCreateInput>;
+
+export interface PanelCreateInput {
+    monitor_id: number;
+    title?: string;
+    viz_type: PanelVizType;
+    position?: PanelPosition;
+    config?: Record<string, unknown>;
+}
+
+export type PanelUpdateInput = Partial<PanelCreateInput>;
 
 // ---- Logs -------------------------------------------------------------------
 

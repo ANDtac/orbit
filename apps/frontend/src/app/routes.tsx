@@ -11,11 +11,15 @@ import { DeviceDetailPage } from "@/features/devices/pages/DeviceDetailPage";
 import { DeviceCreatePage } from "@/features/devices/pages/DeviceCreatePage";
 import { DeviceEditPage } from "@/features/devices/pages/DeviceEditPage";
 import { MonitoringHealthPage } from "@/features/monitoring/pages/MonitoringHealthPage";
+import { MonitorsPage } from "@/features/monitors/pages/MonitorsPage";
+import { MonitorDetailPage } from "@/features/monitors/pages/MonitorDetailPage";
 import { MonitoringLogsPage } from "@/features/admin/pages/MonitoringLogsPage";
 import { PasswordChangePage } from "@/features/automation/pages/PasswordChangePage";
 import { OperationTemplatesPage } from "@/features/admin/pages/OperationTemplatesPage";
 import { RunsPage } from "@/features/automation/pages/RunsPage";
 import { RunDetailPage } from "@/features/automation/pages/RunDetailPage";
+import { AutomationBuilderPage } from "@/features/automation/pages/AutomationBuilderPage";
+import { SchedulesPage } from "@/features/automation/pages/SchedulesPage";
 import { SnapshotsPage } from "@/features/configurations/pages/SnapshotsPage";
 import { CompliancePoliciesPage } from "@/features/compliance/pages/CompliancePoliciesPage";
 import { ComplianceResultsPage } from "@/features/compliance/pages/ComplianceResultsPage";
@@ -25,6 +29,8 @@ import { PlatformsPage } from "@/features/admin/pages/PlatformsPage";
 import { CredentialsPage } from "@/features/admin/pages/CredentialsPage";
 import { AuditPage } from "@/features/admin/pages/AuditPage";
 import { AuditDetailPage } from "@/features/admin/pages/AuditDetailPage";
+import { DashboardsPage } from "@/features/dashboards/pages/DashboardsPage";
+import { DashboardDetailPage } from "@/features/dashboards/pages/DashboardDetailPage";
 
 export function AppRoutes(): JSX.Element {
     return (
@@ -164,6 +170,28 @@ export function AppRoutes(): JSX.Element {
                             </Page>
                         }
                     />
+                    <Route
+                        path="/monitoring/monitors"
+                        element={
+                            <Page
+                                title="Monitors"
+                                description="Define read-only monitors that evaluate action outputs against thresholds and track results over time."
+                            >
+                                <MonitorsPage />
+                            </Page>
+                        }
+                    />
+                    <Route
+                        path="/monitoring/monitors/:id"
+                        element={
+                            <Page
+                                title="Monitor detail"
+                                description="Inspect configuration, review historical results, and manage schedules for this monitor."
+                            >
+                                <MonitorDetailPage />
+                            </Page>
+                        }
+                    />
                     {/* Probes surface hidden; page retained on disk */}
                     <Route
                         path="/monitoring/probes"
@@ -198,6 +226,17 @@ export function AppRoutes(): JSX.Element {
 
                     {/* Automation */}
                     <Route
+                        path="/automation/builder"
+                        element={
+                            <Page
+                                title="Automation Builder"
+                                description="Build no-code automations by composing vetted actions against target devices."
+                            >
+                                <AutomationBuilderPage />
+                            </Page>
+                        }
+                    />
+                    <Route
                         path="/automation/runs"
                         element={
                             <Page
@@ -216,6 +255,41 @@ export function AppRoutes(): JSX.Element {
                                 description="Inspect task breakdown, parameters, timing, and events for a single run."
                             >
                                 <RunDetailPage />
+                            </Page>
+                        }
+                    />
+                    <Route
+                        path="/automation/schedules"
+                        element={
+                            <Page
+                                title="Schedules"
+                                description="View and manage all recurring schedules across automations and monitors."
+                            >
+                                <SchedulesPage />
+                            </Page>
+                        }
+                    />
+
+                    {/* Dashboards */}
+                    <Route
+                        path="/dashboards"
+                        element={
+                            <Page
+                                title="Dashboards"
+                                description="Assemble Splunk-style panels from monitor results and share them with your team."
+                            >
+                                <DashboardsPage />
+                            </Page>
+                        }
+                    />
+                    <Route
+                        path="/dashboards/:id"
+                        element={
+                            <Page
+                                title="Dashboard"
+                                description="View and manage panels for this dashboard."
+                            >
+                                <DashboardDetailPage />
                             </Page>
                         }
                     />

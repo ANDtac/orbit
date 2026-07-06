@@ -7,6 +7,7 @@ import type * as MonitoringApi from "@/features/monitoring/api/monitoring.api";
 import { fetchDevices } from "@/features/devices/api/devices.api";
 import { fetchComplianceResults } from "@/features/compliance/api/compliance.api";
 import { fetchJobs, fetchErrorLogs } from "@/features/monitoring/api/monitoring.api";
+import { fetchPinnedDashboards } from "@/features/dashboards/api/dashboards.api";
 import { Home } from "@/pages/Home";
 import { mockDevice, mockJob } from "@/tests/factories";
 import { renderWithProviders } from "@/tests/renderWithProviders";
@@ -26,8 +27,13 @@ vi.mock("@/features/monitoring/api/monitoring.api", async (importOriginal) => {
   return { ...actual, fetchJobs: vi.fn(), fetchErrorLogs: vi.fn() };
 });
 
+vi.mock("@/features/dashboards/api/dashboards.api", () => ({
+  fetchPinnedDashboards: vi.fn(),
+}));
+
 describe("Home dashboard", () => {
   beforeEach(() => {
+    vi.mocked(fetchPinnedDashboards).mockResolvedValue([]);
     vi.mocked(fetchDevices).mockResolvedValue({
       data: [
         mockDevice({ id: 1, name: "edge-1" }),
@@ -79,5 +85,34 @@ describe("Home dashboard", () => {
       "href",
       "/automation/runs",
     );
+  });
+
+  it("renders pinned dashboard cards when pinned dashboards are present", async () => {
+    vi.mocked(fetchPinnedDashboards).mockResolvedValue([
+      {
+        id: 1,
+        name: "Network Health Overview",
+        visibility: "shared",
+        panels: [{ id: 1, dashboard_id: 1, monitor_id: 1, viz_type: "stat", position: { col: 0, row: 0, w: 6, h: 3 } }],
+        is_pinned: true,
+      },
+    ]);
+
+    renderWithProviders(<Home />);
+
+    expect(await screen.findByText("Network Health Overview")).toBeInTheDocument();
+    expect(screen.getByText(/pinned dashboards/i)).toBeInTheDocument();
+    // Card links to the dashboard detail page
+    const link = screen.getByRole("link", { name: /network health overview/i });
+    expect(link).toHaveAttribute("href", "/dashboards/1");
+  });
+
+  it("does not show the Pinned Dashboards section when there are no pinned dashboards", async () => {
+    vi.mocked(fetchPinnedDashboards).mockResolvedValue([]);
+    renderWithProviders(<Home />);
+
+    // Wait for the page to settle
+    await screen.findByText("42"); // managed devices stat card
+    expect(screen.queryByText(/pinned dashboards/i)).not.toBeInTheDocument();
   });
 });

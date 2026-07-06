@@ -1,5 +1,8 @@
 import { isDemoActive } from "@/contexts/DemoContext";
 import type {
+    Automation,
+    AutomationDryRunResult,
+    AutomationStep,
     DeviceHealthSummary,
     AppEventEntry,
     AuditLogEntry,
@@ -16,11 +19,19 @@ import type {
     HardwareLifecycle,
     InventoryGroup,
     Job,
+    Monitor,
+    MonitorComparator,
+    MonitorResult,
+    MonitorResultStatus,
+    MonitorVisibility,
     OperationTemplate,
     PaginatedResponse,
     PasswordChangeResult,
     Platform,
     RequestLogEntry,
+    Schedule,
+    ScheduleCreateInput,
+    ScheduleUpdateInput,
     SoftwareLifecycle,
 } from "@/lib/types";
 
@@ -813,6 +824,144 @@ export function demoDeleteOperationTemplate(templateId: number): void {
     data.operationTemplates = data.operationTemplates.filter((item) => item.id !== templateId);
 }
 
+// ─── Automations ─────────────────────────────────────────────────────────────
+
+type DemoAutomationInput = {
+    name: string;
+    description?: string;
+    action_id?: number;
+    variable_values?: Record<string, unknown>;
+    steps?: AutomationStep[];
+    target: { device_ids?: number[] };
+    visibility?: Automation["visibility"];
+    on_failure?: Automation["on_failure"];
+};
+
+export function demoFetchAutomations(): Automation[] {
+    return getDemoData().automations.map((item) => ({ ...item, steps: item.steps ? [...item.steps] : undefined }));
+}
+
+export function demoFetchAutomation(id: number): Automation {
+    const automation = getDemoData().automations.find((item) => item.id === id);
+    if (!automation) {
+        throw new Error(`Demo automation ${id} not found`);
+    }
+    return { ...automation, steps: automation.steps ? [...automation.steps] : undefined };
+}
+
+export function demoCreateAutomation(input: DemoAutomationInput): Automation {
+    const data = getDemoData();
+    const created: Automation = {
+        id: nextId(data.automations),
+        name: input.name,
+        description: input.description,
+        action_id: input.action_id,
+        variable_values: input.variable_values ? { ...input.variable_values } : {},
+        steps: input.steps ? input.steps.map((s) => ({ ...s })) : undefined,
+        target: { device_ids: input.target.device_ids ?? [] },
+        visibility: input.visibility ?? "private",
+        on_failure: input.on_failure ?? "stop",
+        created_at: nowIso(),
+        updated_at: nowIso(),
+    };
+    data.automations.unshift(created);
+    return { ...created, steps: created.steps ? [...created.steps] : undefined };
+}
+
+export function demoUpdateAutomation(id: number, input: Partial<DemoAutomationInput>): Automation {
+    const data = getDemoData();
+    const index = data.automations.findIndex((item) => item.id === id);
+    if (index === -1) {
+        throw new Error(`Demo automation ${id} not found`);
+    }
+    data.automations[index] = {
+        ...data.automations[index],
+        ...input,
+        target: input.target
+            ? { device_ids: input.target.device_ids ?? [] }
+            : data.automations[index].target,
+        steps: input.steps !== undefined
+            ? input.steps.map((s) => ({ ...s }))
+            : data.automations[index].steps,
+        updated_at: nowIso(),
+    };
+    const stored = data.automations[index];
+    return { ...stored, steps: stored.steps ? [...stored.steps] : undefined };
+}
+
+export function demoDeleteAutomation(id: number): void {
+    const data = getDemoData();
+    data.automations = data.automations.filter((item) => item.id !== id);
+}
+
+export function demoTestAutomation(
+    id: number,
+    input: { device_id?: number },
+): AutomationDryRunResult {
+    const data = getDemoData();
+    const automation = data.automations.find((item) => item.id === id);
+    if (!automation) {
+        throw new Error(`Demo automation ${id} not found`);
+    }
+    const template = data.operationTemplates.find((item) => item.id === automation.action_id);
+    const deviceId = input.device_id ?? automation.target.device_ids?.[0];
+    const device = deviceId != null ? data.devices.find((item) => item.id === deviceId) : undefined;
+
+    return {
+        ok: true,
+        device_id: deviceId,
+        host: device?.mgmt_ipv4 ?? device?.fqdn ?? device?.name ?? "demo-device",
+        latency_ms: 42,
+        fields: { ...automation.variable_values, status: "ok" },
+        field_errors: {},
+        diff: template?.is_mutating
+            ? "- ntp server 10.0.0.1\n+ ntp server 10.0.0.2"
+            : undefined,
+    };
+}
+
+export function demoRunAutomation(id: number): { job: Job; enqueued: boolean } {
+    const data = getDemoData();
+    const automation = data.automations.find((item) => item.id === id);
+    const createdAt = nowIso();
+    const deviceIds = automation?.target.device_ids ?? [];
+    const job: Job = {
+        id: nextId(data.jobs),
+        uuid: crypto.randomUUID(),
+        job_type: "automation.run",
+        status: "queued",
+        queue: "default",
+        priority: 5,
+        parameters: {
+            automation_id: id,
+            device_ids: deviceIds,
+            source: "demo-mode",
+        },
+        timestamps: {
+            created_at: createdAt,
+        },
+        tasks: deviceIds.map((deviceId, index) => ({
+            id: index + 1,
+            sequence: index,
+            task_type: "automation.step",
+            status: "pending",
+            device_id: deviceId,
+            progress_total: 1,
+            progress_completed: 0,
+        })),
+        events: [
+            {
+                id: 1,
+                event_type: "queued",
+                message: "automation run queued",
+                occurred_at: createdAt,
+            },
+        ],
+    };
+    data.jobs.unshift(job);
+    return { job, enqueued: true };
+}
+
 export function demoFetchSnapshots(options?: SnapshotQueryOptions): DeviceConfigSnapshot[] {
     const data = getDemoData();
     let snapshots = [...data.snapshots];
@@ -997,6 +1146,293 @@ export function demoUpdateSoftwareLifecycle(
 export function demoDeleteSoftwareLifecycle(rowId: number): void {
     const data = getDemoData();
     data.softwareLifecycle = data.softwareLifecycle.filter((item) => item.id !== rowId);
+}
+
+// ─── Schedules ───────────────────────────────────────────────────────────────
+
+const DEMO_SCHEDULES: Schedule[] = [
+    {
+        id: 1,
+        name: "Nightly version check",
+        target_type: "automation",
+        target_id: 1,
+        cron_expr: "0 2 * * *",
+        preset: "daily",
+        next_run: new Date(Date.now() + 86400000).toISOString(),
+        last_run: new Date(Date.now() - 86400000).toISOString(),
+        enabled: true,
+        timezone: "UTC",
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+    },
+];
+
+export function demoFetchSchedules(target_type?: string, target_id?: number): Schedule[] {
+    let items = DEMO_SCHEDULES.map((s) => ({ ...s }));
+    if (target_type) {
+        items = items.filter((s) => s.target_type === target_type);
+    }
+    if (target_id != null) {
+        items = items.filter((s) => s.target_id === target_id);
+    }
+    return items;
+}
+
+export function demoFetchSchedule(id: number): Schedule {
+    const found = DEMO_SCHEDULES.find((s) => s.id === id);
+    if (!found) throw new Error(`Demo schedule ${id} not found`);
+    return { ...found };
+}
+
+export function demoCreateSchedule(input: ScheduleCreateInput): Schedule {
+    const created: Schedule = {
+        id: nextId(DEMO_SCHEDULES),
+        name: input.name,
+        target_type: input.target_type,
+        target_id: input.target_id,
+        cron_expr: presetToCron(input.preset),
+        preset: input.preset,
+        next_run: new Date(Date.now() + 300000).toISOString(),
+        enabled: input.enabled,
+        timezone: input.timezone,
+        created_at: nowIso(),
+        updated_at: nowIso(),
+    };
+    DEMO_SCHEDULES.unshift(created);
+    return { ...created };
+}
+
+export function demoUpdateSchedule(id: number, input: ScheduleUpdateInput): Schedule {
+    const index = DEMO_SCHEDULES.findIndex((s) => s.id === id);
+    if (index === -1) throw new Error(`Demo schedule ${id} not found`);
+    const prev = DEMO_SCHEDULES[index];
+    DEMO_SCHEDULES[index] = {
+        ...prev,
+        ...(input.name !== undefined ? { name: input.name } : {}),
+        ...(input.preset !== undefined
+            ? { preset: input.preset, cron_expr: presetToCron(input.preset) }
+            : {}),
+        ...(input.timezone !== undefined ? { timezone: input.timezone } : {}),
+        ...(input.enabled !== undefined ? { enabled: input.enabled } : {}),
+        updated_at: nowIso(),
+    };
+    return { ...DEMO_SCHEDULES[index] };
+}
+
+export function demoDeleteSchedule(id: number): void {
+    const index = DEMO_SCHEDULES.findIndex((s) => s.id === id);
+    if (index >= 0) DEMO_SCHEDULES.splice(index, 1);
+}
+
+export function demoFireSchedule(id: number): { job: Job } {
+    const data = getDemoData();
+    const schedule = DEMO_SCHEDULES.find((s) => s.id === id);
+    const createdAt = nowIso();
+    const job: Job = {
+        id: nextId(data.jobs),
+        uuid: crypto.randomUUID(),
+        job_type: "automation.run",
+        status: "queued",
+        queue: "default",
+        priority: 5,
+        parameters: {
+            schedule_id: id,
+            target_id: schedule?.target_id,
+            source: "fire-now",
+        },
+        timestamps: { created_at: createdAt },
+        tasks: [],
+        events: [{ id: 1, event_type: "queued", message: "fired manually", occurred_at: createdAt }],
+    };
+    data.jobs.unshift(job);
+    if (schedule) {
+        const index = DEMO_SCHEDULES.findIndex((s) => s.id === id);
+        if (index >= 0) {
+            DEMO_SCHEDULES[index] = { ...DEMO_SCHEDULES[index], last_run: createdAt };
+        }
+    }
+    return { job };
+}
+
+function presetToCron(preset: ScheduleCreateInput["preset"]): string {
+    switch (preset) {
+        case "every_5m":  return "*/5 * * * *";
+        case "every_15m": return "*/15 * * * *";
+        case "every_30m": return "*/30 * * * *";
+        case "hourly":    return "0 * * * *";
+        case "daily":     return "0 2 * * *";
+        case "weekly":    return "0 2 * * 0";
+        default:          return "0 * * * *";
+    }
+}
+
+// ─── Monitors ────────────────────────────────────────────────────────────────
+
+export type MonitorCreateInput = {
+    name: string;
+    description?: string;
+    action_id: number;
+    target: { device_ids: number[] };
+    metric: string;
+    comparator: MonitorComparator;
+    threshold: number | null;
+    visibility?: MonitorVisibility;
+};
+
+const DEMO_MONITORS: Monitor[] = [
+    {
+        id: 1,
+        name: "CPU Utilisation Watch",
+        description: "Alerts when CPU usage exceeds 85% on any core router.",
+        action_id: 1,
+        action_name: "backup template 1",
+        target: { device_ids: [1, 2, 3] },
+        metric: "status",
+        comparator: "gt",
+        threshold: 85,
+        status: "passing",
+        visibility: "shared",
+        last_run: new Date(Date.now() - 300000).toISOString(),
+        created_at: "2026-01-15T00:00:00Z",
+        updated_at: "2026-01-15T00:00:00Z",
+    },
+    {
+        id: 2,
+        name: "Interface Error Rate",
+        description: "Flags interfaces with sustained CRC errors.",
+        action_id: 2,
+        action_name: "health_check template 2",
+        target: { device_ids: [4, 5] },
+        metric: "status",
+        comparator: "gt",
+        threshold: 0,
+        status: "failing",
+        visibility: "shared",
+        last_run: new Date(Date.now() - 600000).toISOString(),
+        created_at: "2026-02-01T00:00:00Z",
+        updated_at: "2026-02-01T00:00:00Z",
+    },
+    {
+        id: 3,
+        name: "BGP Peer State",
+        description: "Verifies all configured BGP peers are in Established state.",
+        action_id: 3,
+        action_name: "show_version template 3",
+        target: { device_ids: [1] },
+        metric: "status",
+        comparator: "eq",
+        threshold: null,
+        status: "unknown",
+        visibility: "private",
+        last_run: undefined,
+        created_at: "2026-03-01T00:00:00Z",
+        updated_at: "2026-03-01T00:00:00Z",
+    },
+];
+
+const DEMO_MONITOR_RESULTS: MonitorResult[] = Array.from({ length: 20 }, (_, i) => {
+    const statuses: MonitorResultStatus[] = ["passing", "passing", "failing", "passing", "error"];
+    return {
+        id: i + 1,
+        monitor_id: (i % 3) + 1,
+        device_id: (i % 5) + 1,
+        observed_at: new Date(Date.now() - i * 300000).toISOString(),
+        value: i % 5 === 2 ? 92 : i % 5 === 4 ? null : Math.floor(Math.random() * 50) + 20,
+        status: statuses[i % statuses.length],
+        payload: { raw: `output-${i + 1}` },
+    };
+});
+
+export function demoFetchMonitors(): Monitor[] {
+    return DEMO_MONITORS.map((m) => ({ ...m, target: { ...m.target } }));
+}
+
+export function demoFetchMonitor(id: number): Monitor {
+    const found = DEMO_MONITORS.find((m) => m.id === id);
+    if (!found) throw new Error(`Demo monitor ${id} not found`);
+    return { ...found, target: { ...found.target } };
+}
+
+export function demoCreateMonitor(input: MonitorCreateInput): Monitor {
+    const created: Monitor = {
+        id: DEMO_MONITORS.reduce((max, m) => Math.max(max, m.id), 0) + 1,
+        name: input.name,
+        description: input.description,
+        action_id: input.action_id,
+        target: { device_ids: input.target.device_ids },
+        metric: input.metric,
+        comparator: input.comparator,
+        threshold: input.threshold,
+        status: "unknown",
+        visibility: input.visibility ?? "private",
+        created_at: nowIso(),
+        updated_at: nowIso(),
+    };
+    DEMO_MONITORS.unshift(created);
+    return { ...created };
+}
+
+export function demoUpdateMonitor(id: number, input: Partial<MonitorCreateInput>): Monitor {
+    const index = DEMO_MONITORS.findIndex((m) => m.id === id);
+    if (index === -1) throw new Error(`Demo monitor ${id} not found`);
+    DEMO_MONITORS[index] = {
+        ...DEMO_MONITORS[index],
+        ...input,
+        target: input.target ? { device_ids: input.target.device_ids } : DEMO_MONITORS[index].target,
+        updated_at: nowIso(),
+    };
+    return { ...DEMO_MONITORS[index] };
+}
+
+export function demoDeleteMonitor(id: number): void {
+    const index = DEMO_MONITORS.findIndex((m) => m.id === id);
+    if (index >= 0) DEMO_MONITORS.splice(index, 1);
+}
+
+export function demoRunMonitor(id: number): { job: Job; enqueued: boolean } {
+    const data = getDemoData();
+    const monitor = DEMO_MONITORS.find((m) => m.id === id);
+    const createdAt = nowIso();
+    const job: Job = {
+        id: nextId(data.jobs),
+        uuid: crypto.randomUUID(),
+        job_type: "monitor.run",
+        status: "queued",
+        queue: "default",
+        priority: 5,
+        parameters: {
+            monitor_id: id,
+            device_ids: monitor?.target.device_ids ?? [],
+            source: "manual",
+        },
+        timestamps: { created_at: createdAt },
+        tasks: [],
+        events: [{ id: 1, event_type: "queued", message: "monitor run queued", occurred_at: createdAt }],
+    };
+    data.jobs.unshift(job);
+    return { job, enqueued: true };
+}
+
+export function demoFetchMonitorResults(
+    monitorId: number,
+    options?: { device_id?: number; from?: string; to?: string; limit?: number },
+): { data: MonitorResult[]; page: { total: number; limit: number } } {
+    let results = DEMO_MONITOR_RESULTS.filter((r) => r.monitor_id === monitorId);
+    if (options?.device_id != null) {
+        results = results.filter((r) => r.device_id === options.device_id);
+    }
+    const limit = options?.limit ?? 20;
+    return {
+        data: results.slice(0, limit),
+        page: { total: results.length, limit },
+    };
+}
+
+export function demoFetchMonitorAlerts(): Monitor[] {
+    return DEMO_MONITORS.filter((m) => m.status === "failing").map((m) => ({
+        ...m,
+        target: { ...m.target },
+    }));
 }
 
 function paginateOffset<T>(items: T[], options?: OffsetPaginationOptions): T[] {

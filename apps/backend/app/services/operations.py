@@ -64,10 +64,12 @@ Extensibility
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional, Tuple
-
 import logging
+import time
+from contextlib import contextmanager
+from dataclasses import dataclass, field
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
+
 from jinja2 import Environment, StrictUndefined
 
 from ..extensions import db
@@ -78,6 +80,8 @@ from ..models import (
     CredentialProfiles,
 )
 from ..observability.activity import record_app_event, record_audit_log
+from .handlers.registry import NETMIKO_TYPE_MAP, normalize_platform_slug
+from .output_parsing import parse_outputs
 
 log = logging.getLogger(__name__)
 
@@ -113,6 +117,8 @@ class OperationTemplate:
     op_type: Optional[str]
     text: str
     variables_schema: Optional[dict]
+    outputs_schema: Dict[str, Any] = field(default_factory=dict)
+    is_mutating: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -200,6 +206,8 @@ def resolve_operation_template(
             op_type=row.op_type,
             text=row.template or "",
             variables_schema=row.variables or None,
+            outputs_schema=row.outputs or {},
+            is_mutating=bool(row.is_mutating),
         )
 
     # No explicit template id; attempt to find a platform-specific default
@@ -219,6 +227,8 @@ def resolve_operation_template(
                     op_type=row.op_type,
                     text=row.template or "",
                     variables_schema=row.variables or None,
+                    outputs_schema=row.outputs or {},
+                    is_mutating=bool(row.is_mutating),
                 )
 
         # Fallback generic built-in stubs so early development can proceed
@@ -294,90 +304,291 @@ def build_inventory_for_devices(device_ids: Iterable[int]) -> Dict[int, Dict[str
 
 
 # ---------------------------------------------------------------------------
-# Nornir runner hook (replace with real implementation)
+# Connection seams (patched in tests — NEVER hit real devices in CI)
 # ---------------------------------------------------------------------------
+def _resolve_credentials(device: Devices, params: Dict[str, Any]) -> Dict[str, Any]:
+    """Best-effort credential resolution for a device.
+
+    Username comes from the attached CredentialProfile (mirroring
+    ``password_change._build_target``); the password/secret are taken from the
+    execution ``params`` (a secret-store integration is out of scope here).
+    Secrets are never persisted or returned in results.
+    """
+
+    profile = (
+        db.session.get(CredentialProfiles, device.credential_profile_id)
+        if device.credential_profile_id
+        else None
+    )
+    username = (profile.username if profile else None) or params.get("username") or "admin"
+    password = params.get("password") or (params.get("variables") or {}).get("password") or ""
+    secret = params.get("enable_secret") or password
+    return {"username": username, "password": password, "secret": secret}
+
+
+def _build_exec_target(host: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, Any]:
+    """Build a flat per-device execution target from an inventory entry."""
+
+    platform: Optional[Platforms] = host.get("platform")
+    device: Optional[Devices] = host.get("device")
+    slug = normalize_platform_slug(getattr(platform, "slug", None))
+    creds = _resolve_credentials(device, params) if device is not None else {
+        "username": params.get("username") or "admin",
+        "password": params.get("password") or "",
+        "secret": params.get("enable_secret") or "",
+    }
+    return {
+        "host": host.get("host"),
+        "address": host.get("address"),
+        "port": host.get("port") or 22,
+        "platform_slug": slug,
+        "napalm_driver": getattr(platform, "napalm_driver", None),
+        "netmiko_type": getattr(platform, "netmiko_type", None)
+        or NETMIKO_TYPE_MAP.get(slug, "cisco_ios"),
+        "napalm_optional_args": getattr(platform, "napalm_optional_args", None) or {},
+        "username": creds["username"],
+        "password": creds["password"],
+        "secret": creds["secret"],
+    }
+
+
+def _get_network_driver(driver_name: str):
+    """Return a NAPALM driver class (imported lazily to avoid hard import cost)."""
+
+    from napalm import get_network_driver  # pragma: no cover - patched in tests
+
+    return get_network_driver(driver_name)
+
+
+@contextmanager
+def _napalm_connection(target: Dict[str, Any], timeout: int) -> Iterator[Any]:
+    """Open (and always close) a NAPALM connection to ``target``.
+
+    Patched wholesale in tests so no real session is ever opened.
+    """
+
+    driver = _get_network_driver(target.get("napalm_driver") or "ios")  # pragma: no cover
+    optional_args = dict(target.get("napalm_optional_args") or {})  # pragma: no cover
+    optional_args.setdefault("port", target.get("port") or 22)  # pragma: no cover
+    device = driver(  # pragma: no cover
+        hostname=target.get("address") or target.get("host"),
+        username=target.get("username"),
+        password=target.get("password"),
+        optional_args=optional_args,
+        timeout=timeout,
+    )
+    device.open()  # pragma: no cover
+    try:  # pragma: no cover
+        yield device
+    finally:  # pragma: no cover
+        try:
+            device.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def _netmiko_connect(target: Dict[str, Any], timeout: int) -> Any:
+    """Open a Netmiko connection (reuses the ssh_handler dispatch shape)."""
+
+    from netmiko import ConnectHandler  # pragma: no cover - patched in tests
+
+    kwargs = {  # pragma: no cover
+        "device_type": target.get("netmiko_type") or "cisco_ios",
+        "host": target.get("address") or target.get("host"),
+        "port": target.get("port") or 22,
+        "username": target.get("username"),
+        "password": target.get("password"),
+        "timeout": timeout,
+        "fast_cli": False,
+    }
+    if target.get("secret"):  # pragma: no cover
+        kwargs["secret"] = target["secret"]
+    return ConnectHandler(**kwargs)  # pragma: no cover
+
+
+def _run_cli(target: Dict[str, Any], command: str, timeout: int) -> str:
+    """Run a single CLI ``command`` on ``target`` and return the raw output."""
+
+    connection = _netmiko_connect(target, timeout)
+    try:
+        return str(connection.send_command(command))
+    finally:
+        try:
+            connection.disconnect()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+# ---------------------------------------------------------------------------
+# Real per-device executor
+# ---------------------------------------------------------------------------
+def _needed_sources(outputs_schema: Dict[str, Any]) -> set[str]:
+    return {
+        (spec.get("source") or "raw").lower()
+        for spec in (outputs_schema or {}).values()
+        if isinstance(spec, dict)
+    }
+
+
+def _execute_on_device(
+    device_id: int,
+    host: Dict[str, Any],
+    operation_text: str,
+    outputs_schema: Dict[str, Any],
+    *,
+    dry_run: bool,
+    is_mutating: bool,
+    timeout: int,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Execute the rendered operation against a single device.
+
+    Returns a structured, JSON-serializable per-device result. Any failure
+    (connection/parse/timeout) is captured as a typed ``error`` on *this*
+    device and never propagates to crash the job.
+    """
+
+    started = time.perf_counter()
+    target = _build_exec_target(host, params)
+    sources = _needed_sources(outputs_schema)
+    result: Dict[str, Any] = {
+        "device_id": device_id,
+        "ok": False,
+        "changed": False,
+        "host": target.get("host"),
+        "platform": target.get("platform_slug"),
+        "latency_ms": None,
+        "fields": {},
+        "field_errors": {},
+        "raw": None,
+        "diff": None,
+        "output": None,
+        "error": None,
+    }
+
+    try:
+        getters: Dict[str, Any] = {}
+        raw: Optional[str] = None
+        diff: Optional[str] = None
+        committed = False
+
+        needs_napalm = is_mutating or "napalm_getter" in sources
+        # Device I/O is driven entirely by the declared outputs schema (and, for
+        # mutating actions, the config push). A non-mutating action with no
+        # declared CLI outputs performs no connection.
+        needs_cli = bool(sources & {"textfsm", "regex", "raw"})
+
+        if needs_napalm:
+            with _napalm_connection(target, timeout) as device:
+                for spec in outputs_schema.values():
+                    if not isinstance(spec, dict) or spec.get("source") != "napalm_getter":
+                        continue
+                    getter = spec.get("getter")
+                    if getter and getter not in getters:
+                        getters[getter] = getattr(device, getter)()
+                if is_mutating and operation_text:
+                    device.load_merge_candidate(config=operation_text)
+                    diff = device.compare_config()
+                    if dry_run:
+                        device.discard_config()
+                    else:
+                        device.commit_config()
+                        committed = True
+
+        if needs_cli:
+            raw = _run_cli(target, operation_text, timeout)
+
+        fields, field_errors = parse_outputs(
+            outputs_schema,
+            raw=raw,
+            getters=getters,
+            platform=target.get("platform_slug"),
+            default_command=operation_text,
+        )
+
+        result.update(
+            ok=True,
+            changed=committed,
+            fields=fields,
+            field_errors=field_errors,
+            raw=raw,
+            diff=diff,
+            output=raw,
+            error=None,
+        )
+    except Exception as exc:  # noqa: BLE001 - isolate per-device failures
+        result["error"] = f"{type(exc).__name__}: {exc}"
+    finally:
+        result["latency_ms"] = int((time.perf_counter() - started) * 1000)
+
+    return result
+
+
 def run_with_nornir(
     hosts: Dict[int, Dict[str, Any]],
     operation_text: str,
     params: Dict[str, Any],
 ) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
     """
-    Execute `operation_text` against the provided hosts (stub implementation).
+    Execute `operation_text` against the provided hosts for real.
 
     Parameters
     ----------
     hosts : dict[int, dict]
         Output of `build_inventory_for_devices()`.
     operation_text : str
-        Already-rendered command/script/description to run per-host.
+        Already-rendered command/config to run per-host.
     params : dict
-        Execution parameters: dry_run, timeout_sec, stop_on_error, requested_by, etc.
+        Execution parameters: ``dry_run``, ``timeout_sec``, ``stop_on_error``,
+        ``outputs`` (typed output schema), ``is_mutating``, ``op_type``,
+        ``template_id``, ``requested_by``.
 
     Returns
     -------
     tuple[dict, list[dict]]
-        (summary, per_host_results) as described at the top of this module.
+        (summary, per_host_results). Each per-host result is
+        ``{ ok, device_id, host, latency_ms, fields, field_errors, raw, diff,
+        changed, error }``.
 
-    Replace With
-    ------------
-    - Create a Nornir instance with your inventory.
-    - Use `napalm_get`, `napalm_configure`, or custom tasks as appropriate.
-    - Collect outcome per host in the return format below.
+    Notes
+    -----
+    A lightweight direct NAPALM/Netmiko executor is used (mirroring
+    ``ssh_handler``) rather than a full Nornir inventory: it maps cleanly onto
+    the existing per-device connection pattern and is trivially mockable. The
+    function name is retained as the stable integration seam.
     """
+
     dry_run = bool(params.get("dry_run", False))
+    is_mutating = bool(params.get("is_mutating", False))
+    outputs_schema = params.get("outputs") or {}
+    timeout = int(params.get("timeout_sec", 300))
+    stop_on_error = bool(params.get("stop_on_error", False))
 
     ok = 0
     failed = 0
     changed = 0
     results: List[Dict[str, Any]] = []
 
-    # Stub: pretend we executed something per host
-    for device_id, h in hosts.items():
-        try:
-            # Here you'd dispatch based on op_type/template_id and platform.napalm_driver
-            # For now, simulate behavior:
-            if "password" in (operation_text or "").lower():
-                did_change = not dry_run
-                out = f"[stub] would change password on {h['host']} (dry_run={dry_run})"
-            elif "fetch running config" in (operation_text or "") or "backup" in (operation_text or ""):
-                did_change = False
-                out = f"[stub] would fetch config from {h['host']} (dry_run={dry_run})"
-            else:
-                did_change = not dry_run
-                out = f"[stub] would run: {operation_text} on {h['host']} (dry_run={dry_run})"
-
+    for device_id, host in hosts.items():
+        res = _execute_on_device(
+            device_id,
+            host,
+            operation_text,
+            outputs_schema,
+            dry_run=dry_run,
+            is_mutating=is_mutating,
+            timeout=timeout,
+            params=params,
+        )
+        results.append(res)
+        if res["ok"]:
             ok += 1
-            changed += 1 if did_change else 0
-            results.append(
-                {
-                    "device_id": device_id,
-                    "ok": True,
-                    "changed": did_change,
-                    "output": out,
-                    "error": None,
-                    "facts": {
-                        "address": h.get("address"),
-                        "port": h.get("port"),
-                        "platform": (h.get("platform") and h["platform"].slug) or None,
-                    },
-                }
-            )
-        except Exception as exc:  # pragma: no cover - stub robustness
+        else:
             failed += 1
-            results.append(
-                {
-                    "device_id": device_id,
-                    "ok": False,
-                    "changed": False,
-                    "output": None,
-                    "error": str(exc),
-                    "facts": {
-                        "address": h.get("address"),
-                        "port": h.get("port"),
-                        "platform": (h.get("platform") and h["platform"].slug) or None,
-                    },
-                }
-            )
+        if res.get("changed"):
+            changed += 1
+        if stop_on_error and not res["ok"]:
+            break
 
     summary = {
         "requested": len(hosts),
@@ -471,6 +682,9 @@ def execute_operation_sync(
         "requested_by": requested_by,
         "op_type": tmpl.op_type,
         "template_id": tmpl.id,
+        "outputs": tmpl.outputs_schema or {},
+        "is_mutating": bool(tmpl.is_mutating),
+        "variables": variables or {},
     }
 
     log.info(
@@ -502,7 +716,10 @@ def execute_operation_sync(
     summary, per_host = run_with_nornir(hosts=hosts, operation_text=rendered, params=params)
     if not dry_run:
         for result in per_host:
-            if not result.get("changed") or not result.get("device_id"):
+            # Audit all non-dry-run device executions. Monitor runs bypass this
+            # path entirely (worker calls run_with_nornir directly), so there is
+            # no unbounded-audit-row concern here.
+            if not result.get("device_id"):
                 continue
             host = hosts.get(int(result["device_id"]))
             if host is None:

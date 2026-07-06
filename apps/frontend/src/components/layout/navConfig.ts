@@ -28,6 +28,12 @@ export const navConfig: NavSection[] = [
         end: true,
     },
     {
+        label: "Dashboards",
+        to: "/dashboards",
+        icon: "dashboard",
+        end: true,
+    },
+    {
         label: "Inventory",
         to: "/inventory/devices",
         icon: "inventory",
@@ -42,13 +48,18 @@ export const navConfig: NavSection[] = [
         label: "Monitoring",
         to: "/monitoring/health",
         icon: "monitoring",
-        children: [{ label: "Health", to: "/monitoring/health" }],
+        children: [
+            { label: "Health", to: "/monitoring/health" },
+            { label: "Monitors", to: "/monitoring/monitors" },
+        ],
     },
     {
         label: "Automation",
-        to: "/operations/password-change",
+        to: "/automation/builder",
         icon: "operations",
         children: [
+            { label: "Builder", to: "/automation/builder" },
+            { label: "Schedules", to: "/automation/schedules" },
             { label: "Password Changes", to: "/operations/password-change" },
             { label: "Runs", to: "/automation/runs" },
         ],

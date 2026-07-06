@@ -60,8 +60,12 @@ DeviceResult = ns.model(
       "ok": fields.Boolean(required=True, description="True if operation completed without error"),
       "changed": fields.Boolean(required=True, description="True if operation changed remote state"),
       "output": fields.String(required=False, description="Raw command/log output (may be truncated)"),
-      "error": fields.String(required=False, description="Error message if any"),
+      "error": fields.String(required=False, description="Error message if operation failed"),
       "facts": fields.Raw(required=False, description="Optional structured data gathered during execution"),
+      "fields": fields.Raw(required=False, description="Typed, parsed output fields per the Action's outputs schema"),
+      "field_errors": fields.Raw(required=False, description="Per-field parse errors (field -> message)"),
+      "latency_ms": fields.Integer(required=False, description="Per-device execution latency in milliseconds"),
+      "diff": fields.String(required=False, description="Config diff for mutating dry-runs (NAPALM compare_config)"),
     }
 )
 

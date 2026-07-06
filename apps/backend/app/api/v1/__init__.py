@@ -15,6 +15,8 @@ from .resources.interfaces import ns as ns_interfaces
 from .resources.ip_addresses import ns as ns_ipaddrs
 from .resources.snapshots import ns as ns_snapshots
 from .resources.platform_operation_templates import ns as ns_op_templates
+from .resources.automations import ns as ns_automations
+from .resources.schedules import ns as ns_schedules
 from .resources.compliance import ns as ns_compliance
 from .resources.operations import ns as ns_operations
 from .resources.logs import ns as ns_logs
@@ -22,6 +24,8 @@ from .resources.audit import ns as ns_audit
 from .resources.eox_hardware import ns as ns_eox_hw
 from .resources.eox_software import ns as ns_eox_sw
 from .resources.eox_queries import ns as ns_eox_queries
+from .resources.monitors import ns as ns_monitors
+from .resources.dashboards import ns as ns_dashboards
 
 api_bp: Blueprint = Blueprint("api_v1", __name__, url_prefix="/api/v1")
 
@@ -47,6 +51,8 @@ def register_namespaces() -> None:
     api.add_namespace(ns_ipaddrs)
     api.add_namespace(ns_snapshots)
     api.add_namespace(ns_op_templates)
+    api.add_namespace(ns_automations)
+    api.add_namespace(ns_schedules)
     api.add_namespace(ns_compliance)
     api.add_namespace(ns_operations)
     api.add_namespace(ns_logs)
@@ -54,6 +60,8 @@ def register_namespaces() -> None:
     api.add_namespace(ns_eox_hw)
     api.add_namespace(ns_eox_sw)
     api.add_namespace(ns_eox_queries)
+    api.add_namespace(ns_monitors)
+    api.add_namespace(ns_dashboards)
 
 
 register_namespaces()

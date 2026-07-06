@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
-from sqlalchemy import ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped
 
 from ..extensions import db
 from .annotations import CITEXT, JSONB, mapped_column
 from .base import BaseModel
-from .mixins import IdPkMixin, TimestampMixin, UuidPkMixin
+from .mixins import DisableableMixin, IdPkMixin, TimestampMixin, UuidPkMixin
 
 
-class PlatformOperationTemplates(UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel):
+class PlatformOperationTemplates(
+    DisableableMixin, UuidPkMixin, IdPkMixin, TimestampMixin, BaseModel
+):
     """
     PlatformOperationTemplates
     --------------------------
@@ -27,7 +29,16 @@ class PlatformOperationTemplates(UuidPkMixin, IdPkMixin, TimestampMixin, BaseMod
         High level operation category (e.g., 'backup', 'password_change').
     template : str
     variables : dict
-        Expected variables schema/hints.
+        Expected input variables schema/hints (typed inputs).
+    outputs : dict
+        Typed output-field schema describing how to parse device output into
+        structured fields, e.g.
+        ``{ "<field>": {"type": "string|number|boolean|enum",
+                          "source": "textfsm|napalm_getter|regex|raw", ...} }``.
+    is_mutating : bool
+        Flags change-type actions (drive dry-run/confirm gating).
+    is_active : bool
+        Provided by :class:`DisableableMixin` (``disabled_at is None``).
     notes : str | None
     created_at : datetime
     updated_at : datetime
@@ -46,6 +57,8 @@ class PlatformOperationTemplates(UuidPkMixin, IdPkMixin, TimestampMixin, BaseMod
     template: Mapped[str] = mapped_column(Text, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text)
     variables: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    outputs: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    is_mutating: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     platform = db.relationship("Platforms", backref="operation_templates")
 

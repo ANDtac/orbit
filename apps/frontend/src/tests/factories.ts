@@ -1,9 +1,11 @@
 import type {
   AppEventEntry,
   AuditLogEntry,
+  AutomationStep,
   CredentialProfile,
   Device,
   Job,
+  OperationTemplate,
   Platform,
 } from "@/lib/types";
 
@@ -94,6 +96,39 @@ export function mockAuditLogEntry(
     job_id: null,
     payload: { slug: "cisco_xe" },
     message: "created platform",
+    ...overrides,
+  };
+}
+
+export function mockOperationTemplate(
+  overrides: Partial<OperationTemplate> = {},
+): OperationTemplate {
+  return {
+    id: 1,
+    platform_id: 10,
+    name: "Show Version",
+    op_type: "show",
+    template: "show version",
+    variables: {
+      hostname: { type: "string", required: true, label: "Hostname" },
+    },
+    outputs: {
+      status: { type: "string" },
+    },
+    is_mutating: false,
+    is_active: true,
+    ...overrides,
+  };
+}
+
+export function mockAutomationStep(
+  overrides: Partial<AutomationStep> = {},
+): AutomationStep {
+  return {
+    sequence: 1,
+    action_id: 1,
+    variable_bindings: {},
+    on_failure: "stop",
     ...overrides,
   };
 }

@@ -299,6 +299,77 @@ def seed_dev():
         _echo("🌱 Seed data ensured (admin/admin, platforms, Default group, sample device).")
 
 
+@cli.command("worker", help="Run the database-backed job queue worker loop.")
+@click.option(
+    "--queues",
+    default="default",
+    help="Comma-separated queue names to consume (blank = all queues).",
+)
+@click.option(
+    "--poll-interval",
+    default=2.0,
+    type=float,
+    show_default=True,
+    help="Seconds to sleep when the queue is idle.",
+)
+@click.option(
+    "--heartbeat-timeout",
+    default=120,
+    type=int,
+    show_default=True,
+    help="Seconds before a running job is considered stale and requeued.",
+)
+def worker(queues: str, poll_interval: float, heartbeat_timeout: int):
+    """
+    Run the long-running worker that claims and executes queued jobs.
+
+    Reads work purely from the ``jobs`` table (safe for multiple processes on
+    PostgreSQL via ``SELECT ... FOR UPDATE SKIP LOCKED``). Ctrl-C to stop.
+    """
+    from app.services.worker import run_worker_loop
+
+    queue_list = [q.strip() for q in (queues or "").split(",") if q.strip()] or None
+    app = _get_app()
+    _echo(
+        "🛠️  Starting worker "
+        f"(queues={queue_list or 'ALL'}, poll={poll_interval}s, "
+        f"heartbeat_timeout={heartbeat_timeout}s). Press Ctrl-C to stop."
+    )
+    run_worker_loop(
+        app,
+        poll_interval=poll_interval,
+        queues=queue_list,
+        heartbeat_timeout_seconds=heartbeat_timeout,
+    )
+    _echo("👋 Worker stopped.")
+
+
+@cli.command("scheduler", help="Run the database-backed schedule poller loop.")
+@click.option(
+    "--poll-interval",
+    default=60,
+    type=int,
+    show_default=True,
+    help="Seconds to sleep between schedule scans.",
+)
+def scheduler(poll_interval: int):
+    """
+    Run the long-running scheduler that fires due Schedules rows.
+
+    Reads enabled schedules whose ``next_run <= now()`` from the database,
+    enqueues the target Automation (or Monitor in Phase 6), then advances
+    ``next_run`` via croniter. Ctrl-C to stop.
+    """
+    from app.services.scheduler import run_scheduler_loop
+
+    app = _get_app()
+    _echo(
+        f"🕐 Starting scheduler (poll={poll_interval}s). Press Ctrl-C to stop."
+    )
+    run_scheduler_loop(app, poll_interval=poll_interval)
+    _echo("👋 Scheduler stopped.")
+
+
 @cli.command("shell", help="Interactive shell with app context.")
 def shell_cmd():
     """

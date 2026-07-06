@@ -23,6 +23,14 @@ vi.mock("@/features/monitoring/api/monitoring.api", async (importOriginal) => {
   };
 });
 
+vi.mock("@/features/monitors/api/monitors.api", () => ({
+  fetchMonitorAlerts: vi.fn().mockResolvedValue([]),
+  fetchMonitors: vi.fn().mockResolvedValue([]),
+  COMPARATOR_LABELS: {},
+  COMPARATOR_OPTIONS: [],
+  VISIBILITY_OPTIONS: [],
+}));
+
 describe("MonitoringAlertsPage", () => {
   it("renders recent alerts from errors, failed jobs, and compliance failures", async () => {
     vi.mocked(fetchErrorLogs).mockResolvedValue([

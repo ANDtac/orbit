@@ -93,6 +93,12 @@ vi.mock("@/features/admin/pages/CredentialsPage", () => ({
 vi.mock("@/features/admin/pages/AuditPage", () => ({
   AuditPage: () => <div>AuditPage</div>,
 }));
+vi.mock("@/features/monitors/pages/MonitorsPage", () => ({
+  MonitorsPage: () => <div>MonitorsPage</div>,
+}));
+vi.mock("@/features/monitors/pages/MonitorDetailPage", () => ({
+  MonitorDetailPage: () => <div>MonitorDetailPage</div>,
+}));
 
 import { AppRoutes } from "@/app/routes";
 

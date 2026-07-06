@@ -6,9 +6,10 @@ import { DataTable } from "@/components/ui/DataTable";
 import type { ColumnDef } from "@/components/ui/DataTable";
 import { fetchComplianceResults } from "@/features/compliance/api/compliance.api";
 import { fetchJobs, fetchErrorLogs } from "@/features/monitoring/api/monitoring.api";
+import { fetchMonitorAlerts } from "@/features/monitors/api/monitors.api";
 import { JobDetailPanel } from "@/components/JobDetailPanel";
 import { QUERY_KEYS } from "@/lib/constants";
-import type { ComplianceResult, ErrorLogEntry, Job } from "@/lib/types";
+import type { ComplianceResult, ErrorLogEntry, Job, Monitor } from "@/lib/types";
 
 const AUTO_REFRESH_INTERVAL = 30_000;
 
@@ -37,6 +38,12 @@ export function AlertsPanel(): JSX.Element {
   const complianceFailuresQuery = useQuery({
     queryKey: [QUERY_KEYS.monitoringAlerts, "complianceFailures"],
     queryFn: () => fetchComplianceResults({ per_page: 10, status: "fail" }),
+    refetchInterval,
+  });
+
+  const monitorAlertsQuery = useQuery({
+    queryKey: [QUERY_KEYS.monitors, "alerts"],
+    queryFn: fetchMonitorAlerts,
     refetchInterval,
   });
 
@@ -112,9 +119,43 @@ export function AlertsPanel(): JSX.Element {
     [],
   );
 
+  const monitorAlertColumns: ColumnDef<Monitor>[] = useMemo(
+    () => [
+      {
+        key: "name",
+        header: "Monitor",
+        accessor: (m) => (
+          <Link
+            to={`/monitoring/monitors/${m.id}`}
+            className="font-medium text-primary hover:underline"
+          >
+            {m.name}
+          </Link>
+        ),
+      },
+      {
+        key: "status",
+        header: "Status",
+        accessor: (m) => (
+          <span className="inline-flex items-center rounded-full bg-red-500/15 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-red-400">
+            {m.status}
+          </span>
+        ),
+      },
+      {
+        key: "last_run",
+        header: "Last run",
+        accessor: (m) =>
+          m.last_run ? new Date(m.last_run).toLocaleString() : "—",
+      },
+    ],
+    [],
+  );
+
   const errorCount = errorsQuery.data?.length ?? 0;
   const failedJobCount = failedJobsQuery.data?.data.length ?? 0;
   const complianceCount = complianceFailuresQuery.data?.length ?? 0;
+  const monitorAlertCount = monitorAlertsQuery.data?.length ?? 0;
 
   return (
     <div className="space-y-6">
@@ -130,10 +171,11 @@ export function AlertsPanel(): JSX.Element {
         </label>
       </div>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-4">
         <AlertStatCard title="Recent errors" value={String(errorCount)} tone="critical" />
         <AlertStatCard title="Failed jobs" value={String(failedJobCount)} tone="warning" />
         <AlertStatCard title="Compliance failures" value={String(complianceCount)} tone="critical" />
+        <AlertStatCard title="Monitor alerts" value={String(monitorAlertCount)} tone="critical" />
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">
@@ -217,6 +259,26 @@ export function AlertsPanel(): JSX.Element {
         <div className="text-right">
           <Link to="/compliance/results?status=fail" className="text-sm font-medium text-primary hover:underline">
             View all compliance failures →
+          </Link>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="font-heading text-xl text-primary">Monitor alerts</h3>
+        <DataTable<Monitor>
+          columns={monitorAlertColumns}
+          data={monitorAlertsQuery.data ?? []}
+          keyExtractor={(m) => m.id}
+          isLoading={monitorAlertsQuery.isLoading}
+          isError={monitorAlertsQuery.isError}
+          onRetry={() => void monitorAlertsQuery.refetch()}
+          errorMessage="Unable to load monitor alerts."
+          dense
+          emptyState={<p className="text-sm text-muted">No failing monitors.</p>}
+        />
+        <div className="text-right">
+          <Link to="/monitoring/monitors" className="text-sm font-medium text-primary hover:underline">
+            View all monitors →
           </Link>
         </div>
       </section>

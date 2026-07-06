@@ -33,6 +33,8 @@ export const QUERY_KEYS = {
   operationsPasswordChangeJob: "operationsPasswordChangeJob",
   operationTemplates: "operationTemplates",
   operationSnapshots: "operationSnapshots",
+  automations: "automations",
+  schedules: "schedules",
   compliancePolicies: "compliancePolicies",
   complianceRules: "complianceRules",
   complianceResults: "complianceResults",
@@ -46,4 +48,9 @@ export const QUERY_KEYS = {
   credentialProfiles: "credentialProfiles",
   inventoryGroups: "inventoryGroups",
   deviceTags: "deviceTags",
+  monitors: "monitors",
+  monitorResults: "monitorResults",
+  dashboards: "dashboards",
+  dashboardPanels: "dashboardPanels",
+  panelData: "panelData",
 };

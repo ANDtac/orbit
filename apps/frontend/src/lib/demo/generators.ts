@@ -1,9 +1,11 @@
 import type {
     AppEventEntry,
     AuditLogEntry,
+    AutomationStep,
     CompliancePolicy,
     ComplianceResult,
     ComplianceRule,
+    Automation,
     Device,
     DeviceConfigSnapshot,
     ErrorLogEntry,
@@ -12,6 +14,7 @@ import type {
     OperationTemplate,
     RequestLogEntry,
     SoftwareLifecycle,
+    StepBindingRef,
 } from "@/lib/types";
 
 function randomItem<T>(items: T[]): T {
@@ -201,6 +204,7 @@ export function generateOperationTemplates(count = 6): OperationTemplate[] {
     return Array.from({ length: count }, (_, i) => {
         const platformId = (i % PLATFORMS.length) + 1;
         const opType = operationTypes[i % operationTypes.length];
+        const isMutating = opType === "password_change";
         return {
             id: i + 1,
             platform_id: platformId,
@@ -208,12 +212,103 @@ export function generateOperationTemplates(count = 6): OperationTemplate[] {
             description: `Reusable ${opType.replace(/_/g, " ")} workflow for ${PLATFORMS[platformId - 1]}.`,
             op_type: opType,
             template: `show running-config\n! operation: ${opType}\n! hostname: {{ hostname }}`,
-            variables: { hostname: { type: "string", required: true } },
+            variables: {
+                hostname: { type: "string", required: true, label: "Hostname" },
+                verbose: { type: "boolean", label: "Verbose output" },
+            },
+            outputs: {
+                status: { type: "string" },
+            },
+            is_mutating: isMutating,
+            is_active: true,
             notes: i % 2 === 0 ? "Validated in lab." : undefined,
             created_at: pastDate(60),
             updated_at: pastDate(10),
         };
     });
+}
+
+export function generateAutomations(templates: OperationTemplate[], count = 3): Automation[] {
+    const active = templates.filter((template) => template.is_active !== false);
+    const single: Automation[] = Array.from({ length: Math.min(count, active.length) }, (_, i) => {
+        const action = active[i % active.length];
+        return {
+            id: i + 1,
+            name: `${action.name.replace(/ template \d+/, "")} automation ${i + 1}`,
+            description: `Runs the "${action.name}" action against selected devices.`,
+            action_id: action.id,
+            variable_values: { hostname: `demo-host-${i + 1}` },
+            target: { device_ids: [] },
+            visibility: "private" as const,
+            on_failure: "stop" as const,
+            created_at: pastDate(20),
+            updated_at: pastDate(3),
+        };
+    });
+
+    // Add a 2-step sequence example when we have at least 2 active templates.
+    if (active.length >= 2) {
+        const step1Action = active[0];
+        const step2Action = active[1];
+
+        // Step 1 outputs: uses the first declared output field (usually "status").
+        const step1OutputKey = step1Action.outputs
+            ? Object.keys(step1Action.outputs)[0]
+            : undefined;
+
+        // Step 2 inputs: bind its first string-type required field to step 1's first output,
+        // if types are compatible; otherwise leave as a literal.
+        const step2Variables = step2Action.variables ?? {};
+        const step2Bindings: AutomationStep["variable_bindings"] = {};
+        for (const [fieldName, field] of Object.entries(step2Variables)) {
+            if (
+                step1OutputKey &&
+                step1Action.outputs?.[step1OutputKey]?.type === field.type &&
+                field.type === "string"
+            ) {
+                const ref: StepBindingRef = {
+                    __ref__: true,
+                    step: 1,
+                    output: step1OutputKey,
+                };
+                step2Bindings[fieldName] = ref;
+                break; // bind only the first compatible field
+            } else {
+                step2Bindings[fieldName] = `demo-value-${fieldName}`;
+                break;
+            }
+        }
+
+        const seqAuto: Automation = {
+            id: single.length + 1,
+            name: "Multi-step facts gather",
+            description: "Two-step sequence: gathers facts then uses the output as input to a follow-up action.",
+            action_id: step1Action.id,
+            variable_values: {},
+            steps: [
+                {
+                    sequence: 1,
+                    action_id: step1Action.id,
+                    variable_bindings: { hostname: "demo-host-facts", verbose: false },
+                    on_failure: "stop" as const,
+                },
+                {
+                    sequence: 2,
+                    action_id: step2Action.id,
+                    variable_bindings: step2Bindings,
+                    on_failure: "continue" as const,
+                },
+            ] as AutomationStep[],
+            target: { device_ids: [] },
+            visibility: "shared" as const,
+            on_failure: "stop" as const,
+            created_at: pastDate(10),
+            updated_at: pastDate(1),
+        };
+        return [...single, seqAuto];
+    }
+
+    return single;
 }
 
 export function generateSnapshots(devices: Device[], count = 12): DeviceConfigSnapshot[] {
@@ -388,13 +483,15 @@ function buildDemoData() {
     const devices = generateDevices(30);
     const policies = generatePolicies(5);
     const rules = generateComplianceRules(policies, 12);
+    const operationTemplates = generateOperationTemplates(8);
     return {
         devices,
         jobs: generateJobs(15),
         policies,
         complianceRules: rules,
         complianceResults: generateComplianceResults(devices, policies, rules, 18),
-        operationTemplates: generateOperationTemplates(8),
+        operationTemplates,
+        automations: generateAutomations(operationTemplates, 4),
         snapshots: generateSnapshots(devices, 16),
         hardwareLifecycle: generateHardwareLifecycle(10),
         softwareLifecycle: generateSoftwareLifecycle(10),

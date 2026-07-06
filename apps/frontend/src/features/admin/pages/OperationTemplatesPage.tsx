@@ -15,7 +15,7 @@ import {
   type OperationTemplateInput,
 } from "@/features/admin/api/operationTemplates.api";
 import { QUERY_KEYS } from "@/lib/constants";
-import type { OperationTemplate, Platform } from "@/lib/types";
+import type { OperationTemplate, Platform, VariablesSchema } from "@/lib/types";
 
 import { TemplateDetailModal } from "../components/TemplateDetailModal";
 import { TemplateForm, type TemplateFormValues } from "../components/TemplateForm";
@@ -206,10 +206,10 @@ export function OperationTemplatesPage(): JSX.Element {
   }
 
   function handleSubmit() {
-    let parsedVariables: Record<string, unknown>;
+    let parsedVariables: VariablesSchema;
 
     try {
-      parsedVariables = JSON.parse(formValues.variables || "{}") as Record<string, unknown>;
+      parsedVariables = JSON.parse(formValues.variables || "{}") as VariablesSchema;
     } catch {
       setFormError("Variables must be valid JSON.");
       return;
