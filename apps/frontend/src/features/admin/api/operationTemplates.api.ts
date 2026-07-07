@@ -15,6 +15,9 @@ export interface OperationTemplateInput {
   op_type: string;
   template: string;
   variables?: VariablesSchema;
+  outputs?: VariablesSchema;
+  is_mutating?: boolean;
+  is_active?: boolean;
   notes?: string;
 }
 

@@ -602,6 +602,77 @@ def run_with_nornir(
 
 
 # ---------------------------------------------------------------------------
+# Pre-mutate snapshot
+# ---------------------------------------------------------------------------
+def snapshot_devices_pre_mutate(
+    device_ids: Iterable[int],
+    hosts: Dict[int, Dict[str, Any]],
+    job_id: Optional[int] = None,
+    timeout: int = 60,
+) -> None:
+    """Capture a pre-execution running-config snapshot for each device.
+
+    Called automatically by the worker before any mutating (non-dry-run)
+    operation so the config can be rolled back if needed.  Failures are
+    logged and silently swallowed — a snapshot error must never abort the
+    operation.
+
+    Parameters
+    ----------
+    device_ids : Iterable[int]
+        Device IDs to snapshot.
+    hosts : dict[int, dict]
+        Inventory mapping from ``build_inventory_for_devices``.
+    job_id : int | None
+        Parent job ID to link on the snapshot row.
+    timeout : int
+        Per-device NAPALM timeout in seconds.
+    """
+    import logging
+
+    from app.extensions import db
+    from app.models.devices import DeviceConfigSnapshots
+
+    log = logging.getLogger(__name__)
+    source = f"pre-mutate:job={job_id}" if job_id else "pre-mutate"
+
+    for device_id in device_ids:
+        host = hosts.get(device_id)  # type: ignore[arg-type]
+        if host is None:
+            continue
+        try:
+            target = _build_exec_target(host, {})
+            with _napalm_connection(target, timeout) as conn:
+                configs = conn.get_config()
+                running = configs.get("running") or ""
+            if not running.strip():
+                continue
+            snap = DeviceConfigSnapshots.create_if_changed(
+                device_id=device_id,
+                blob=running.encode("utf-8"),
+                role="running",
+                vendor_hint=target.get("platform_slug"),
+            )
+            if snap is not None:
+                snap.source = source
+                if job_id is not None:
+                    snap.job_id = job_id
+                db.session.add(snap)
+            db.session.commit()
+        except Exception as exc:  # noqa: BLE001 - best-effort
+            log.warning(
+                "pre_mutate_snapshot_failed device_id=%s job_id=%s error=%s",
+                device_id,
+                job_id,
+                exc,
+            )
+            try:
+                db.session.rollback()
+            except Exception:  # noqa: BLE001
+                pass
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 def execute_operation_sync(

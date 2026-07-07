@@ -41,10 +41,7 @@ export function AppRoutes(): JSX.Element {
                     <Route
                         path="/"
                         element={
-                            <Page
-                                title="Overview"
-                                description="Monitor the health of your network automation program at a glance."
-                            >
+                            <Page title="Overview">
                                 <Home />
                             </Page>
                         }

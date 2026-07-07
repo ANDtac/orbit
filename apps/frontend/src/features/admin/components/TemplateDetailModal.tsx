@@ -163,20 +163,41 @@ export function TemplateDetailModal({
         }
       >
         <div className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-xl border border-primary/10 bg-background/40 p-4">
               <p className="text-xs uppercase tracking-[0.24em] text-muted">Platform</p>
               <p className="mt-2 text-sm font-medium text-text">{platformName ?? `Platform #${template.platform_id}`}</p>
             </div>
             <div className="rounded-xl border border-primary/10 bg-background/40 p-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-muted">Operation Type</p>
+              <p className="text-xs uppercase tracking-[0.24em] text-muted">Category</p>
               <p className="mt-2 inline-flex rounded-full border border-primary/20 px-2 py-1 font-mono text-xs text-primary">
                 {template.op_type}
               </p>
             </div>
             <div className="rounded-xl border border-primary/10 bg-background/40 p-4">
-              {/* Backend template serialization exposes no usage/execution count, so we
-                  surface the truthful last-modified time rather than an invented usage metric. */}
+              <p className="text-xs uppercase tracking-[0.24em] text-muted">Behaviour</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {template.is_mutating ? (
+                  <span className="inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-600">
+                    Mutating
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-muted">
+                    Read-only
+                  </span>
+                )}
+                {template.is_active !== false ? (
+                  <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-500">
+                    Active
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-muted">
+                    Inactive
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="rounded-xl border border-primary/10 bg-background/40 p-4">
               <p className="text-xs uppercase tracking-[0.24em] text-muted">Last modified</p>
               <p className="mt-2 text-sm font-medium text-text">{relativeDate(template.updated_at)}</p>
             </div>
@@ -198,16 +219,23 @@ export function TemplateDetailModal({
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-muted">Variables</p>
+              <p className="text-xs uppercase tracking-[0.24em] text-muted">Input variables</p>
               <pre className="mt-2 overflow-x-auto rounded-xl border border-primary/10 bg-background/60 p-4 font-mono text-xs text-text">
                 {JSON.stringify(template.variables ?? {}, null, 2)}
               </pre>
             </div>
             <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-muted">Notes</p>
-              <div className="mt-2 rounded-xl border border-primary/10 bg-background/60 p-4 text-sm text-text">
-                {template.notes || "No notes recorded."}
-              </div>
+              <p className="text-xs uppercase tracking-[0.24em] text-muted">Output fields</p>
+              <pre className="mt-2 overflow-x-auto rounded-xl border border-primary/10 bg-background/60 p-4 font-mono text-xs text-text">
+                {JSON.stringify(template.outputs ?? {}, null, 2)}
+              </pre>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs uppercase tracking-[0.24em] text-muted">Notes</p>
+            <div className="mt-2 rounded-xl border border-primary/10 bg-background/60 p-4 text-sm text-text">
+              {template.notes || "No notes recorded."}
             </div>
           </div>
         </div>

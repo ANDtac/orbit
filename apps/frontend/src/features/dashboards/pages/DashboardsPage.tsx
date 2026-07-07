@@ -205,14 +205,7 @@ export function DashboardsPage(): JSX.Element {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between gap-4">
-                <div className="space-y-1">
-                    <h1 className="font-heading text-2xl text-text">Dashboards</h1>
-                    <p className="text-sm text-muted">
-                        Assemble Splunk-style panels from monitor results and share them with
-                        your team.
-                    </p>
-                </div>
+            <div className="flex justify-end">
                 <Button onClick={() => setIsCreateOpen(true)}>Create Dashboard</Button>
             </div>
 

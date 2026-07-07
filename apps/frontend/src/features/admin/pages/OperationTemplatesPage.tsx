@@ -29,6 +29,9 @@ const EMPTY_TEMPLATE_FORM: TemplateFormValues = {
   op_type: "",
   template: "",
   variables: "{}",
+  outputs: "{}",
+  is_mutating: false,
+  is_active: true,
   notes: "",
 };
 
@@ -55,6 +58,9 @@ function normalizeTemplateForm(template?: OperationTemplate | null): TemplateFor
     op_type: template.op_type,
     template: template.template,
     variables: JSON.stringify(template.variables ?? {}, null, 2),
+    outputs: JSON.stringify(template.outputs ?? {}, null, 2),
+    is_mutating: template.is_mutating ?? false,
+    is_active: template.is_active ?? true,
     notes: template.notes ?? "",
   };
 }
@@ -108,6 +114,11 @@ export function OperationTemplatesPage(): JSX.Element {
     [platforms],
   );
 
+  const existingOpTypes = useMemo(
+    () => [...new Set(templates.map((t) => t.op_type).filter(Boolean))].sort(),
+    [templates],
+  );
+
   const createMutation = useMutation({
     mutationFn: createOperationTemplate,
     onSuccess: () => {
@@ -159,6 +170,9 @@ export function OperationTemplatesPage(): JSX.Element {
         op_type: template.op_type,
         template: template.template,
         variables: template.variables ?? undefined,
+        outputs: template.outputs ?? undefined,
+        is_mutating: template.is_mutating ?? false,
+        is_active: false,
         notes: template.notes ?? undefined,
       };
       return createOperationTemplate(payload);
@@ -201,12 +215,13 @@ export function OperationTemplatesPage(): JSX.Element {
     setIsFormOpen(true);
   }
 
-  function handleFormChange(field: keyof TemplateFormValues, value: string) {
+  function handleFormChange(field: keyof TemplateFormValues, value: string | boolean) {
     setFormValues((current) => ({ ...current, [field]: value }));
   }
 
   function handleSubmit() {
     let parsedVariables: VariablesSchema;
+    let parsedOutputs: VariablesSchema;
 
     try {
       parsedVariables = JSON.parse(formValues.variables || "{}") as VariablesSchema;
@@ -215,8 +230,15 @@ export function OperationTemplatesPage(): JSX.Element {
       return;
     }
 
+    try {
+      parsedOutputs = JSON.parse(formValues.outputs || "{}") as VariablesSchema;
+    } catch {
+      setFormError("Output fields must be valid JSON.");
+      return;
+    }
+
     if (!formValues.platform_id || !formValues.name.trim() || !formValues.op_type.trim() || !formValues.template.trim()) {
-      setFormError("Platform, name, operation type, and template body are required.");
+      setFormError("Platform, name, category, and template body are required.");
       return;
     }
 
@@ -227,6 +249,9 @@ export function OperationTemplatesPage(): JSX.Element {
       op_type: formValues.op_type.trim(),
       template: formValues.template,
       variables: parsedVariables,
+      outputs: parsedOutputs,
+      is_mutating: formValues.is_mutating,
+      is_active: formValues.is_active,
       notes: formValues.notes.trim() || undefined,
     };
 
@@ -244,12 +269,21 @@ export function OperationTemplatesPage(): JSX.Element {
     {
       key: "name",
       header: "Name",
-      accessor: (template) => <span className="font-medium">{template.name}</span>,
+      accessor: (template) => (
+        <div className="flex items-center gap-2">
+          <span className="font-medium">{template.name}</span>
+          {template.is_mutating ? (
+            <span className="inline-flex items-center rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600">
+              mutating
+            </span>
+          ) : null}
+        </div>
+      ),
       sortable: true,
     },
     {
       key: "op_type",
-      header: "Type",
+      header: "Category",
       accessor: (template) => (
         <span className="inline-flex rounded-full border border-primary/20 px-2 py-1 font-mono text-xs text-primary">
           {template.op_type}
@@ -260,6 +294,20 @@ export function OperationTemplatesPage(): JSX.Element {
       key: "platform_id",
       header: "Platform",
       accessor: (template) => platformNames[template.platform_id] ?? `Platform #${template.platform_id}`,
+    },
+    {
+      key: "is_active",
+      header: "Status",
+      accessor: (template) =>
+        template.is_active !== false ? (
+          <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-500">
+            Active
+          </span>
+        ) : (
+          <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-muted">
+            Inactive
+          </span>
+        ),
     },
     {
       key: "description",
@@ -408,6 +456,7 @@ export function OperationTemplatesPage(): JSX.Element {
         <TemplateForm
           platforms={platforms}
           values={formValues}
+          existingOpTypes={existingOpTypes}
           onChange={handleFormChange}
           error={formError}
         />

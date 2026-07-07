@@ -138,19 +138,6 @@ export function Home(): JSX.Element {
 
     return (
         <div className="space-y-8">
-            {/* Hero heading */}
-            <div className="space-y-3">
-                <h2 className="font-heading text-4xl font-semibold text-primary">
-                    Unified network intelligence
-                </h2>
-                <p className="max-w-3xl text-lg text-text">
-                    Orbit orchestrates device inventory, compliance insights, and automated
-                    remediation workflows in one place. Track the health of every platform,
-                    execute operations safely, and collaborate with your engineering team in
-                    real time.
-                </p>
-            </div>
-
             {/* CTA row */}
             <div className="flex flex-wrap items-center gap-4">
                 <Link

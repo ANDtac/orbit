@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/Button";
@@ -41,14 +41,38 @@ function snapshotPreview(snapshot: DeviceConfigSnapshot): { text: string; trunca
 // ─── Tooltip ─────────────────────────────────────────────────────────────────
 
 function InfoTooltip({ text }: { text: string }) {
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const iconRef = useRef<SVGSVGElement>(null);
+
   return (
-    <span className="group relative inline-block">
-      <svg className="ml-1 inline h-3.5 w-3.5 cursor-help text-muted" viewBox="0 0 20 20" fill="currentColor">
+    <span className="relative inline-block">
+      <svg
+        ref={iconRef}
+        className="ml-1 inline h-3.5 w-3.5 cursor-help text-muted"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+        onMouseEnter={() => {
+          const rect = iconRef.current?.getBoundingClientRect();
+          if (rect) setPos({ top: rect.top, left: rect.left + rect.width / 2 });
+        }}
+        onMouseLeave={() => setPos(null)}
+      >
         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
       </svg>
-      <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1 w-64 -translate-x-1/2 rounded-lg bg-surface border border-primary/20 px-3 py-2 text-xs text-muted opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-        {text}
-      </span>
+      {pos && (
+        <span
+          style={{
+            position: "fixed",
+            top: pos.top - 8,
+            left: pos.left,
+            transform: "translate(-50%, -100%)",
+            zIndex: 9999,
+          }}
+          className="pointer-events-none w-64 rounded-lg border border-primary/20 bg-surface px-3 py-2 text-xs text-muted shadow-lg"
+        >
+          {text}
+        </span>
+      )}
     </span>
   );
 }

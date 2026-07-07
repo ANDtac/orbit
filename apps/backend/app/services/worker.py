@@ -647,6 +647,14 @@ def _handle_operation_execute(job: Jobs, task: JobTasks | None) -> dict[str, Any
         "variables": params.get("variables") or {},
     }
 
+    # Auto-snapshot running config before any mutating (non-dry-run) execution.
+    if tmpl.is_mutating and not run_params["dry_run"]:
+        ops_service.snapshot_devices_pre_mutate(
+            device_ids=list(hosts.keys()),
+            hosts=hosts,
+            job_id=job.id,
+        )
+
     summary, per_host = ops_service.run_with_nornir(
         hosts=hosts, operation_text=rendered, params=run_params
     )

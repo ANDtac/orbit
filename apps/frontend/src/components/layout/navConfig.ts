@@ -30,7 +30,7 @@ export const navConfig: NavSection[] = [
     {
         label: "Dashboards",
         to: "/dashboards",
-        icon: "dashboard",
+        icon: "charts",
         end: true,
     },
     {
@@ -58,6 +58,7 @@ export const navConfig: NavSection[] = [
         to: "/automation/builder",
         icon: "operations",
         children: [
+            { label: "Templates", to: "/admin/templates" },
             { label: "Builder", to: "/automation/builder" },
             { label: "Schedules", to: "/automation/schedules" },
             { label: "Password Changes", to: "/operations/password-change" },
